@@ -1,6 +1,7 @@
 #include "Pch.h"
 #include "Window.h"
 #include "Application.h"
+#include "Renderer.h"
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -31,7 +32,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case WM_SIZE:
             case WM_SIZING:
             {
-                // Resized window
+                RECT clientRect = {};
+                ::GetClientRect(Application::Get().GetWindow()->GetHandle(), &clientRect);
+
+                int width = clientRect.right - clientRect.left;
+                int height = clientRect.bottom - clientRect.top;
+
+                Application::Get().GetRenderer()->Resize(width, height);
             }
             break;
 

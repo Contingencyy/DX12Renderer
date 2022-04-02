@@ -25,3 +25,5 @@ using namespace Microsoft::WRL;
 #include <dxgidebug.h>
 
 #include "D3DX/d3dx12.h"
+
+#define DX_CALL(x) if (x != S_OK) throw std::exception()

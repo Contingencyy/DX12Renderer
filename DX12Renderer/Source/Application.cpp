@@ -1,6 +1,7 @@
 #include "Pch.h"
 #include "Application.h"
 #include "Window.h"
+#include "Renderer.h"
 
 Application& Application::Get()
 {
@@ -18,9 +19,12 @@ Application::~Application()
 
 void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 {
-	m_Window = std::make_shared<Window>();
+	m_Window = new Window;
 	m_Window->Initialize(hInst, width, height);
 	m_Window->Show();
+
+	m_Renderer = new Renderer;
+	m_Renderer->Initialize(m_Window->GetHandle(), width, height);
 
 	m_Initialized = true;
 }
@@ -37,6 +41,7 @@ void Application::Run()
 
 		PollEvents();
 		Update(deltaTime.count());
+		m_Renderer->Render();
 
 		last = current;
 	}
@@ -44,7 +49,11 @@ void Application::Run()
 
 void Application::Finalize()
 {
+	m_Renderer->Finalize();
 	m_Window->Finalize();
+
+	delete m_Renderer;
+	delete m_Window;
 }
 
 void Application::PollEvents()

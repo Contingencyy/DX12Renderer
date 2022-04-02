@@ -1,6 +1,7 @@
 #pragma once
 
 class Window;
+class Renderer;
 
 class Application
 {
@@ -13,7 +14,8 @@ public:
 
 	bool IsInitialized() const { return m_Initialized; }
 
-	std::shared_ptr<Window> GetWindow() const { return m_Window; }
+	Window* GetWindow() const { return m_Window; }
+	Renderer* GetRenderer() const { return m_Renderer; }
 
 private:
 	Application();
@@ -31,7 +33,8 @@ private:
 	void Update(float deltaTime);
 
 private:
-	std::shared_ptr<Window> m_Window = nullptr;
+	Window* m_Window = nullptr;
+	Renderer* m_Renderer = nullptr;
 
 	bool m_Initialized = false;
 

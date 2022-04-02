@@ -15,6 +15,7 @@ public:
 	void ToggleFullScreen();
 
 	bool ShouldClose() const { return m_ShouldClose; }
+	HWND GetHandle() const { return m_hWnd; }
 
 private:
 	void RegisterWindow(HINSTANCE hInst);
