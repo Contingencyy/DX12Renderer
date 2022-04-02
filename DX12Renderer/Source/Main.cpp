@@ -1,4 +1,5 @@
 #include "Pch.h"
+#include "Application.h"
 
 void CreateConsole()
 {
@@ -19,6 +20,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 {
 	CreateConsole();
 	SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
+	Application::Get().Initialize(hInstance, 1280, 720);
+	Application::Get().Run();
+	Application::Get().Finalize();
 
 	return 0;
 }
