@@ -25,6 +25,9 @@ private:
 	void CreateCommandQueue();
 	void CreateSwapChain(HWND hWnd);
 
+	void CreateRootSignature();
+	void CreatePipelineState();
+
 	void UpdateRenderTargetViews();
 
 private:
@@ -48,6 +51,9 @@ private:
 	ComPtr<IDXGISwapChain4> m_dxgiSwapChain;
 	ComPtr<ID3D12Resource> m_BackBuffers[s_BackBufferCount];
 	uint32_t m_CurrentBackBufferIndex = 0;
+
+	ComPtr<ID3D12RootSignature> m_d3d12RootSignature;
+	ComPtr<ID3D12PipelineState> m_d3d12PipelineState;
 	
 	bool m_VSync = true;
 	bool m_TearingSupported = false;

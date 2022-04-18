@@ -31,6 +31,7 @@ private:
 private:
 	void PollEvents();
 	void Update(float deltaTime);
+	void Render();
 
 private:
 	Window* m_Window = nullptr;

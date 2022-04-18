@@ -41,7 +41,7 @@ void Application::Run()
 
 		PollEvents();
 		Update(deltaTime.count());
-		m_Renderer->Render();
+		Render();
 
 		last = current;
 	}
@@ -63,4 +63,9 @@ void Application::PollEvents()
 
 void Application::Update(float deltaTime)
 {
+}
+
+void Application::Render()
+{
+	m_Renderer->Render();
 }

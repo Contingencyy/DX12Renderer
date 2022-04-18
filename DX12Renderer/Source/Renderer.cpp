@@ -26,26 +26,35 @@ void Renderer::Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight
     CreateCommandQueue();
     CreateSwapChain(hWnd);
 
+    CreateRootSignature();
+    CreatePipelineState();
+
     UpdateRenderTargetViews();
 }
 
 void Renderer::Render()
 {
-    auto commandAllocator = m_d3d12CommandAllocators[m_CurrentBackBufferIndex];
-    auto backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
+    auto& commandAllocator = m_d3d12CommandAllocators[m_CurrentBackBufferIndex];
+    auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
 
     commandAllocator->Reset();
     m_d3d12CommandList->Reset(commandAllocator.Get(), nullptr);
 
-    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(),
-        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-    m_d3d12CommandList->ResourceBarrier(1, &barrier);
+    // Transition back buffer to render target state
+    {
+        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(),
+            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        m_d3d12CommandList->ResourceBarrier(1, &barrier);
+    }
 
-    float clearColor[4] = { 0.4f, 0.6f, 0.9f, 1.0f };
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-        m_CurrentBackBufferIndex, m_RTVDescriptorSize);
-    m_d3d12CommandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
-
+    // Clear render target and depth stencil view
+    {
+        float clearColor[4] = { 0.4f, 0.6f, 0.9f, 1.0f };
+        CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+            m_CurrentBackBufferIndex, m_RTVDescriptorSize);
+        m_d3d12CommandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
+    }
+    
     Present();
 }
 
@@ -82,7 +91,7 @@ void Renderer::Resize(uint32_t width, uint32_t height)
 
 void Renderer::Present()
 {
-    auto backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
+    auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
 
     CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(),
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
@@ -265,6 +274,91 @@ void Renderer::CreateSwapChain(HWND hWnd)
     DX_CALL(dxgiFactory5->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER));
 
     m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
+}
+
+void Renderer::CreateRootSignature()
+{
+    D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+
+    //CD3DX12_DESCRIPTOR_RANGE1 descRanges[1] = {};
+    //descRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+
+    CD3DX12_ROOT_PARAMETER1 rootParameters[1] = {};
+    rootParameters[0].InitAsConstants(16, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+    //rootParameters[1].InitAsDescriptorTable(1, descRanges, D3D12_SHADER_VISIBILITY_PIXEL);
+
+    CD3DX12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
+    staticSamplers[0].Init(0);
+
+    CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
+    rootSignatureDesc.Init_1_1(_countof(rootParameters), &rootParameters[0], _countof(staticSamplers), &staticSamplers[0], rootSignatureFlags);
+    
+    ComPtr<ID3DBlob> serializedRootSig;
+    ComPtr<ID3DBlob> errorBlob;
+    DX_CALL(D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &serializedRootSig, &errorBlob));
+
+    DX_CALL(m_d3d12Device->CreateRootSignature(0, serializedRootSig->GetBufferPointer(),
+        serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&m_d3d12RootSignature)));
+}
+
+void Renderer::CreatePipelineState()
+{
+    UINT compileFlags = 0;
+#ifdef _DEBUG
+    compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+
+    ComPtr<ID3DBlob> errorBlob;
+    ComPtr<ID3DBlob> vsBlob;
+    ComPtr<ID3DBlob> psBlob;
+
+    DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Default_VS.hlsl", nullptr, nullptr, "main", "vs_5_1", compileFlags, 0, &vsBlob, &errorBlob));
+    DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Default_PS.hlsl", nullptr, nullptr, "main", "ps_5_1", compileFlags, 0, &psBlob, &errorBlob));
+
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+    };
+
+    D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
+    rtBlendDesc.BlendEnable = TRUE;
+    rtBlendDesc.LogicOpEnable = FALSE;
+    rtBlendDesc.SrcBlend = D3D12_BLEND_ONE;
+    rtBlendDesc.DestBlend = D3D12_BLEND_ZERO;
+    rtBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+    rtBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
+    rtBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+    rtBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    rtBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+    rtBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+    D3D12_BLEND_DESC blendDesc = {};
+    blendDesc.AlphaToCoverageEnable = TRUE;
+    blendDesc.IndependentBlendEnable = FALSE;
+    blendDesc.RenderTarget[0] = rtBlendDesc;
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+    psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
+    psoDesc.VS = CD3DX12_SHADER_BYTECODE(vsBlob.Get());
+    psoDesc.PS = CD3DX12_SHADER_BYTECODE(psBlob.Get());
+    psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    psoDesc.BlendState = blendDesc;
+    psoDesc.DepthStencilState.DepthEnable = TRUE;
+    psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    psoDesc.DepthStencilState.StencilEnable = FALSE;
+    psoDesc.SampleMask = UINT_MAX;
+    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    psoDesc.NumRenderTargets = 1;
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.SampleDesc.Count = 1;
+    psoDesc.pRootSignature = m_d3d12RootSignature.Get();
+
+    DX_CALL(m_d3d12Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_d3d12PipelineState)));
 }
 
 void Renderer::UpdateRenderTargetViews()
