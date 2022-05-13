@@ -164,6 +164,7 @@
     <ClInclude Include="Extern\D3DX\d3dx12.h" />
     <ClInclude Include="Include\Application.h" />
     <ClInclude Include="Include\Pch.h" />
+    <ClInclude Include="Include\Random.h" />
     <ClInclude Include="Include\Renderer.h" />
     <ClInclude Include="Include\Window.h" />
     <ClInclude Include="Include\WinIncludes.h" />

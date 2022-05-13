@@ -1,6 +1,29 @@
 #include "Pch.h"
 #include "Renderer.h"
 
+// Quad vertex and index buffer
+std::vector<glm::vec3> QuadVertices = {
+    glm::vec3(-0.5f, -0.5f, 0.0f),
+    glm::vec3(-0.5f, 0.5f, 0.0f),
+    glm::vec3(0.5f, 0.5f, 0.0f),
+    glm::vec3(0.5f, -0.5f, 0.0f)
+};
+
+struct InstanceData
+{
+    glm::mat4 ModelMatrix;
+    glm::vec3 Color;
+};
+
+std::vector<InstanceData> InstanceBuffer = {
+    InstanceData{ glm::identity<glm::mat4>(), glm::vec3(0.8f, 0.0f, 0.8f) }
+};
+
+std::vector<WORD> QuadIndicies = {
+    0, 1, 2,
+    2, 3, 0
+};
+
 Renderer::Renderer()
 {
 }
@@ -25,11 +48,25 @@ void Renderer::Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight
     CreateDescriptorHeap();
     CreateCommandQueue();
     CreateSwapChain(hWnd);
+    CreateDepthBuffer();
 
     CreateRootSignature();
     CreatePipelineState();
 
     UpdateRenderTargetViews();
+
+    CreateUploadBuffer(64 * 1024);
+
+    // TEST
+    InstanceBuffer.clear();
+    InstanceBuffer.reserve(100);
+
+    for (uint32_t i = 0; i < 100; ++i)
+    {
+        InstanceBuffer.emplace_back(InstanceData{ glm::scale(glm::translate(glm::identity<glm::mat4>(),
+            glm::vec3(Random::FloatRange(100.0f, -100.0f), Random::FloatRange(100.0f, -100.0f), 0.0f)),
+            glm::vec3(Random::FloatRange(5.0f, 15.0f))), glm::vec3(Random::Float(), Random::Float(), Random::Float()) });
+    }
 }
 
 void Renderer::Render()
@@ -47,20 +84,71 @@ void Renderer::Render()
         m_d3d12CommandList->ResourceBarrier(1, &barrier);
     }
 
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->GetCPUDescriptorHandleForHeapStart(),
+        m_CurrentBackBufferIndex, m_DescriptorSize[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]);
+    CD3DX12_CPU_DESCRIPTOR_HANDLE dsv(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_DSV]->GetCPUDescriptorHandleForHeapStart());
+
     // Clear render target and depth stencil view
     {
-        float clearColor[4] = { 0.4f, 0.6f, 0.9f, 1.0f };
-        CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-            m_CurrentBackBufferIndex, m_RTVDescriptorSize);
+        float clearColor[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
         m_d3d12CommandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
+        m_d3d12CommandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
     }
-    
+
+    // Render quad
+    {
+        m_d3d12CommandList->RSSetViewports(1, &m_Viewport);
+        m_d3d12CommandList->RSSetScissorRects(1, &m_ScissorRect);
+        m_d3d12CommandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+
+        m_d3d12CommandList->SetPipelineState(m_d3d12PipelineState.Get());
+        m_d3d12CommandList->SetGraphicsRootSignature(m_d3d12RootSignature.Get());
+        m_d3d12CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        glm::mat4 projection = glm::perspectiveFovLH_ZO(glm::radians(60.0f), static_cast<float>(m_Resolution.x), static_cast<float>(m_Resolution.y), 0.1f, 1000.0f);
+        glm::mat4 view = glm::lookAtLH(glm::vec3(0.0f, 0.0f, -250.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 viewProjection = projection * view;
+        m_d3d12CommandList->SetGraphicsRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
+
+        uint32_t quadBufferOffset = 0, instanceBufferOffset = 0, indexBufferOffset = 0;
+        SetUploadBufferData(&QuadVertices[0], sizeof(glm::vec3), QuadVertices.size(), sizeof(glm::vec3), quadBufferOffset);
+        SetUploadBufferData(&InstanceBuffer[0], sizeof(InstanceData), InstanceBuffer.size(), sizeof(InstanceData), instanceBufferOffset);
+        SetUploadBufferData(&QuadIndicies[0], sizeof(WORD), QuadIndicies.size(), sizeof(WORD), indexBufferOffset);
+
+        D3D12_VERTEX_BUFFER_VIEW quadBufferView = {
+            m_d3d12UploadBuffer->GetGPUVirtualAddress() + quadBufferOffset,
+            static_cast<uint32_t>(QuadVertices.size() * sizeof(glm::vec3)),
+            static_cast<uint32_t>(sizeof(glm::vec3))
+        };
+        D3D12_VERTEX_BUFFER_VIEW instanceBufferView = {
+            m_d3d12UploadBuffer->GetGPUVirtualAddress() + instanceBufferOffset,
+            static_cast<uint32_t>(InstanceBuffer.size() * sizeof(InstanceData)),
+            static_cast<uint32_t>(sizeof(InstanceData))
+        };
+        D3D12_INDEX_BUFFER_VIEW indexBufferView = {
+            m_d3d12UploadBuffer->GetGPUVirtualAddress() + indexBufferOffset,
+            static_cast<uint32_t>(QuadIndicies.size() * sizeof(WORD)),
+            DXGI_FORMAT_R16_UINT
+        };
+
+        m_d3d12CommandList->IASetVertexBuffers(0, 1, &quadBufferView);
+        m_d3d12CommandList->IASetVertexBuffers(1, 1, &instanceBufferView);
+        m_d3d12CommandList->IASetIndexBuffer(&indexBufferView);
+
+        m_d3d12CommandList->DrawIndexedInstanced(QuadIndicies.size(), InstanceBuffer.size(), 0, 0, 0);
+    }
+
+    // TEMP
+    m_UploadBufferOffset = 0;
+
     Present();
 }
 
 void Renderer::Finalize()
 {
     Flush();
+
+    DestroyUploadBuffer();
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)
@@ -70,20 +158,12 @@ void Renderer::Resize(uint32_t width, uint32_t height)
         m_Resolution.x = std::max(1u, width);
         m_Resolution.y = std::max(1u, height);
 
+        m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(m_Resolution.x), static_cast<float>(m_Resolution.y), 0.0f, 1.0f);
+
         Flush();
 
-        for (uint32_t i = 0; i < s_BackBufferCount; ++i)
-        {
-            m_BackBuffers[i].Reset();
-            m_FenceValues[i] = m_FenceValues[m_CurrentBackBufferIndex];
-        }
-
-        DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
-        DX_CALL(m_dxgiSwapChain->GetDesc(&swapChainDesc));
-        DX_CALL(m_dxgiSwapChain->ResizeBuffers(s_BackBufferCount, m_Resolution.x, m_Resolution.y,
-            swapChainDesc.BufferDesc.Format, swapChainDesc.Flags));
-
-        m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
+        ResizeBackBuffers();
+        CreateDepthBuffer();
 
         UpdateRenderTargetViews();
     }
@@ -121,8 +201,14 @@ void Renderer::Present()
 
 void Renderer::Flush()
 {
-    uint64_t fenceValue = m_d3d12CommandQueue->Signal(m_d3d12Fence.Get(), m_FenceValues[m_CurrentBackBufferIndex]);
-    m_d3d12CommandQueue->Wait(m_d3d12Fence.Get(), fenceValue);
+    m_FenceValues[m_CurrentBackBufferIndex] = ++m_FenceValue;
+    m_d3d12CommandQueue->Signal(m_d3d12Fence.Get(), m_FenceValues[m_CurrentBackBufferIndex]);
+
+    if (m_d3d12Fence->GetCompletedValue() < m_FenceValues[m_CurrentBackBufferIndex])
+    {
+        DX_CALL(m_d3d12Fence->SetEventOnCompletion(m_FenceValues[m_CurrentBackBufferIndex], m_FenceEvent));
+        ::WaitForSingleObject(m_FenceEvent, static_cast<DWORD>(std::chrono::milliseconds::max().count()));
+    }
 }
 
 void Renderer::EnableDebugLayer()
@@ -208,12 +294,15 @@ void Renderer::CreateDevice()
 
 void Renderer::CreateDescriptorHeap()
 {
-    D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-    heapDesc.NumDescriptors = 256;
-    heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+        heapDesc.NumDescriptors = 256;
+        heapDesc.Type = static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i);
 
-    DX_CALL(m_d3d12Device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_d3d12DescriptorHeap)));
-    m_RTVDescriptorSize = m_d3d12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        DX_CALL(m_d3d12Device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_d3d12DescriptorHeap[i])));
+        m_DescriptorSize[i] = m_d3d12Device->GetDescriptorHandleIncrementSize(heapDesc.Type);
+    }
 }
 
 void Renderer::CreateCommandQueue()
@@ -276,6 +365,28 @@ void Renderer::CreateSwapChain(HWND hWnd)
     m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
 }
 
+void Renderer::CreateDepthBuffer()
+{
+    D3D12_CLEAR_VALUE clearValue = {};
+    clearValue.Format = DXGI_FORMAT_D32_FLOAT;
+    clearValue.DepthStencil = { 1.0f, 0 };
+
+    CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
+    CD3DX12_RESOURCE_DESC depthDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT,
+        m_Resolution.x, m_Resolution.y, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+
+    DX_CALL(m_d3d12Device->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &depthDesc,
+        D3D12_RESOURCE_STATE_DEPTH_WRITE,
+        &clearValue,
+        IID_PPV_ARGS(&m_DepthBuffer)
+    ));
+
+    m_d3d12Device->CreateDepthStencilView(m_DepthBuffer.Get(), nullptr, m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_DSV]->GetCPUDescriptorHandleForHeapStart());
+}
+
 void Renderer::CreateRootSignature()
 {
     D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
@@ -321,6 +432,11 @@ void Renderer::CreatePipelineState()
 
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+        { "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+        { "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+        { "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
     };
 
     D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
@@ -361,10 +477,26 @@ void Renderer::CreatePipelineState()
     DX_CALL(m_d3d12Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_d3d12PipelineState)));
 }
 
+void Renderer::ResizeBackBuffers()
+{
+    for (uint32_t i = 0; i < s_BackBufferCount; ++i)
+    {
+        m_BackBuffers[i].Reset();
+        m_FenceValues[i] = m_FenceValues[m_CurrentBackBufferIndex];
+    }
+
+    DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
+    DX_CALL(m_dxgiSwapChain->GetDesc(&swapChainDesc));
+    DX_CALL(m_dxgiSwapChain->ResizeBuffers(s_BackBufferCount, m_Resolution.x, m_Resolution.y,
+        swapChainDesc.BufferDesc.Format, swapChainDesc.Flags));
+
+    m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
+}
+
 void Renderer::UpdateRenderTargetViews()
 {
     auto rtvDescriptorSize = m_d3d12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->GetCPUDescriptorHandleForHeapStart());
 
     for (uint32_t i = 0; i < s_BackBufferCount; ++i)
     {
@@ -376,4 +508,44 @@ void Renderer::UpdateRenderTargetViews()
 
         rtvHandle.Offset(rtvDescriptorSize);
     }
+}
+
+void Renderer::CreateUploadBuffer(std::size_t size)
+{
+    CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
+    CD3DX12_RESOURCE_DESC heapDesc(CD3DX12_RESOURCE_DESC::Buffer(size));
+
+    HRESULT hr = m_d3d12Device->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &heapDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&m_d3d12UploadBuffer)
+    );
+
+    if (SUCCEEDED(hr))
+    {
+        m_d3d12UploadBuffer->Map(0, nullptr, &m_CPUPtr);
+
+        m_UploadBufferSize = size;
+        m_UploadBufferOffset = 0;
+    }
+}
+
+void Renderer::SetUploadBufferData(const void* data, uint32_t bytesPerData, uint32_t dataCount, std::size_t alignment, uint32_t& offset)
+{
+    std::size_t alignedSize = AlignUp(static_cast<std::size_t>(bytesPerData * dataCount), alignment);
+    m_UploadBufferOffset = AlignUp(m_UploadBufferOffset, alignment);
+    offset = m_UploadBufferOffset;
+
+    memcpy((static_cast<uint8_t*>(m_CPUPtr) + m_UploadBufferOffset), data, bytesPerData * dataCount);
+
+    m_UploadBufferOffset += alignedSize;
+}
+
+void Renderer::DestroyUploadBuffer()
+{
+    m_d3d12UploadBuffer->Unmap(0, nullptr);
+    m_CPUPtr = nullptr;
 }

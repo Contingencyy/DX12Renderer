@@ -15,3 +15,18 @@
 
 */
 #include "WinIncludes.h"
+
+/*
+
+	Extern includes
+
+*/
+#include <glm/glm/glm.hpp>
+#include <glm/glm/gtc/matrix_transform.hpp>
+
+/*
+
+	Project includes
+
+*/
+#include "Random.h"

@@ -1,4 +1,10 @@
-float4 main() : SV_TARGET
+struct PixelShaderInput
 {
-	return float4(1.0f, 1.0f, 1.0f, 1.0f);
+	float4 Position : SV_POSITION;
+	float3 Color : COLOR;
+};
+
+float4 main(PixelShaderInput IN) : SV_TARGET
+{
+	return float4(IN.Color, 1.0f);
 }
