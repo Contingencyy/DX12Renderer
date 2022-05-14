@@ -12,6 +12,9 @@ public:
 
 	void Resize(uint32_t width, uint32_t height);
 
+	ComPtr<ID3D12Device> GetD3D12Device() const { return m_d3d12Device; }
+	ComPtr<ID3D12GraphicsCommandList2> GetGraphicsCommandList() const { return m_d3d12CommandList; }
+
 private:
 	void Present();
 	void Flush();
@@ -30,12 +33,10 @@ private:
 	void CreatePipelineState();
 
 	void ResizeBackBuffers();
-	void ResizeDepthBuffer();
 	void UpdateRenderTargetViews();
 
-	void CreateUploadBuffer(std::size_t size);
-	void SetUploadBufferData(const void* data, uint32_t bytesPerData, uint32_t dataCount, std::size_t alignment, uint32_t& offset);
-	void DestroyUploadBuffer();
+	void TrackResource(ComPtr<ID3D12Resource> resource);
+	void ReleaseTrackedResources();
 
 private:
 	static const uint32_t s_BackBufferCount = 3;
@@ -63,10 +64,7 @@ private:
 	ComPtr<ID3D12RootSignature> m_d3d12RootSignature;
 	ComPtr<ID3D12PipelineState> m_d3d12PipelineState;
 
-	ComPtr<ID3D12Resource> m_d3d12UploadBuffer;
-	void* m_CPUPtr;
-	std::size_t m_UploadBufferSize;
-	std::size_t m_UploadBufferOffset;
+	std::vector<ComPtr<ID3D12Resource>> m_TrackedResources;
 	
 	bool m_VSync = true;
 	bool m_TearingSupported = false;

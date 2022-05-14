@@ -152,6 +152,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source\Application.cpp" />
+    <ClCompile Include="Source\Graphics\Buffer.cpp" />
+    <ClCompile Include="Source\Graphics\IndexBuffer.cpp" />
+    <ClCompile Include="Source\Graphics\UploadBuffer.cpp" />
+    <ClCompile Include="Source\Graphics\VertexBuffer.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -163,6 +167,10 @@
   <ItemGroup>
     <ClInclude Include="Extern\D3DX\d3dx12.h" />
     <ClInclude Include="Include\Application.h" />
+    <ClInclude Include="Include\Graphics\Buffer.h" />
+    <ClInclude Include="Include\Graphics\IndexBuffer.h" />
+    <ClInclude Include="Include\Graphics\UploadBuffer.h" />
+    <ClInclude Include="Include\Graphics\VertexBuffer.h" />
     <ClInclude Include="Include\Pch.h" />
     <ClInclude Include="Include\Random.h" />
     <ClInclude Include="Include\Renderer.h" />

@@ -1,7 +1,9 @@
 #include "Pch.h"
 #include "Renderer.h"
+#include "Graphics/VertexBuffer.h"
+#include "Graphics/IndexBuffer.h"
+#include "Graphics/UploadBuffer.h"
 
-// Quad vertex and index buffer
 std::vector<glm::vec3> QuadVertices = {
     glm::vec3(-0.5f, -0.5f, 0.0f),
     glm::vec3(-0.5f, 0.5f, 0.0f),
@@ -15,11 +17,11 @@ struct InstanceData
     glm::vec3 Color;
 };
 
-std::vector<InstanceData> InstanceBuffer = {
+std::vector<InstanceData> QuadInstanceData = {
     InstanceData{ glm::identity<glm::mat4>(), glm::vec3(0.8f, 0.0f, 0.8f) }
 };
 
-std::vector<WORD> QuadIndicies = {
+std::vector<WORD> QuadIndices = {
     0, 1, 2,
     2, 3, 0
 };
@@ -55,15 +57,12 @@ void Renderer::Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight
 
     UpdateRenderTargetViews();
 
-    CreateUploadBuffer(64 * 1024);
-
-    // TEST
-    InstanceBuffer.clear();
-    InstanceBuffer.reserve(100);
+    QuadInstanceData.clear();
+    QuadInstanceData.reserve(100);
 
     for (uint32_t i = 0; i < 100; ++i)
     {
-        InstanceBuffer.emplace_back(InstanceData{ glm::scale(glm::translate(glm::identity<glm::mat4>(),
+        QuadInstanceData.emplace_back(InstanceData{ glm::scale(glm::translate(glm::identity<glm::mat4>(),
             glm::vec3(Random::FloatRange(100.0f, -100.0f), Random::FloatRange(100.0f, -100.0f), 0.0f)),
             glm::vec3(Random::FloatRange(5.0f, 15.0f))), glm::vec3(Random::Float(), Random::Float(), Random::Float()) });
     }
@@ -76,6 +75,7 @@ void Renderer::Render()
 
     commandAllocator->Reset();
     m_d3d12CommandList->Reset(commandAllocator.Get(), nullptr);
+    ReleaseTrackedResources();
 
     // Transition back buffer to render target state
     {
@@ -95,7 +95,7 @@ void Renderer::Render()
         m_d3d12CommandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
     }
 
-    // Render quad
+    // Render quads
     {
         m_d3d12CommandList->RSSetViewports(1, &m_Viewport);
         m_d3d12CommandList->RSSetScissorRects(1, &m_ScissorRect);
@@ -110,36 +110,40 @@ void Renderer::Render()
         glm::mat4 viewProjection = projection * view;
         m_d3d12CommandList->SetGraphicsRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
 
-        uint32_t quadBufferOffset = 0, instanceBufferOffset = 0, indexBufferOffset = 0;
-        SetUploadBufferData(&QuadVertices[0], sizeof(glm::vec3), QuadVertices.size(), sizeof(glm::vec3), quadBufferOffset);
-        SetUploadBufferData(&InstanceBuffer[0], sizeof(InstanceData), InstanceBuffer.size(), sizeof(InstanceData), instanceBufferOffset);
-        SetUploadBufferData(&QuadIndicies[0], sizeof(WORD), QuadIndicies.size(), sizeof(WORD), indexBufferOffset);
+        // New vertex/index/upload buffer classes
+        UploadBuffer quadVerticesUploadBuffer(QuadVertices.size() * sizeof(glm::vec3));
+        VertexBuffer quadVertexBuffer;
+        quadVerticesUploadBuffer.UploadDataToBuffer(quadVertexBuffer, QuadVertices.size(),
+            sizeof(glm::vec3), &QuadVertices[0]);
 
-        D3D12_VERTEX_BUFFER_VIEW quadBufferView = {
-            m_d3d12UploadBuffer->GetGPUVirtualAddress() + quadBufferOffset,
-            static_cast<uint32_t>(QuadVertices.size() * sizeof(glm::vec3)),
-            static_cast<uint32_t>(sizeof(glm::vec3))
-        };
-        D3D12_VERTEX_BUFFER_VIEW instanceBufferView = {
-            m_d3d12UploadBuffer->GetGPUVirtualAddress() + instanceBufferOffset,
-            static_cast<uint32_t>(InstanceBuffer.size() * sizeof(InstanceData)),
-            static_cast<uint32_t>(sizeof(InstanceData))
-        };
-        D3D12_INDEX_BUFFER_VIEW indexBufferView = {
-            m_d3d12UploadBuffer->GetGPUVirtualAddress() + indexBufferOffset,
-            static_cast<uint32_t>(QuadIndicies.size() * sizeof(WORD)),
-            DXGI_FORMAT_R16_UINT
-        };
+        TrackResource(quadVerticesUploadBuffer.GetD3D12Resource());
+        TrackResource(quadVertexBuffer.GetD3D12Resource());
 
-        m_d3d12CommandList->IASetVertexBuffers(0, 1, &quadBufferView);
-        m_d3d12CommandList->IASetVertexBuffers(1, 1, &instanceBufferView);
-        m_d3d12CommandList->IASetIndexBuffer(&indexBufferView);
+        UploadBuffer quadInstanceDataUploadBuffer(QuadInstanceData.size() * sizeof(InstanceData));
+        VertexBuffer instanceDataBuffer;
+        quadInstanceDataUploadBuffer.UploadDataToBuffer(instanceDataBuffer, QuadInstanceData.size(),
+            sizeof(InstanceData), &QuadInstanceData[0]);
 
-        m_d3d12CommandList->DrawIndexedInstanced(QuadIndicies.size(), InstanceBuffer.size(), 0, 0, 0);
+        TrackResource(quadInstanceDataUploadBuffer.GetD3D12Resource());
+        TrackResource(instanceDataBuffer.GetD3D12Resource());
+
+        UploadBuffer quadIndicesUploadBuffer(QuadIndices.size() * sizeof(WORD));
+        IndexBuffer quadIndexBuffer;
+        quadIndicesUploadBuffer.UploadDataToBuffer(quadIndexBuffer, QuadIndices.size(), sizeof(WORD), &QuadIndices[0]);
+
+        TrackResource(quadIndicesUploadBuffer.GetD3D12Resource());
+        TrackResource(quadIndexBuffer.GetD3D12Resource());
+
+        D3D12_VERTEX_BUFFER_VIEW quadVertexBufferView = quadVertexBuffer.GetView();
+        D3D12_VERTEX_BUFFER_VIEW instanceDataBufferView = instanceDataBuffer.GetView();
+        D3D12_INDEX_BUFFER_VIEW quadIndexBufferView = quadIndexBuffer.GetView();
+
+        m_d3d12CommandList->IASetVertexBuffers(0, 1, &quadVertexBufferView);
+        m_d3d12CommandList->IASetVertexBuffers(1, 1, &instanceDataBufferView);
+        m_d3d12CommandList->IASetIndexBuffer(&quadIndexBufferView);
+
+        m_d3d12CommandList->DrawIndexedInstanced(QuadIndices.size(), QuadInstanceData.size(), 0, 0, 0);
     }
-
-    // TEMP
-    m_UploadBufferOffset = 0;
 
     Present();
 }
@@ -147,8 +151,6 @@ void Renderer::Render()
 void Renderer::Finalize()
 {
     Flush();
-
-    DestroyUploadBuffer();
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)
@@ -510,42 +512,12 @@ void Renderer::UpdateRenderTargetViews()
     }
 }
 
-void Renderer::CreateUploadBuffer(std::size_t size)
+void Renderer::TrackResource(ComPtr<ID3D12Resource> resource)
 {
-    CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
-    CD3DX12_RESOURCE_DESC heapDesc(CD3DX12_RESOURCE_DESC::Buffer(size));
-
-    HRESULT hr = m_d3d12Device->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &heapDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&m_d3d12UploadBuffer)
-    );
-
-    if (SUCCEEDED(hr))
-    {
-        m_d3d12UploadBuffer->Map(0, nullptr, &m_CPUPtr);
-
-        m_UploadBufferSize = size;
-        m_UploadBufferOffset = 0;
-    }
+    m_TrackedResources.emplace_back(resource);
 }
 
-void Renderer::SetUploadBufferData(const void* data, uint32_t bytesPerData, uint32_t dataCount, std::size_t alignment, uint32_t& offset)
+void Renderer::ReleaseTrackedResources()
 {
-    std::size_t alignedSize = AlignUp(static_cast<std::size_t>(bytesPerData * dataCount), alignment);
-    m_UploadBufferOffset = AlignUp(m_UploadBufferOffset, alignment);
-    offset = m_UploadBufferOffset;
-
-    memcpy((static_cast<uint8_t*>(m_CPUPtr) + m_UploadBufferOffset), data, bytesPerData * dataCount);
-
-    m_UploadBufferOffset += alignedSize;
-}
-
-void Renderer::DestroyUploadBuffer()
-{
-    m_d3d12UploadBuffer->Unmap(0, nullptr);
-    m_CPUPtr = nullptr;
+    m_TrackedResources.clear();
 }
