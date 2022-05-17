@@ -23,8 +23,12 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 	m_Window->Initialize(hInst, width, height);
 	m_Window->Show();
 
+	Logger::Log("Initialized Window", Logger::Severity::INFO);
+
 	m_Renderer = new Renderer;
 	m_Renderer->Initialize(m_Window->GetHandle(), width, height);
+
+	Logger::Log("Initialized Renderer", Logger::Severity::INFO);
 
 	m_Initialized = true;
 }

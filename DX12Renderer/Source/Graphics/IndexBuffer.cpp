@@ -12,7 +12,7 @@ IndexBuffer::~IndexBuffer()
 
 void IndexBuffer::CreateView(std::size_t numIndices, std::size_t indexSize)
 {
-	assert((indexSize == 2 || indexSize == 4) && "Index has to be either a 16-bit or a 32-bit unsigned integer.");
+	ASSERT((indexSize == 2 || indexSize == 4), "Index has to be either a 16-bit or a 32-bit unsigned integer.");
 
 	m_NumIndices = numIndices;
 	m_IndexFormat = (indexSize == 2) ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;

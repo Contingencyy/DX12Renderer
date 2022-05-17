@@ -16,7 +16,7 @@ public:
 private:
 	D3D12_INDEX_BUFFER_VIEW m_IndexBufferView = {};
 
-	std::size_t m_NumIndices;
+	std::size_t m_NumIndices = 0;
 	DXGI_FORMAT m_IndexFormat;
 
 };

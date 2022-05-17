@@ -37,7 +37,7 @@ void UploadBuffer::CreateView(std::size_t numElements, std::size_t elementSize)
 
 void UploadBuffer::UploadDataToBuffer(Buffer& buffer, std::size_t numElements, std::size_t elementSize, const void* data)
 {
-	std::size_t alignedBufferSize = AlignUp(static_cast<std::size_t>(numElements * elementSize), elementSize);
+	std::size_t alignedBufferSize = MathHelper::AlignUp(static_cast<std::size_t>(numElements * elementSize), elementSize);
     ComPtr<ID3D12Resource> d3d12DestResource;
 
     if (alignedBufferSize > 0 && data != nullptr)

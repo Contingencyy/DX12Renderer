@@ -8,13 +8,15 @@
 #include <assert.h>
 #include <memory>
 #include <chrono>
+#include <string>
 
 /*
 
-	WIN32 includes
+	WIN32 includes/macros
 
 */
 #include "WinIncludes.h"
+#define DX_CALL(x) if (x != S_OK) throw std::exception()
 
 /*
 
@@ -26,7 +28,16 @@
 
 /*
 
+	Project defines and macros
+
+*/
+#define ASSERT(x, y) if (!x) Logger::Log(y, Logger::Severity::ERR); assert(x)
+
+/*
+
 	Project includes
 
 */
+#include "MathHelper.h"
 #include "Random.h"
+#include "Logger.h"

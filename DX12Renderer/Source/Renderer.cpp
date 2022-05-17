@@ -73,6 +73,16 @@ void Renderer::Render()
     auto& commandAllocator = m_d3d12CommandAllocators[m_CurrentBackBufferIndex];
     auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
 
+    m_FenceValues[m_CurrentBackBufferIndex] = ++m_FenceValue;
+    DX_CALL(m_d3d12CommandQueue->Signal(m_d3d12Fence.Get(), m_FenceValues[m_CurrentBackBufferIndex]));
+
+    m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
+    if (m_d3d12Fence->GetCompletedValue() < m_FenceValues[m_CurrentBackBufferIndex])
+    {
+        DX_CALL(m_d3d12Fence->SetEventOnCompletion(m_FenceValues[m_CurrentBackBufferIndex], m_FenceEvent));
+        ::WaitForSingleObject(m_FenceEvent, static_cast<DWORD>(std::chrono::milliseconds::max().count()));
+    }
+
     commandAllocator->Reset();
     m_d3d12CommandList->Reset(commandAllocator.Get(), nullptr);
     ReleaseTrackedResources();
@@ -319,7 +329,7 @@ void Renderer::CreateCommandQueue()
     DX_CALL(m_d3d12Device->CreateFence(m_FenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_d3d12Fence)));
 
     m_FenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
-    assert(m_FenceEvent && "Failed to create fence event.");
+    ASSERT(m_FenceEvent, "Failed to create fence event.");
 
     for (uint32_t i = 0; i < s_BackBufferCount; ++i)
     {
