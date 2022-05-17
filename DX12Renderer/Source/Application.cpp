@@ -3,10 +3,25 @@
 #include "Window.h"
 #include "Renderer.h"
 
+static Application* s_Instance = nullptr;
+
+void Application::Create()
+{
+	if (!s_Instance)
+	{
+		s_Instance = new Application();
+	}
+}
+
 Application& Application::Get()
 {
-	static Application s_Instance;
-	return s_Instance;
+	return *s_Instance;
+}
+
+void Application::Destroy()
+{
+	delete s_Instance;
+	s_Instance = nullptr;
 }
 
 Application::Application()

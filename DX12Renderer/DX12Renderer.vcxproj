@@ -171,10 +171,10 @@
     <ClInclude Include="Include\Graphics\IndexBuffer.h" />
     <ClInclude Include="Include\Graphics\UploadBuffer.h" />
     <ClInclude Include="Include\Graphics\VertexBuffer.h" />
-    <ClInclude Include="Include\Logger.h" />
-    <ClInclude Include="Include\MathHelper.h" />
+    <ClInclude Include="Include\Util\Logger.h" />
+    <ClInclude Include="Include\Util\MathHelper.h" />
     <ClInclude Include="Include\Pch.h" />
-    <ClInclude Include="Include\Random.h" />
+    <ClInclude Include="Include\Util\Random.h" />
     <ClInclude Include="Include\Renderer.h" />
     <ClInclude Include="Include\Window.h" />
     <ClInclude Include="Include\WinIncludes.h" />

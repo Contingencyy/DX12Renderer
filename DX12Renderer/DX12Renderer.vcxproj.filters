@@ -62,7 +62,7 @@
     <ClInclude Include="Include\Renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Random.h">
+    <ClInclude Include="Include\Util\Random.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\Buffer.h">
@@ -77,10 +77,10 @@
     <ClInclude Include="Include\Graphics\UploadBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Logger.h">
+    <ClInclude Include="Include\Util\Logger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\MathHelper.h">
+    <ClInclude Include="Include\Util\MathHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

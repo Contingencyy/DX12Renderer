@@ -38,6 +38,6 @@
 	Project includes
 
 */
-#include "MathHelper.h"
-#include "Random.h"
-#include "Logger.h"
+#include "Util/MathHelper.h"
+#include "Util/Random.h"
+#include "Util/Logger.h"

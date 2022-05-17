@@ -6,7 +6,9 @@ class Renderer;
 class Application
 {
 public:
+	static void Create();
 	static Application& Get();
+	static void Destroy();
 
 	void Initialize(HINSTANCE hInst, uint32_t width, uint32_t height);
 	void Run();
