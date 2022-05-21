@@ -10,7 +10,9 @@ public:
 	~Renderer();
 
 	void Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight);
+	void BeginFrame();
 	void Render();
+	void EndFrame();
 	void Finalize();
 
 	void Resize(uint32_t width, uint32_t height);
@@ -18,6 +20,8 @@ public:
 	void CreateBuffer(ComPtr<ID3D12Resource>& resource, D3D12_HEAP_TYPE bufferType, D3D12_RESOURCE_STATES initialState, std::size_t size);
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
 
+	void ToggleVSync() { m_VSync = !m_VSync; }
+	bool IsVSyncEnabled() const { return m_VSync; }
 	ComPtr<ID3D12Device> GetD3D12Device() const { return m_d3d12Device; }
 
 private:
@@ -40,6 +44,8 @@ private:
 	void UpdateRenderTargetViews();
 
 private:
+	friend class GUI;
+
 	static const uint32_t s_BackBufferCount = 3;
 
 	ComPtr<IDXGIAdapter4> m_dxgiAdapter;

@@ -25,6 +25,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     Application::Get().GetWindow()->ToggleFullScreen();
                     }
                     break;
+                case 0x56:
+                    Application::Get().GetRenderer()->ToggleVSync();
+                    break;
                 }
             }
             break;

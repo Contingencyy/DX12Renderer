@@ -72,7 +72,7 @@ void Renderer::Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight
     }
 }
 
-void Renderer::Render()
+void Renderer::BeginFrame()
 {
     auto commandList = m_CommandQueueDirect->GetCommandList();
     auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
@@ -94,6 +94,18 @@ void Renderer::Render()
         commandList->ClearRenderTargetView(rtv, clearColor);
         commandList->ClearDepthStencilView(dsv);
     }
+
+    m_CommandQueueDirect->ExecuteCommandList(commandList);
+}
+
+void Renderer::Render()
+{
+    auto commandList = m_CommandQueueDirect->GetCommandList();
+    auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->GetCPUDescriptorHandleForHeapStart(),
+        m_CurrentBackBufferIndex, m_DescriptorSize[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]);
+    CD3DX12_CPU_DESCRIPTOR_HANDLE dsv(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_DSV]->GetCPUDescriptorHandleForHeapStart());
 
     // Render quads
     {
@@ -133,6 +145,10 @@ void Renderer::Render()
     }
 
     m_CommandQueueDirect->ExecuteCommandList(commandList);
+}
+
+void Renderer::EndFrame()
+{
     Present();
 }
 

@@ -2,6 +2,7 @@
 #include "Application.h"
 #include "Window.h"
 #include "Renderer.h"
+#include "GUI.h"
 
 static Application* s_Instance = nullptr;
 
@@ -45,6 +46,11 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 
 	Logger::Log("Initialized Renderer", Logger::Severity::INFO);
 
+	m_GUI = new GUI;
+	m_GUI->Initialize(m_Window->GetHandle());
+
+	Logger::Log("Initialized GUI", Logger::Severity::INFO);
+
 	m_Initialized = true;
 }
 
@@ -61,16 +67,19 @@ void Application::Run()
 		PollEvents();
 		Update(deltaTime.count());
 		Render();
-
+		
 		last = current;
+		m_LastFrameTime = deltaTime;
 	}
 }
 
 void Application::Finalize()
 {
+	m_GUI->Finalize();
 	m_Renderer->Finalize();
 	m_Window->Finalize();
 
+	delete m_GUI;
 	delete m_Renderer;
 	delete m_Window;
 }
@@ -86,5 +95,10 @@ void Application::Update(float deltaTime)
 
 void Application::Render()
 {
+	m_Renderer->BeginFrame();
+
 	m_Renderer->Render();
+	m_GUI->Render();
+
+	m_Renderer->EndFrame();
 }

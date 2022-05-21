@@ -2,6 +2,7 @@
 
 class Window;
 class Renderer;
+class GUI;
 
 class Application
 {
@@ -15,9 +16,11 @@ public:
 	void Finalize();
 
 	bool IsInitialized() const { return m_Initialized; }
+	std::chrono::duration<float> GetLastFrameTime() const { return m_LastFrameTime; }
 
 	Window* GetWindow() const { return m_Window; }
 	Renderer* GetRenderer() const { return m_Renderer; }
+	GUI* GetGUI() const { return m_GUI; }
 
 private:
 	Application();
@@ -38,6 +41,9 @@ private:
 private:
 	Window* m_Window = nullptr;
 	Renderer* m_Renderer = nullptr;
+	GUI* m_GUI = nullptr;
+
+	std::chrono::duration<float> m_LastFrameTime = std::chrono::duration<float>(0.0f);
 
 	bool m_Initialized = false;
 
