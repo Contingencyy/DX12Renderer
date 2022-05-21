@@ -1,5 +1,6 @@
 #pragma once
 #include "Graphics/Buffer.h"
+#include "Graphics/Texture.h"
 
 class CommandList
 {
@@ -16,6 +17,8 @@ public:
 	void SetPipelineState(ID3D12PipelineState* pipelineState);
 	void SetRootSignature(ID3D12RootSignature* rootSignature);
 	void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY topology);
+	void SetDescriptorHeap(ID3D12DescriptorHeap* descriptorHeap);
+	void SetShaderResourceView(ID3D12DescriptorHeap* descriptorHeap, const D3D12_CPU_DESCRIPTOR_HANDLE& srcDescriptor);
 
 	void SetRoot32BitConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset);
 	void SetVertexBuffers(uint32_t slot, uint32_t numViews, const Buffer& vertexBuffer);
@@ -24,6 +27,7 @@ public:
 	void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0);
 
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
+	void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
 
 	void ResourceBarrier(uint32_t numBarriers, const D3D12_RESOURCE_BARRIER* barriers);
 	void TrackObject(ComPtr<ID3D12Object> object);

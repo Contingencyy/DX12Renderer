@@ -76,8 +76,13 @@ void Application::Run()
 void Application::Finalize()
 {
 	m_GUI->Finalize();
+	Logger::Log("Finalized GUI", Logger::Severity::INFO);
+
 	m_Renderer->Finalize();
+	Logger::Log("Finalized Renderer", Logger::Severity::INFO);
+
 	m_Window->Finalize();
+	Logger::Log("Finalized Window", Logger::Severity::INFO);
 
 	delete m_GUI;
 	delete m_Renderer;

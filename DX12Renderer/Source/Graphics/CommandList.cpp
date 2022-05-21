@@ -57,6 +57,16 @@ void CommandList::SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY topology)
 	m_d3d12CommandList->IASetPrimitiveTopology(topology);
 }
 
+void CommandList::SetDescriptorHeap(ID3D12DescriptorHeap* descriptorHeap)
+{
+	m_d3d12CommandList->SetDescriptorHeaps(1, &descriptorHeap);
+}
+
+void CommandList::SetShaderResourceView(ID3D12DescriptorHeap* descriptorHeap, const D3D12_CPU_DESCRIPTOR_HANDLE& srcDescriptor)
+{
+	m_d3d12CommandList->SetGraphicsRootDescriptorTable(1, descriptorHeap->GetGPUDescriptorHandleForHeapStart());
+}
+
 void CommandList::SetRoot32BitConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset)
 {
 	m_d3d12CommandList->SetGraphicsRoot32BitConstants(rootIndex, numValues, data, offset);
@@ -89,28 +99,46 @@ void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint3
 
 void CommandList::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData)
 {
-	std::size_t alignedBufferSize = destBuffer.GetAlignedSize();
-	ComPtr<ID3D12Resource> d3d12DestResource;
+	std::size_t alignedBufferSize = intermediateBuffer.GetAlignedSize();
 
 	if (alignedBufferSize > 0 && bufferData != nullptr)
 	{
-		Application::Get().GetRenderer()->CreateBuffer(d3d12DestResource, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON, alignedBufferSize);
-
 		D3D12_SUBRESOURCE_DATA subresourceData = {};
 		subresourceData.pData = bufferData;
 		subresourceData.RowPitch = alignedBufferSize;
 		subresourceData.SlicePitch = subresourceData.RowPitch;
 
-		UpdateSubresources(m_d3d12CommandList.Get(), d3d12DestResource.Get(),
+		UpdateSubresources(m_d3d12CommandList.Get(), destBuffer.GetD3D12Resource().Get(),
 			intermediateBuffer.GetD3D12Resource().Get(), 0, 0, 1, &subresourceData);
-
-		destBuffer.SetD3D12Resource(d3d12DestResource);
 
 		TrackObject(intermediateBuffer.GetD3D12Resource());
 		TrackObject(destBuffer.GetD3D12Resource());
 	}
 
-	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(d3d12DestResource.Get(),
+	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(destBuffer.GetD3D12Resource().Get(),
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
+	ResourceBarrier(1, &barrier);
+}
+
+void CommandList::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData)
+{
+	TextureDesc textureDesc = destTexture.GetTextureDesc();
+
+	if (textureData != nullptr)
+	{
+		D3D12_SUBRESOURCE_DATA subresourceData = {};
+		subresourceData.pData = textureData;
+		subresourceData.RowPitch = textureDesc.Width * 4;
+		subresourceData.SlicePitch = subresourceData.RowPitch * textureDesc.Height;
+
+		UpdateSubresources(m_d3d12CommandList.Get(), destTexture.GetD3D12Resource().Get(),
+			intermediateBuffer.GetD3D12Resource().Get(), 0, 0, 1, &subresourceData);
+
+		TrackObject(intermediateBuffer.GetD3D12Resource());
+		TrackObject(destTexture.GetD3D12Resource());
+	}
+
+	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(destTexture.GetD3D12Resource().Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
 	ResourceBarrier(1, &barrier);
 }

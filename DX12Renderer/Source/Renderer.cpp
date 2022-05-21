@@ -4,11 +4,20 @@
 #include "Graphics/CommandList.h"
 #include "Graphics/Buffer.h"
 
-std::vector<glm::vec3> QuadVertices = {
-    glm::vec3(-0.5f, -0.5f, 0.0f),
-    glm::vec3(-0.5f, 0.5f, 0.0f),
-    glm::vec3(0.5f, 0.5f, 0.0f),
-    glm::vec3(0.5f, -0.5f, 0.0f)
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image/stb_image.h"
+
+struct Vertex
+{
+    glm::vec3 Position;
+    glm::vec2 TexCoord;
+};
+
+std::vector<Vertex> QuadVertices = {
+    { glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec2(0.0f, 1.0f) },
+    { glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec2(0.0f, 0.0f) },
+    { glm::vec3(0.5f, 0.5f, 0.0f), glm::vec2(1.0f, 0.0f) },
+    { glm::vec3(0.5f, -0.5f, 0.0f), glm::vec2(1.0f, 1.0f) }
 };
 
 struct InstanceData
@@ -69,22 +78,36 @@ void Renderer::Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight
 
         QuadInstanceData.emplace_back(InstanceData{ glm::scale(glm::translate(glm::identity<glm::mat4>(),
             glm::vec3(randomDirection.x, randomDirection.y, 0.0f)),
-            glm::vec3(Random::FloatRange(5.0f, 15.0f))), glm::vec3(Random::Float(), Random::Float(), Random::Float()) });
+            glm::vec3(Random::FloatRange(10.0f, 20.0f))), glm::vec3(Random::Float(), Random::Float(), Random::Float()) });
     }
 
     auto commandList = m_CommandQueueCopy->GetCommandList();
 
     m_QuadBuffers[0] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON), QuadVertices.size(), sizeof(QuadVertices[0]));
-    m_UploadBuffers[0] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadBuffers[0]->GetAlignedSize());
-    commandList->CopyBuffer(*m_UploadBuffers[0], *m_QuadBuffers[0], &QuadVertices[0]);
+    Buffer quadVertexUB(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadBuffers[0]->GetAlignedSize());
+    commandList->CopyBuffer(quadVertexUB, *m_QuadBuffers[0], &QuadVertices[0]);
 
     m_QuadBuffers[1] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON), QuadInstanceData.size(), sizeof(QuadInstanceData[0]));
-    m_UploadBuffers[1] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadBuffers[1]->GetAlignedSize());
-    commandList->CopyBuffer(*m_UploadBuffers[1], *m_QuadBuffers[1], &QuadInstanceData[0]);
+    Buffer quadInstanceUB(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadBuffers[1]->GetAlignedSize());
+    commandList->CopyBuffer(quadInstanceUB, *m_QuadBuffers[1], &QuadInstanceData[0]);
 
     m_QuadBuffers[2] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON), QuadIndices.size(), sizeof(QuadIndices[0]));
-    m_UploadBuffers[2] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadBuffers[2]->GetAlignedSize());
-    commandList->CopyBuffer(*m_UploadBuffers[2], *m_QuadBuffers[2], &QuadIndices[0]);
+    Buffer quadIndexUB(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadBuffers[2]->GetAlignedSize());
+    commandList->CopyBuffer(quadIndexUB, *m_QuadBuffers[2], &QuadIndices[0]);
+
+    // Testing texture loading/creation
+    int width, height, channelsPerPixel;
+    unsigned char* textureData = stbi_load("Resources/Textures/kermit.jpg", &width, &height, &channelsPerPixel, STBI_rgb_alpha);
+    if (textureData == nullptr)
+    {
+        ASSERT(false, "Failed to load texture");
+    }
+
+    m_Texture = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON,
+        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, static_cast<uint32_t>(width), static_cast<uint32_t>(height)));
+    Buffer textureUB(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), static_cast<std::size_t>(GetRequiredIntermediateSize(m_Texture->GetD3D12Resource().Get(), 0, 1)));
+
+    commandList->CopyTexture(textureUB, *m_Texture, textureData);
 
     uint64_t fenceValue = m_CommandQueueCopy->ExecuteCommandList(commandList);
     m_CommandQueueCopy->WaitForFenceValue(fenceValue);
@@ -136,11 +159,22 @@ void Renderer::Render()
     glm::mat4 viewProjection = projection * view;
     commandList->SetRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
 
+    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_Texture->GetD3D12Resource().Get(),
+        D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    commandList->ResourceBarrier(1, &barrier);
+
+    commandList->SetDescriptorHeap(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].Get());
+    commandList->SetShaderResourceView(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].Get(), m_Texture->GetDescriptorHandle());
+
     commandList->SetVertexBuffers(0, 1, *m_QuadBuffers[0]);
     commandList->SetVertexBuffers(1, 1, *m_QuadBuffers[1]);
     commandList->SetIndexBuffer(*m_QuadBuffers[2]);
 
     commandList->DrawIndexed(QuadIndices.size(), QuadInstanceData.size());
+
+    barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_Texture->GetD3D12Resource().Get(),
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON);
+    commandList->ResourceBarrier(1, &barrier);
 
     m_CommandQueueDirect->ExecuteCommandList(commandList);
 }
@@ -196,6 +230,38 @@ void Renderer::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const 
 
     uint64_t fenceValue = m_CommandQueueCopy->ExecuteCommandList(commandList);
     m_CommandQueueCopy->WaitForFenceValue(fenceValue);
+}
+
+void Renderer::CreateTexture(ComPtr<ID3D12Resource>& resource, const D3D12_RESOURCE_DESC& textureDesc, D3D12_RESOURCE_STATES initialState, std::size_t size)
+{
+    CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
+
+    DX_CALL(m_d3d12Device->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &textureDesc,
+        initialState,
+        nullptr,
+        IID_PPV_ARGS(&resource)
+    ));
+}
+
+void Renderer::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData)
+{
+    auto commandList = m_CommandQueueCopy->GetCommandList();
+    commandList->CopyTexture(intermediateBuffer, destTexture, textureData);
+
+    uint64_t fenceValue = m_CommandQueueCopy->ExecuteCommandList(commandList);
+    m_CommandQueueCopy->WaitForFenceValue(fenceValue);
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE Renderer::AllocateDescriptors(uint32_t numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type)
+{
+    CD3DX12_CPU_DESCRIPTOR_HANDLE descriptorHandle(m_d3d12DescriptorHeap[type]->GetCPUDescriptorHandleForHeapStart(),
+        m_DescriptorOffsets[type], m_DescriptorSize[type]);
+    m_DescriptorOffsets[type]++;
+
+    return descriptorHandle;
 }
 
 void Renderer::Present()
@@ -315,8 +381,13 @@ void Renderer::CreateDescriptorHeap()
         heapDesc.NumDescriptors = 256;
         heapDesc.Type = static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i);
 
+        if (i == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
+            heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
         DX_CALL(m_d3d12Device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_d3d12DescriptorHeap[i])));
         m_DescriptorSize[i] = m_d3d12Device->GetDescriptorHandleIncrementSize(heapDesc.Type);
+
+        m_DescriptorOffsets[i] = 0;
     }
 }
 
@@ -387,15 +458,27 @@ void Renderer::CreateRootSignature()
         D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
         D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
-    //CD3DX12_DESCRIPTOR_RANGE1 descRanges[1] = {};
-    //descRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+    CD3DX12_DESCRIPTOR_RANGE1 descRanges[1] = {};
+    descRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
-    CD3DX12_ROOT_PARAMETER1 rootParameters[1] = {};
+    CD3DX12_ROOT_PARAMETER1 rootParameters[2] = {};
     rootParameters[0].InitAsConstants(16, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-    //rootParameters[1].InitAsDescriptorTable(1, descRanges, D3D12_SHADER_VISIBILITY_PIXEL);
+    rootParameters[1].InitAsDescriptorTable(1, descRanges, D3D12_SHADER_VISIBILITY_PIXEL);
 
     CD3DX12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
-    staticSamplers[0].Init(0);
+    staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+    staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+    staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+    staticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+    staticSamplers[0].MipLODBias = 0;
+    staticSamplers[0].MaxAnisotropy = 0;
+    staticSamplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+    staticSamplers[0].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+    staticSamplers[0].MinLOD = 0.0f;
+    staticSamplers[0].MaxLOD = D3D12_FLOAT32_MAX;
+    staticSamplers[0].ShaderRegister = 0;
+    staticSamplers[0].RegisterSpace = 0;
+    staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
     rootSignatureDesc.Init_1_1(_countof(rootParameters), &rootParameters[0], _countof(staticSamplers), &staticSamplers[0], rootSignatureFlags);
@@ -424,6 +507,7 @@ void Renderer::CreatePipelineState()
 
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
         { "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
         { "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
