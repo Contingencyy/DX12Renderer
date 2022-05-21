@@ -4,10 +4,10 @@
 class VertexBuffer : public Buffer
 {
 public:
-	explicit VertexBuffer();
+	VertexBuffer(std::size_t numVertices, std::size_t vertexSize);
 	virtual ~VertexBuffer();
 
-	virtual void CreateView(std::size_t numVertices, std::size_t vertexSize);
+	virtual void CreateView();
 
 	D3D12_VERTEX_BUFFER_VIEW GetView() const;
 	std::size_t GetNumVertices() const;

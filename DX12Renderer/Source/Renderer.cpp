@@ -1,5 +1,7 @@
 #include "Pch.h"
 #include "Renderer.h"
+#include "Graphics/CommandQueue.h"
+#include "Graphics/CommandList.h"
 #include "Graphics/VertexBuffer.h"
 #include "Graphics/IndexBuffer.h"
 #include "Graphics/UploadBuffer.h"
@@ -47,8 +49,10 @@ void Renderer::Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight
     CreateAdapter();
     CreateDevice();
 
+    m_CommandQueueDirect = std::make_shared<CommandQueue>(D3D12_COMMAND_LIST_TYPE_DIRECT);
+    m_CommandQueueCopy = std::make_shared<CommandQueue>(D3D12_COMMAND_LIST_TYPE_COPY);
+
     CreateDescriptorHeap();
-    CreateCommandQueue();
     CreateSwapChain(hWnd);
     CreateDepthBuffer();
 
@@ -70,28 +74,14 @@ void Renderer::Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight
 
 void Renderer::Render()
 {
-    auto& commandAllocator = m_d3d12CommandAllocators[m_CurrentBackBufferIndex];
+    auto commandList = m_CommandQueueDirect->GetCommandList();
     auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
-
-    m_FenceValues[m_CurrentBackBufferIndex] = ++m_FenceValue;
-    DX_CALL(m_d3d12CommandQueue->Signal(m_d3d12Fence.Get(), m_FenceValues[m_CurrentBackBufferIndex]));
-
-    m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
-    if (m_d3d12Fence->GetCompletedValue() < m_FenceValues[m_CurrentBackBufferIndex])
-    {
-        DX_CALL(m_d3d12Fence->SetEventOnCompletion(m_FenceValues[m_CurrentBackBufferIndex], m_FenceEvent));
-        ::WaitForSingleObject(m_FenceEvent, static_cast<DWORD>(std::chrono::milliseconds::max().count()));
-    }
-
-    commandAllocator->Reset();
-    m_d3d12CommandList->Reset(commandAllocator.Get(), nullptr);
-    ReleaseTrackedResources();
 
     // Transition back buffer to render target state
     {
         CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(),
             D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        m_d3d12CommandList->ResourceBarrier(1, &barrier);
+        commandList->ResourceBarrier(1, &barrier);
     }
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->GetCPUDescriptorHandleForHeapStart(),
@@ -101,60 +91,48 @@ void Renderer::Render()
     // Clear render target and depth stencil view
     {
         float clearColor[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
-        m_d3d12CommandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
-        m_d3d12CommandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+        commandList->ClearRenderTargetView(rtv, clearColor);
+        commandList->ClearDepthStencilView(dsv);
     }
 
     // Render quads
     {
-        m_d3d12CommandList->RSSetViewports(1, &m_Viewport);
-        m_d3d12CommandList->RSSetScissorRects(1, &m_ScissorRect);
-        m_d3d12CommandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+        commandList->SetViewports(1, &m_Viewport);
+        commandList->SetScissorRects(1, &m_ScissorRect);
+        commandList->SetRenderTargets(1, &rtv, &dsv);
 
-        m_d3d12CommandList->SetPipelineState(m_d3d12PipelineState.Get());
-        m_d3d12CommandList->SetGraphicsRootSignature(m_d3d12RootSignature.Get());
-        m_d3d12CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        commandList->SetPipelineState(m_d3d12PipelineState.Get());
+        commandList->SetRootSignature(m_d3d12RootSignature.Get());
+        commandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         glm::mat4 projection = glm::perspectiveFovLH_ZO(glm::radians(60.0f), static_cast<float>(m_Resolution.x), static_cast<float>(m_Resolution.y), 0.1f, 1000.0f);
         glm::mat4 view = glm::lookAtLH(glm::vec3(0.0f, 0.0f, -250.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 viewProjection = projection * view;
-        m_d3d12CommandList->SetGraphicsRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
+        commandList->SetRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
 
-        // New vertex/index/upload buffer classes
-        UploadBuffer quadVerticesUploadBuffer(QuadVertices.size() * sizeof(glm::vec3));
-        VertexBuffer quadVertexBuffer;
-        quadVerticesUploadBuffer.UploadDataToBuffer(quadVertexBuffer, QuadVertices.size(),
-            sizeof(glm::vec3), &QuadVertices[0]);
+        VertexBuffer quadVertexBuffer(QuadVertices.size(), sizeof(QuadVertices[0]));
+        UploadBuffer quadVertexUploadBuffer(quadVertexBuffer.GetAlignedSize());
+        commandList->CopyBuffer(quadVertexUploadBuffer, quadVertexBuffer, &QuadVertices[0]);
 
-        TrackResource(quadVerticesUploadBuffer.GetD3D12Resource());
-        TrackResource(quadVertexBuffer.GetD3D12Resource());
+        VertexBuffer instanceDataBuffer(QuadInstanceData.size(), sizeof(QuadInstanceData[0]));
+        UploadBuffer instanceDataUploadBuffer(instanceDataBuffer.GetAlignedSize());
+        commandList->CopyBuffer(instanceDataUploadBuffer, instanceDataBuffer, &QuadInstanceData[0]);
 
-        UploadBuffer quadInstanceDataUploadBuffer(QuadInstanceData.size() * sizeof(InstanceData));
-        VertexBuffer instanceDataBuffer;
-        quadInstanceDataUploadBuffer.UploadDataToBuffer(instanceDataBuffer, QuadInstanceData.size(),
-            sizeof(InstanceData), &QuadInstanceData[0]);
+        IndexBuffer quadIndexBuffer(QuadIndices.size(), sizeof(QuadIndices[0]));
+        UploadBuffer quadIndexUploadBuffer(quadIndexBuffer.GetAlignedSize());
+        commandList->CopyBuffer(quadIndexUploadBuffer, quadIndexBuffer, &QuadIndices[0]);
 
-        TrackResource(quadInstanceDataUploadBuffer.GetD3D12Resource());
-        TrackResource(instanceDataBuffer.GetD3D12Resource());
-
-        UploadBuffer quadIndicesUploadBuffer(QuadIndices.size() * sizeof(WORD));
-        IndexBuffer quadIndexBuffer;
-        quadIndicesUploadBuffer.UploadDataToBuffer(quadIndexBuffer, QuadIndices.size(), sizeof(WORD), &QuadIndices[0]);
-
-        TrackResource(quadIndicesUploadBuffer.GetD3D12Resource());
-        TrackResource(quadIndexBuffer.GetD3D12Resource());
-
-        D3D12_VERTEX_BUFFER_VIEW quadVertexBufferView = quadVertexBuffer.GetView();
         D3D12_VERTEX_BUFFER_VIEW instanceDataBufferView = instanceDataBuffer.GetView();
         D3D12_INDEX_BUFFER_VIEW quadIndexBufferView = quadIndexBuffer.GetView();
 
-        m_d3d12CommandList->IASetVertexBuffers(0, 1, &quadVertexBufferView);
-        m_d3d12CommandList->IASetVertexBuffers(1, 1, &instanceDataBufferView);
-        m_d3d12CommandList->IASetIndexBuffer(&quadIndexBufferView);
+        commandList->SetVertexBuffers(0, 1, quadVertexBuffer);
+        commandList->SetVertexBuffers(1, 1, instanceDataBuffer);
+        commandList->SetIndexBuffer(quadIndexBuffer);
 
-        m_d3d12CommandList->DrawIndexedInstanced(QuadIndices.size(), QuadInstanceData.size(), 0, 0, 0);
+        commandList->DrawIndexed(QuadIndices.size(), QuadInstanceData.size());
     }
 
+    m_CommandQueueDirect->ExecuteCommandList(commandList);
     Present();
 }
 
@@ -181,46 +159,56 @@ void Renderer::Resize(uint32_t width, uint32_t height)
     }
 }
 
+void Renderer::CreateBuffer(ComPtr<ID3D12Resource>& resource, D3D12_HEAP_TYPE bufferType, D3D12_RESOURCE_STATES initialState, std::size_t size)
+{
+    CD3DX12_HEAP_PROPERTIES heapProps(bufferType);
+    CD3DX12_RESOURCE_DESC heapDesc(CD3DX12_RESOURCE_DESC::Buffer(size));
+
+    DX_CALL(m_d3d12Device->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &heapDesc,
+        initialState,
+        nullptr,
+        IID_PPV_ARGS(&resource)
+    ));
+}
+
+void Renderer::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData)
+{
+    auto commandList = m_CommandQueueCopy->GetCommandList();
+    commandList->CopyBuffer(intermediateBuffer, destBuffer, bufferData);
+
+    uint64_t fenceValue = m_CommandQueueCopy->ExecuteCommandList(commandList);
+    m_CommandQueueCopy->WaitForFenceValue(fenceValue);
+}
+
 void Renderer::Present()
 {
+    auto commandList = m_CommandQueueDirect->GetCommandList();
     auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
 
     CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(),
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-    m_d3d12CommandList->ResourceBarrier(1, &barrier);
-
-    DX_CALL(m_d3d12CommandList->Close());
-
-    ID3D12CommandList* const commandLists[] = {
-        m_d3d12CommandList.Get()
-    };
-    m_d3d12CommandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
+    commandList->ResourceBarrier(1, &barrier);
+    m_CommandQueueDirect->ExecuteCommandList(commandList);
 
     unsigned int syncInterval = m_VSync ? 1 : 0;
     unsigned int presentFlags = m_TearingSupported && !m_VSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
     DX_CALL(m_dxgiSwapChain->Present(syncInterval, presentFlags));
 
-    m_FenceValues[m_CurrentBackBufferIndex] = ++m_FenceValue;
-    DX_CALL(m_d3d12CommandQueue->Signal(m_d3d12Fence.Get(), m_FenceValues[m_CurrentBackBufferIndex]));
+    m_FenceValues[m_CurrentBackBufferIndex] = m_CommandQueueDirect->Signal();
 
     m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
-    if (m_d3d12Fence->GetCompletedValue() < m_FenceValues[m_CurrentBackBufferIndex])
-    {
-        DX_CALL(m_d3d12Fence->SetEventOnCompletion(m_FenceValues[m_CurrentBackBufferIndex], m_FenceEvent));
-        ::WaitForSingleObject(m_FenceEvent, static_cast<DWORD>(std::chrono::milliseconds::max().count()));
-    }
+    m_CommandQueueDirect->WaitForFenceValue(m_FenceValues[m_CurrentBackBufferIndex]);
+
+    m_CommandQueueDirect->ResetCommandLists();
+    m_CommandQueueCopy->ResetCommandLists();
 }
 
 void Renderer::Flush()
 {
-    m_FenceValues[m_CurrentBackBufferIndex] = ++m_FenceValue;
-    m_d3d12CommandQueue->Signal(m_d3d12Fence.Get(), m_FenceValues[m_CurrentBackBufferIndex]);
-
-    if (m_d3d12Fence->GetCompletedValue() < m_FenceValues[m_CurrentBackBufferIndex])
-    {
-        DX_CALL(m_d3d12Fence->SetEventOnCompletion(m_FenceValues[m_CurrentBackBufferIndex], m_FenceEvent));
-        ::WaitForSingleObject(m_FenceEvent, static_cast<DWORD>(std::chrono::milliseconds::max().count()));
-    }
+    m_CommandQueueDirect->Flush();
 }
 
 void Renderer::EnableDebugLayer()
@@ -317,30 +305,6 @@ void Renderer::CreateDescriptorHeap()
     }
 }
 
-void Renderer::CreateCommandQueue()
-{
-    D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-    queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-    queueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
-    queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-    queueDesc.NodeMask = 0;
-
-    DX_CALL(m_d3d12Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_d3d12CommandQueue)));
-    DX_CALL(m_d3d12Device->CreateFence(m_FenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_d3d12Fence)));
-
-    m_FenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
-    ASSERT(m_FenceEvent, "Failed to create fence event.");
-
-    for (uint32_t i = 0; i < s_BackBufferCount; ++i)
-    {
-        DX_CALL(m_d3d12Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_d3d12CommandAllocators[i])));
-    }
-
-    DX_CALL(m_d3d12Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_d3d12CommandAllocators[0].Get(),
-        nullptr, IID_PPV_ARGS(&m_d3d12CommandList)));
-    DX_CALL(m_d3d12CommandList->Close());
-}
-
 void Renderer::CreateSwapChain(HWND hWnd)
 {
     ComPtr<IDXGIFactory> dxgiFactory;
@@ -369,7 +333,8 @@ void Renderer::CreateSwapChain(HWND hWnd)
     swapChainDesc.Flags = m_TearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
     ComPtr<IDXGISwapChain1> dxgiSwapChain1;
-    DX_CALL(dxgiFactory5->CreateSwapChainForHwnd(m_d3d12CommandQueue.Get(), hWnd, &swapChainDesc, nullptr, nullptr, &dxgiSwapChain1));
+    DX_CALL(dxgiFactory5->CreateSwapChainForHwnd(m_CommandQueueDirect->GetD3D12CommandQueue().Get(),
+        hWnd, &swapChainDesc, nullptr, nullptr, &dxgiSwapChain1));
     DX_CALL(dxgiSwapChain1.As(&m_dxgiSwapChain));
 
     DX_CALL(dxgiFactory5->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER));
@@ -520,14 +485,4 @@ void Renderer::UpdateRenderTargetViews()
 
         rtvHandle.Offset(rtvDescriptorSize);
     }
-}
-
-void Renderer::TrackResource(ComPtr<ID3D12Resource> resource)
-{
-    m_TrackedResources.emplace_back(resource);
-}
-
-void Renderer::ReleaseTrackedResources()
-{
-    m_TrackedResources.clear();
 }

@@ -153,6 +153,8 @@
   <ItemGroup>
     <ClCompile Include="Source\Application.cpp" />
     <ClCompile Include="Source\Graphics\Buffer.cpp" />
+    <ClCompile Include="Source\Graphics\CommandList.cpp" />
+    <ClCompile Include="Source\Graphics\CommandQueue.cpp" />
     <ClCompile Include="Source\Graphics\IndexBuffer.cpp" />
     <ClCompile Include="Source\Graphics\UploadBuffer.cpp" />
     <ClCompile Include="Source\Graphics\VertexBuffer.cpp" />
@@ -168,6 +170,8 @@
     <ClInclude Include="Extern\D3DX\d3dx12.h" />
     <ClInclude Include="Include\Application.h" />
     <ClInclude Include="Include\Graphics\Buffer.h" />
+    <ClInclude Include="Include\Graphics\CommandList.h" />
+    <ClInclude Include="Include\Graphics\CommandQueue.h" />
     <ClInclude Include="Include\Graphics\IndexBuffer.h" />
     <ClInclude Include="Include\Graphics\UploadBuffer.h" />
     <ClInclude Include="Include\Graphics\VertexBuffer.h" />

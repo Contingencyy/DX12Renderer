@@ -4,19 +4,19 @@
 class IndexBuffer : public Buffer
 {
 public:
-	explicit IndexBuffer();
+	IndexBuffer(std::size_t numIndices, std::size_t indexSize);
 	virtual ~IndexBuffer();
 
-	virtual void CreateView(std::size_t numIndices, std::size_t indexSize);
+	virtual void CreateView();
 
 	D3D12_INDEX_BUFFER_VIEW GetView() const;
 	std::size_t GetNumIndices() const;
-	DXGI_FORMAT GetIndexFormat() const;
+	std::size_t GetIndexSize() const;
 
 private:
 	D3D12_INDEX_BUFFER_VIEW m_IndexBufferView = {};
 
 	std::size_t m_NumIndices = 0;
-	DXGI_FORMAT m_IndexFormat;
+	std::size_t m_IndexSize = 0;
 
 };
