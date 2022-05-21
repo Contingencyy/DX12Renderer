@@ -1,25 +1,35 @@
 #include "Pch.h"
+#include "Application.h"
+#include "Renderer.h"
 #include "Graphics/Buffer.h"
 
-Buffer::Buffer()
+Buffer::Buffer(const BufferDesc& bufferDesc, std::size_t numElements, std::size_t elementSize)
+	: m_BufferDesc(bufferDesc), m_NumElements(numElements), m_ElementSize(elementSize)
 {
+	m_AlignedBufferSize = MathHelper::AlignUp(numElements * elementSize, elementSize);
+	Create();
+}
+
+Buffer::Buffer(const BufferDesc& bufferDesc, std::size_t alignedSize)
+	: m_BufferDesc(bufferDesc), m_AlignedBufferSize(alignedSize)
+{
+	Create();
 }
 
 Buffer::~Buffer()
 {
+	if (m_BufferDesc.Type == D3D12_HEAP_TYPE_UPLOAD)
+		m_d3d12Resource->Unmap(0, nullptr);
 }
 
-std::size_t Buffer::GetAlignedSize() const
+void Buffer::Create()
 {
-	return m_AlignedBufferSize;
-}
+	auto renderer = Application::Get().GetRenderer();
+	renderer->CreateBuffer(m_d3d12Resource, m_BufferDesc.Type, m_BufferDesc.InitialState, m_AlignedBufferSize);
 
-ComPtr<ID3D12Resource> Buffer::GetD3D12Resource() const
-{
-	return m_d3d12Resource;
-}
-
-void Buffer::SetD3D12Resource(ComPtr<ID3D12Resource> resource)
-{
-	m_d3d12Resource = resource;
+	if (m_BufferDesc.Type == D3D12_HEAP_TYPE_UPLOAD)
+	{
+		void* cpuPtr = nullptr;
+		m_d3d12Resource->Map(0, nullptr, &cpuPtr);
+	}
 }

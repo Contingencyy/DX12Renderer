@@ -183,9 +183,6 @@
     <ClCompile Include="Source\Graphics\Buffer.cpp" />
     <ClCompile Include="Source\Graphics\CommandList.cpp" />
     <ClCompile Include="Source\Graphics\CommandQueue.cpp" />
-    <ClCompile Include="Source\Graphics\IndexBuffer.cpp" />
-    <ClCompile Include="Source\Graphics\UploadBuffer.cpp" />
-    <ClCompile Include="Source\Graphics\VertexBuffer.cpp" />
     <ClCompile Include="Source\GUI.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Pch.cpp">
@@ -204,9 +201,6 @@
     <ClInclude Include="Include\Graphics\Buffer.h" />
     <ClInclude Include="Include\Graphics\CommandList.h" />
     <ClInclude Include="Include\Graphics\CommandQueue.h" />
-    <ClInclude Include="Include\Graphics\IndexBuffer.h" />
-    <ClInclude Include="Include\Graphics\UploadBuffer.h" />
-    <ClInclude Include="Include\Graphics\VertexBuffer.h" />
     <ClInclude Include="Include\GUI.h" />
     <ClInclude Include="Include\Util\Logger.h" />
     <ClInclude Include="Include\Util\MathHelper.h" />

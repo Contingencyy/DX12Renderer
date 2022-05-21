@@ -1,6 +1,5 @@
 #pragma once
-#include "Graphics/VertexBuffer.h"
-#include "Graphics/IndexBuffer.h"
+#include "Graphics/Buffer.h"
 
 class CommandList
 {
@@ -19,8 +18,8 @@ public:
 	void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY topology);
 
 	void SetRoot32BitConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset);
-	void SetVertexBuffers(uint32_t slot, uint32_t numViews, const VertexBuffer& vertexBuffer);
-	void SetIndexBuffer(const IndexBuffer& indexBuffer);
+	void SetVertexBuffers(uint32_t slot, uint32_t numViews, const Buffer& vertexBuffer);
+	void SetIndexBuffer(const Buffer& indexBuffer);
 	
 	void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0);
 

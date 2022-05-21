@@ -1,7 +1,6 @@
 #include "Pch.h"
 #include "Graphics/CommandList.h"
 #include "Graphics/Buffer.h"
-#include "Graphics/UploadBuffer.h"
 #include "Application.h"
 #include "Renderer.h"
 
@@ -63,15 +62,23 @@ void CommandList::SetRoot32BitConstants(uint32_t rootIndex, uint32_t numValues, 
 	m_d3d12CommandList->SetGraphicsRoot32BitConstants(rootIndex, numValues, data, offset);
 }
 
-void CommandList::SetVertexBuffers(uint32_t slot, uint32_t numViews, const VertexBuffer& vertexBuffer)
+void CommandList::SetVertexBuffers(uint32_t slot, uint32_t numViews, const Buffer& vertexBuffer)
 {
-	D3D12_VERTEX_BUFFER_VIEW vbView = vertexBuffer.GetView();
+	D3D12_VERTEX_BUFFER_VIEW vbView = {};
+	vbView.BufferLocation = vertexBuffer.GetD3D12Resource()->GetGPUVirtualAddress();
+	vbView.SizeInBytes = vertexBuffer.GetAlignedSize();
+	vbView.StrideInBytes = vertexBuffer.GetElementSize();
+
 	m_d3d12CommandList->IASetVertexBuffers(slot, numViews, &vbView);
 }
 
-void CommandList::SetIndexBuffer(const IndexBuffer& indexBuffer)
+void CommandList::SetIndexBuffer(const Buffer& indexBuffer)
 {
-	D3D12_INDEX_BUFFER_VIEW ibView = indexBuffer.GetView();
+	D3D12_INDEX_BUFFER_VIEW ibView = {};
+	ibView.BufferLocation = indexBuffer.GetD3D12Resource()->GetGPUVirtualAddress();
+	ibView.SizeInBytes = indexBuffer.GetAlignedSize();
+	ibView.Format = indexBuffer.GetElementSize() == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+
 	m_d3d12CommandList->IASetIndexBuffer(&ibView);
 }
 
@@ -98,7 +105,6 @@ void CommandList::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, con
 			intermediateBuffer.GetD3D12Resource().Get(), 0, 0, 1, &subresourceData);
 
 		destBuffer.SetD3D12Resource(d3d12DestResource);
-		destBuffer.CreateView();
 
 		TrackObject(intermediateBuffer.GetD3D12Resource());
 		TrackObject(destBuffer.GetD3D12Resource());

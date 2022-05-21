@@ -2,9 +2,7 @@
 #include "Renderer.h"
 #include "Graphics/CommandQueue.h"
 #include "Graphics/CommandList.h"
-#include "Graphics/VertexBuffer.h"
-#include "Graphics/IndexBuffer.h"
-#include "Graphics/UploadBuffer.h"
+#include "Graphics/Buffer.h"
 
 std::vector<glm::vec3> QuadVertices = {
     glm::vec3(-0.5f, -0.5f, 0.0f),
@@ -38,12 +36,12 @@ Renderer::~Renderer()
 
 void Renderer::Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight)
 {
-	m_Resolution.x = windowWidth;
-	m_Resolution.y = windowHeight;
+	m_RenderSettings.Resolution.x = windowWidth;
+	m_RenderSettings.Resolution.y = windowHeight;
 
 	EnableDebugLayer();
 
-	m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(m_Resolution.x), static_cast<float>(m_Resolution.y), 0.0f, 1.0f);
+	m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(m_RenderSettings.Resolution.x), static_cast<float>(m_RenderSettings.Resolution.y), 0.0f, 1.0f);
 	m_ScissorRect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
 
     CreateAdapter();
@@ -66,10 +64,30 @@ void Renderer::Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight
 
     for (uint32_t i = 0; i < 100; ++i)
     {
+        glm::vec2 randomDirection(Random::FloatRange(-1.0f, 1.0f), Random::FloatRange(-1.0f, 1.0f));
+        randomDirection = glm::normalize(randomDirection) * Random::FloatRange(-125.0f, 125.0f);
+
         QuadInstanceData.emplace_back(InstanceData{ glm::scale(glm::translate(glm::identity<glm::mat4>(),
-            glm::vec3(Random::FloatRange(100.0f, -100.0f), Random::FloatRange(100.0f, -100.0f), 0.0f)),
+            glm::vec3(randomDirection.x, randomDirection.y, 0.0f)),
             glm::vec3(Random::FloatRange(5.0f, 15.0f))), glm::vec3(Random::Float(), Random::Float(), Random::Float()) });
     }
+
+    auto commandList = m_CommandQueueCopy->GetCommandList();
+
+    m_QuadBuffers[0] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON), QuadVertices.size(), sizeof(QuadVertices[0]));
+    m_UploadBuffers[0] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadBuffers[0]->GetAlignedSize());
+    commandList->CopyBuffer(*m_UploadBuffers[0], *m_QuadBuffers[0], &QuadVertices[0]);
+
+    m_QuadBuffers[1] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON), QuadInstanceData.size(), sizeof(QuadInstanceData[0]));
+    m_UploadBuffers[1] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadBuffers[1]->GetAlignedSize());
+    commandList->CopyBuffer(*m_UploadBuffers[1], *m_QuadBuffers[1], &QuadInstanceData[0]);
+
+    m_QuadBuffers[2] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON), QuadIndices.size(), sizeof(QuadIndices[0]));
+    m_UploadBuffers[2] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadBuffers[2]->GetAlignedSize());
+    commandList->CopyBuffer(*m_UploadBuffers[2], *m_QuadBuffers[2], &QuadIndices[0]);
+
+    uint64_t fenceValue = m_CommandQueueCopy->ExecuteCommandList(commandList);
+    m_CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
 
 void Renderer::BeginFrame()
@@ -78,22 +96,18 @@ void Renderer::BeginFrame()
     auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
 
     // Transition back buffer to render target state
-    {
-        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(),
-            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        commandList->ResourceBarrier(1, &barrier);
-    }
+    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(),
+        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    commandList->ResourceBarrier(1, &barrier);
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->GetCPUDescriptorHandleForHeapStart(),
         m_CurrentBackBufferIndex, m_DescriptorSize[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]);
     CD3DX12_CPU_DESCRIPTOR_HANDLE dsv(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_DSV]->GetCPUDescriptorHandleForHeapStart());
 
     // Clear render target and depth stencil view
-    {
-        float clearColor[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
-        commandList->ClearRenderTargetView(rtv, clearColor);
-        commandList->ClearDepthStencilView(dsv);
-    }
+    float clearColor[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
+    commandList->ClearRenderTargetView(rtv, clearColor);
+    commandList->ClearDepthStencilView(dsv);
 
     m_CommandQueueDirect->ExecuteCommandList(commandList);
 }
@@ -108,41 +122,25 @@ void Renderer::Render()
     CD3DX12_CPU_DESCRIPTOR_HANDLE dsv(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_DSV]->GetCPUDescriptorHandleForHeapStart());
 
     // Render quads
-    {
-        commandList->SetViewports(1, &m_Viewport);
-        commandList->SetScissorRects(1, &m_ScissorRect);
-        commandList->SetRenderTargets(1, &rtv, &dsv);
+    commandList->SetViewports(1, &m_Viewport);
+    commandList->SetScissorRects(1, &m_ScissorRect);
+    commandList->SetRenderTargets(1, &rtv, &dsv);
 
-        commandList->SetPipelineState(m_d3d12PipelineState.Get());
-        commandList->SetRootSignature(m_d3d12RootSignature.Get());
-        commandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->SetPipelineState(m_d3d12PipelineState.Get());
+    commandList->SetRootSignature(m_d3d12RootSignature.Get());
+    commandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        glm::mat4 projection = glm::perspectiveFovLH_ZO(glm::radians(60.0f), static_cast<float>(m_Resolution.x), static_cast<float>(m_Resolution.y), 0.1f, 1000.0f);
-        glm::mat4 view = glm::lookAtLH(glm::vec3(0.0f, 0.0f, -250.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 viewProjection = projection * view;
-        commandList->SetRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
+    glm::mat4 projection = glm::perspectiveFovLH_ZO(glm::radians(60.0f), static_cast<float>(m_RenderSettings.Resolution.x),
+        static_cast<float>(m_RenderSettings.Resolution.y), 0.1f, 1000.0f);
+    glm::mat4 view = glm::lookAtLH(glm::vec3(0.0f, 0.0f, -250.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 viewProjection = projection * view;
+    commandList->SetRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
 
-        VertexBuffer quadVertexBuffer(QuadVertices.size(), sizeof(QuadVertices[0]));
-        UploadBuffer quadVertexUploadBuffer(quadVertexBuffer.GetAlignedSize());
-        commandList->CopyBuffer(quadVertexUploadBuffer, quadVertexBuffer, &QuadVertices[0]);
+    commandList->SetVertexBuffers(0, 1, *m_QuadBuffers[0]);
+    commandList->SetVertexBuffers(1, 1, *m_QuadBuffers[1]);
+    commandList->SetIndexBuffer(*m_QuadBuffers[2]);
 
-        VertexBuffer instanceDataBuffer(QuadInstanceData.size(), sizeof(QuadInstanceData[0]));
-        UploadBuffer instanceDataUploadBuffer(instanceDataBuffer.GetAlignedSize());
-        commandList->CopyBuffer(instanceDataUploadBuffer, instanceDataBuffer, &QuadInstanceData[0]);
-
-        IndexBuffer quadIndexBuffer(QuadIndices.size(), sizeof(QuadIndices[0]));
-        UploadBuffer quadIndexUploadBuffer(quadIndexBuffer.GetAlignedSize());
-        commandList->CopyBuffer(quadIndexUploadBuffer, quadIndexBuffer, &QuadIndices[0]);
-
-        D3D12_VERTEX_BUFFER_VIEW instanceDataBufferView = instanceDataBuffer.GetView();
-        D3D12_INDEX_BUFFER_VIEW quadIndexBufferView = quadIndexBuffer.GetView();
-
-        commandList->SetVertexBuffers(0, 1, quadVertexBuffer);
-        commandList->SetVertexBuffers(1, 1, instanceDataBuffer);
-        commandList->SetIndexBuffer(quadIndexBuffer);
-
-        commandList->DrawIndexed(QuadIndices.size(), QuadInstanceData.size());
-    }
+    commandList->DrawIndexed(QuadIndices.size(), QuadInstanceData.size());
 
     m_CommandQueueDirect->ExecuteCommandList(commandList);
 }
@@ -159,12 +157,13 @@ void Renderer::Finalize()
 
 void Renderer::Resize(uint32_t width, uint32_t height)
 {
-    if (m_Resolution.x != width || m_Resolution.y != height)
+    if (m_RenderSettings.Resolution.x != width || m_RenderSettings.Resolution.y != height)
     {
-        m_Resolution.x = std::max(1u, width);
-        m_Resolution.y = std::max(1u, height);
+        m_RenderSettings.Resolution.x = std::max(1u, width);
+        m_RenderSettings.Resolution.y = std::max(1u, height);
 
-        m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(m_Resolution.x), static_cast<float>(m_Resolution.y), 0.0f, 1.0f);
+        m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(m_RenderSettings.Resolution.x),
+            static_cast<float>(m_RenderSettings.Resolution.y), 0.0f, 1.0f);
 
         Flush();
 
@@ -209,8 +208,8 @@ void Renderer::Present()
     commandList->ResourceBarrier(1, &barrier);
     m_CommandQueueDirect->ExecuteCommandList(commandList);
 
-    unsigned int syncInterval = m_VSync ? 1 : 0;
-    unsigned int presentFlags = m_TearingSupported && !m_VSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
+    unsigned int syncInterval = m_RenderSettings.VSync ? 1 : 0;
+    unsigned int presentFlags = m_RenderSettings.TearingSupported && !m_RenderSettings.VSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
     DX_CALL(m_dxgiSwapChain->Present(syncInterval, presentFlags));
 
     m_FenceValues[m_CurrentBackBufferIndex] = m_CommandQueueDirect->Signal();
@@ -332,12 +331,12 @@ void Renderer::CreateSwapChain(HWND hWnd)
     BOOL allowTearing = false;
     if (SUCCEEDED(dxgiFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(BOOL))))
     {
-        m_TearingSupported = (allowTearing == TRUE);
+        m_RenderSettings.TearingSupported = (allowTearing == TRUE);
     }
 
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-    swapChainDesc.Width = m_Resolution.x;
-    swapChainDesc.Height = m_Resolution.y;
+    swapChainDesc.Width = m_RenderSettings.Resolution.x;
+    swapChainDesc.Height = m_RenderSettings.Resolution.y;
     swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     swapChainDesc.Stereo = FALSE;
     swapChainDesc.SampleDesc = { 1, 0 };
@@ -346,7 +345,7 @@ void Renderer::CreateSwapChain(HWND hWnd)
     swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-    swapChainDesc.Flags = m_TearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+    swapChainDesc.Flags = m_RenderSettings.TearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
     ComPtr<IDXGISwapChain1> dxgiSwapChain1;
     DX_CALL(dxgiFactory5->CreateSwapChainForHwnd(m_CommandQueueDirect->GetD3D12CommandQueue().Get(),
@@ -366,7 +365,7 @@ void Renderer::CreateDepthBuffer()
 
     CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
     CD3DX12_RESOURCE_DESC depthDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT,
-        m_Resolution.x, m_Resolution.y, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+        m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
     DX_CALL(m_d3d12Device->CreateCommittedResource(
         &heapProps,
@@ -480,7 +479,7 @@ void Renderer::ResizeBackBuffers()
 
     DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
     DX_CALL(m_dxgiSwapChain->GetDesc(&swapChainDesc));
-    DX_CALL(m_dxgiSwapChain->ResizeBuffers(s_BackBufferCount, m_Resolution.x, m_Resolution.y,
+    DX_CALL(m_dxgiSwapChain->ResizeBuffers(s_BackBufferCount, m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y,
         swapChainDesc.BufferDesc.Format, swapChainDesc.Flags));
 
     m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();

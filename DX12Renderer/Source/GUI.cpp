@@ -71,7 +71,10 @@ void GUI::Render()
 	ImGui::Begin("Profiler");
 
 	float lastFrameDuration = Application::Get().GetLastFrameTime().count() * 1000.0f;
-	ImGui::Text("VSync: %s", Application::Get().GetRenderer()->IsVSyncEnabled() ? "true" : "false");
+	Renderer::RenderSettings renderSettings = Application::Get().GetRenderer()->GetRenderSettings();
+
+	ImGui::Text("Resolution: %ux%u", renderSettings.Resolution.x, renderSettings.Resolution.y);
+	ImGui::Text("VSync: %s", renderSettings.VSync ? "true" : "false");
 	ImGui::Text("Frametime: %.3f ms", lastFrameDuration);
 	ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / lastFrameDuration));
 	ImGui::End();
