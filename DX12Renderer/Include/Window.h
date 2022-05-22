@@ -14,6 +14,9 @@ public:
 	void Hide();
 	void ToggleFullScreen();
 
+	uint32_t GetWidth() const;
+	uint32_t GetHeight() const;
+
 	bool ShouldClose() const { return m_ShouldClose; }
 	HWND GetHandle() const { return m_hWnd; }
 
@@ -23,7 +26,6 @@ private:
 
 private:
 	HWND m_hWnd = HWND();
-	RECT m_WindowRect = RECT();
 
 	bool m_ShouldClose = false;
 	bool m_FullScreen = false;

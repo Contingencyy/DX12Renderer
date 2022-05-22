@@ -74,7 +74,7 @@ void GUI::Render()
 	Renderer::RenderSettings renderSettings = Application::Get().GetRenderer()->GetRenderSettings();
 
 	ImGui::Text("Resolution: %ux%u", renderSettings.Resolution.x, renderSettings.Resolution.y);
-	ImGui::Text("VSync: %s", renderSettings.VSync ? "true" : "false");
+	ImGui::Text("VSync: %s", renderSettings.VSync ? "On" : "Off");
 	ImGui::Text("Frametime: %.3f ms", lastFrameDuration);
 	ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / lastFrameDuration));
 	ImGui::End();

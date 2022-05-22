@@ -1,5 +1,7 @@
 #include "Pch.h"
 #include "Renderer.h"
+#include "Application.h"
+#include "Window.h"
 #include "Graphics/CommandQueue.h"
 #include "Graphics/CommandList.h"
 #include "Graphics/Buffer.h"
@@ -43,10 +45,10 @@ Renderer::~Renderer()
 {
 }
 
-void Renderer::Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight)
+void Renderer::Initialize(uint32_t width, uint32_t height)
 {
-	m_RenderSettings.Resolution.x = windowWidth;
-	m_RenderSettings.Resolution.y = windowHeight;
+	m_RenderSettings.Resolution.x = width;
+	m_RenderSettings.Resolution.y = height;
 
 	EnableDebugLayer();
 
@@ -60,7 +62,7 @@ void Renderer::Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight
     m_CommandQueueCopy = std::make_shared<CommandQueue>(D3D12_COMMAND_LIST_TYPE_COPY);
 
     CreateDescriptorHeap();
-    CreateSwapChain(hWnd);
+    CreateSwapChain(Application::Get().GetWindow()->GetHandle());
     CreateDepthBuffer();
 
     CreateRootSignature();
@@ -96,15 +98,15 @@ void Renderer::Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight
     commandList->CopyBuffer(quadIndexUB, *m_QuadBuffers[2], &QuadIndices[0]);
 
     // Testing texture loading/creation
-    int width, height, channelsPerPixel;
-    unsigned char* textureData = stbi_load("Resources/Textures/kermit.jpg", &width, &height, &channelsPerPixel, STBI_rgb_alpha);
+    int imageWidth, imageHeight, channelsPerPixel;
+    unsigned char* textureData = stbi_load("Resources/Textures/kermit.jpg", &imageWidth, &imageHeight, &channelsPerPixel, STBI_rgb_alpha);
     if (textureData == nullptr)
     {
         ASSERT(false, "Failed to load texture");
     }
 
     m_Texture = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON,
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, static_cast<uint32_t>(width), static_cast<uint32_t>(height)));
+        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, static_cast<uint32_t>(imageWidth), static_cast<uint32_t>(imageHeight)));
     Buffer textureUB(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), static_cast<std::size_t>(GetRequiredIntermediateSize(m_Texture->GetD3D12Resource().Get(), 0, 1)));
 
     commandList->CopyTexture(textureUB, *m_Texture, textureData);

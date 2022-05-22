@@ -3,6 +3,9 @@
 #include "Application.h"
 #include "Renderer.h"
 
+RECT windowRect = RECT();
+RECT clientRect = RECT();
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     if (Application::Get().IsInitialized())
@@ -35,13 +38,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case WM_SIZE:
             case WM_SIZING:
             {
-                RECT clientRect = {};
                 ::GetClientRect(Application::Get().GetWindow()->GetHandle(), &clientRect);
+                auto window = Application::Get().GetWindow();
 
-                int width = clientRect.right - clientRect.left;
-                int height = clientRect.bottom - clientRect.top;
-
-                Application::Get().GetRenderer()->Resize(width, height);
+                Application::Get().GetRenderer()->Resize(window->GetWidth(), window->GetHeight());
             }
             break;
 
@@ -109,7 +109,7 @@ void Window::ToggleFullScreen()
     m_FullScreen = !m_FullScreen;
     if (m_FullScreen)
     {
-        ::GetWindowRect(m_hWnd, &m_WindowRect);
+        ::GetWindowRect(m_hWnd, &windowRect);
 
         UINT windowStyle = WS_OVERLAPPEDWINDOW & ~(WS_CAPTION | WS_SYSMENU |
             WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
@@ -131,12 +131,22 @@ void Window::ToggleFullScreen()
     {
         ::SetWindowLong(m_hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW);
 
-        ::SetWindowPos(m_hWnd, HWND_NOTOPMOST, m_WindowRect.left,
-            m_WindowRect.top, m_WindowRect.right - m_WindowRect.left,
-            m_WindowRect.bottom - m_WindowRect.top, SWP_FRAMECHANGED | SWP_NOACTIVATE);
+        ::SetWindowPos(m_hWnd, HWND_NOTOPMOST, windowRect.left,
+            windowRect.top, windowRect.right - windowRect.left,
+            windowRect.bottom - windowRect.top, SWP_FRAMECHANGED | SWP_NOACTIVATE);
 
         ::ShowWindow(m_hWnd, SW_NORMAL);
     }
+}
+
+uint32_t Window::GetWidth() const
+{
+    return clientRect.right - clientRect.left;
+}
+
+uint32_t Window::GetHeight() const
+{
+    return clientRect.bottom - clientRect.top;
 }
 
 void Window::RegisterWindow(HINSTANCE hInst)
@@ -166,11 +176,11 @@ void Window::CreateWindow(HINSTANCE hInst, uint32_t width, uint32_t height)
     int screenWidth = ::GetSystemMetrics(SM_CXSCREEN);
     int screenHeight = ::GetSystemMetrics(SM_CYSCREEN);
 
-    m_WindowRect = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
-    ::AdjustWindowRect(&m_WindowRect, WS_OVERLAPPEDWINDOW, FALSE);
+    windowRect = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
+    ::AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
 
-    int windowWidth = m_WindowRect.right - m_WindowRect.left;
-    int windowHeight = m_WindowRect.bottom - m_WindowRect.top;
+    int windowWidth = windowRect.right - windowRect.left;
+    int windowHeight = windowRect.bottom - windowRect.top;
 
     int windowX = std::max<int>(0, (screenWidth - windowWidth) / 2);
     int windowY = std::max<int>(0, (screenHeight - windowHeight) / 2);
@@ -179,4 +189,6 @@ void Window::CreateWindow(HINSTANCE hInst, uint32_t width, uint32_t height)
         windowX, windowY, windowWidth, windowHeight, NULL, NULL, hInst, nullptr);
 
     assert(m_hWnd && "Failed to create window\n");
+
+    ::GetClientRect(m_hWnd, &clientRect);
 }

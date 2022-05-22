@@ -23,7 +23,7 @@ public:
 	Renderer();
 	~Renderer();
 
-	void Initialize(HWND hWnd, uint32_t windowWidth, uint32_t windowHeight);
+	void Initialize(uint32_t width, uint32_t height);
 	void BeginFrame();
 	void Render();
 	void EndFrame();

@@ -42,7 +42,7 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 	Logger::Log("Initialized Window", Logger::Severity::INFO);
 
 	m_Renderer = new Renderer;
-	m_Renderer->Initialize(m_Window->GetHandle(), width, height);
+	m_Renderer->Initialize(m_Window->GetWidth(), m_Window->GetHeight());
 
 	Logger::Log("Initialized Renderer", Logger::Severity::INFO);
 
