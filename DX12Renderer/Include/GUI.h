@@ -8,7 +8,8 @@ public:
 
 	void Initialize(HWND hWnd);
 	void Update(float deltaTime);
-	void Render();
+	void BeginFrame();
+	void EndFrame();
 	void Finalize();
 
 private:

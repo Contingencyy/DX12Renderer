@@ -2,6 +2,7 @@
 #include "GUI.h"
 #include "Application.h"
 #include "Renderer.h"
+#include "InputHandler.h"
 #include "Graphics/CommandQueue.h"
 #include "Graphics/CommandList.h"
 #include "imgui/imgui.h"
@@ -59,26 +60,29 @@ void GUI::Initialize(HWND hWnd)
 
 void GUI::Update(float deltaTime)
 {
+	ImGuiIO& io = ImGui::GetIO();
+
+	auto inputHandler = Application::Get().GetInputHandler();
+	if (inputHandler->IsKeyPressed(InputHandler::KeyCode::KC_LEFT_MOUSE))
+		io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+	else
+		io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+
+	if (inputHandler->IsKeyPressed(InputHandler::KeyCode::KC_RIGHT_MOUSE))
+		io.AddMouseButtonEvent(ImGuiMouseButton_Right, true);
+	else
+		io.AddMouseButtonEvent(ImGuiMouseButton_Right, false);
 }
 
-void GUI::Render()
+void GUI::BeginFrame()
 {
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
+}
 
-	ImGui::SetNextWindowSize(ImVec2(200, 100));
-	ImGui::Begin("Profiler");
-
-	float lastFrameDuration = Application::Get().GetLastFrameTime().count() * 1000.0f;
-	Renderer::RenderSettings renderSettings = Application::Get().GetRenderer()->GetRenderSettings();
-
-	ImGui::Text("Resolution: %ux%u", renderSettings.Resolution.x, renderSettings.Resolution.y);
-	ImGui::Text("VSync: %s", renderSettings.VSync ? "On" : "Off");
-	ImGui::Text("Frametime: %.3f ms", lastFrameDuration);
-	ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / lastFrameDuration));
-	ImGui::End();
-
+void GUI::EndFrame()
+{
 	ImGui::Render();
 
 	auto renderer = Application::Get().GetRenderer();

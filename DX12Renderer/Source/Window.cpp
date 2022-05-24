@@ -2,6 +2,7 @@
 #include "Window.h"
 #include "Application.h"
 #include "Renderer.h"
+#include "InputHandler.h"
 
 RECT windowRect = RECT();
 RECT clientRect = RECT();
@@ -34,6 +35,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 }
             }
             break;
+
+            case WM_LBUTTONDOWN:
+                Application::Get().GetInputHandler()->OnKeyPressed(InputHandler::KeyCode::KC_LEFT_MOUSE);
+                break;
+            case WM_RBUTTONDOWN:
+                Application::Get().GetInputHandler()->OnKeyPressed(InputHandler::KeyCode::KC_RIGHT_MOUSE);
+                break;
+            case WM_LBUTTONUP:
+                Application::Get().GetInputHandler()->OnKeyReleased(InputHandler::KeyCode::KC_LEFT_MOUSE);
+                break;
+            case WM_RBUTTONUP:
+                Application::Get().GetInputHandler()->OnKeyReleased(InputHandler::KeyCode::KC_RIGHT_MOUSE);
+                break;
 
             case WM_SIZE:
             case WM_SIZING:

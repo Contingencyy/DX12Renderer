@@ -6,36 +6,9 @@
 #include "Graphics/CommandList.h"
 #include "Graphics/Buffer.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image/stb_image.h"
-
-struct Vertex
-{
-    glm::vec3 Position;
-    glm::vec2 TexCoord;
-};
-
-std::vector<Vertex> QuadVertices = {
-    { glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec2(0.0f, 1.0f) },
-    { glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec2(0.0f, 0.0f) },
-    { glm::vec3(0.5f, 0.5f, 0.0f), glm::vec2(1.0f, 0.0f) },
-    { glm::vec3(0.5f, -0.5f, 0.0f), glm::vec2(1.0f, 1.0f) }
-};
-
-struct InstanceData
-{
-    glm::mat4 ModelMatrix;
-    glm::vec3 Color;
-};
-
-std::vector<InstanceData> QuadInstanceData = {
-    InstanceData{ glm::identity<glm::mat4>(), glm::vec3(0.8f, 0.0f, 0.8f) }
-};
-
-std::vector<WORD> QuadIndices = {
-    0, 1, 2,
-    2, 3, 0
-};
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_win32.h"
+#include "imgui/imgui_impl_dx12.h"
 
 Renderer::Renderer()
 {
@@ -69,50 +42,6 @@ void Renderer::Initialize(uint32_t width, uint32_t height)
     CreatePipelineState();
 
     UpdateRenderTargetViews();
-
-    QuadInstanceData.clear();
-    QuadInstanceData.reserve(100);
-
-    for (uint32_t i = 0; i < 100; ++i)
-    {
-        glm::vec2 randomDirection(Random::FloatRange(-1.0f, 1.0f), Random::FloatRange(-1.0f, 1.0f));
-        randomDirection = glm::normalize(randomDirection) * Random::FloatRange(-125.0f, 125.0f);
-
-        QuadInstanceData.emplace_back(InstanceData{ glm::scale(glm::translate(glm::identity<glm::mat4>(),
-            glm::vec3(randomDirection.x, randomDirection.y, 0.0f)),
-            glm::vec3(Random::FloatRange(10.0f, 20.0f))), glm::vec3(Random::Float(), Random::Float(), Random::Float()) });
-    }
-
-    auto commandList = m_CommandQueueCopy->GetCommandList();
-
-    m_QuadBuffers[0] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON), QuadVertices.size(), sizeof(QuadVertices[0]));
-    Buffer quadVertexUB(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadBuffers[0]->GetAlignedSize());
-    commandList->CopyBuffer(quadVertexUB, *m_QuadBuffers[0], &QuadVertices[0]);
-
-    m_QuadBuffers[1] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON), QuadInstanceData.size(), sizeof(QuadInstanceData[0]));
-    Buffer quadInstanceUB(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadBuffers[1]->GetAlignedSize());
-    commandList->CopyBuffer(quadInstanceUB, *m_QuadBuffers[1], &QuadInstanceData[0]);
-
-    m_QuadBuffers[2] = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON), QuadIndices.size(), sizeof(QuadIndices[0]));
-    Buffer quadIndexUB(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadBuffers[2]->GetAlignedSize());
-    commandList->CopyBuffer(quadIndexUB, *m_QuadBuffers[2], &QuadIndices[0]);
-
-    // Testing texture loading/creation
-    int imageWidth, imageHeight, channelsPerPixel;
-    unsigned char* textureData = stbi_load("Resources/Textures/kermit.jpg", &imageWidth, &imageHeight, &channelsPerPixel, STBI_rgb_alpha);
-    if (textureData == nullptr)
-    {
-        ASSERT(false, "Failed to load texture");
-    }
-
-    m_Texture = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON,
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, static_cast<uint32_t>(imageWidth), static_cast<uint32_t>(imageHeight)));
-    Buffer textureUB(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), static_cast<std::size_t>(GetRequiredIntermediateSize(m_Texture->GetD3D12Resource().Get(), 0, 1)));
-
-    commandList->CopyTexture(textureUB, *m_Texture, textureData);
-
-    uint64_t fenceValue = m_CommandQueueCopy->ExecuteCommandList(commandList);
-    m_CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
 
 void Renderer::BeginFrame()
@@ -137,48 +66,17 @@ void Renderer::BeginFrame()
     m_CommandQueueDirect->ExecuteCommandList(commandList);
 }
 
-void Renderer::Render()
+void Renderer::GUIRender()
 {
-    auto commandList = m_CommandQueueDirect->GetCommandList();
-    auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
+    ImGui::Begin("Profiler");
 
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->GetCPUDescriptorHandleForHeapStart(),
-        m_CurrentBackBufferIndex, m_DescriptorSize[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]);
-    CD3DX12_CPU_DESCRIPTOR_HANDLE dsv(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_DSV]->GetCPUDescriptorHandleForHeapStart());
+    float lastFrameDuration = Application::Get().GetLastFrameTime().count() * 1000.0f;
 
-    // Render quads
-    commandList->SetViewports(1, &m_Viewport);
-    commandList->SetScissorRects(1, &m_ScissorRect);
-    commandList->SetRenderTargets(1, &rtv, &dsv);
-
-    commandList->SetPipelineState(m_d3d12PipelineState.Get());
-    commandList->SetRootSignature(m_d3d12RootSignature.Get());
-    commandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    glm::mat4 projection = glm::perspectiveFovLH_ZO(glm::radians(60.0f), static_cast<float>(m_RenderSettings.Resolution.x),
-        static_cast<float>(m_RenderSettings.Resolution.y), 0.1f, 1000.0f);
-    glm::mat4 view = glm::lookAtLH(glm::vec3(0.0f, 0.0f, -250.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 viewProjection = projection * view;
-    commandList->SetRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
-
-    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_Texture->GetD3D12Resource().Get(),
-        D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-    commandList->ResourceBarrier(1, &barrier);
-
-    commandList->SetDescriptorHeap(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].Get());
-    commandList->SetShaderResourceView(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].Get(), m_Texture->GetDescriptorHandle());
-
-    commandList->SetVertexBuffers(0, 1, *m_QuadBuffers[0]);
-    commandList->SetVertexBuffers(1, 1, *m_QuadBuffers[1]);
-    commandList->SetIndexBuffer(*m_QuadBuffers[2]);
-
-    commandList->DrawIndexed(QuadIndices.size(), QuadInstanceData.size());
-
-    barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_Texture->GetD3D12Resource().Get(),
-        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON);
-    commandList->ResourceBarrier(1, &barrier);
-
-    m_CommandQueueDirect->ExecuteCommandList(commandList);
+    ImGui::Text("Resolution: %ux%u", m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+    ImGui::Text("VSync: %s", m_RenderSettings.VSync ? "On" : "Off");
+    ImGui::Text("Frametime: %.3f ms", lastFrameDuration);
+    ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / lastFrameDuration));
+    ImGui::End();
 }
 
 void Renderer::EndFrame()
@@ -463,9 +361,10 @@ void Renderer::CreateRootSignature()
     CD3DX12_DESCRIPTOR_RANGE1 descRanges[1] = {};
     descRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
-    CD3DX12_ROOT_PARAMETER1 rootParameters[2] = {};
+    CD3DX12_ROOT_PARAMETER1 rootParameters[1] = {};
+    //CD3DX12_ROOT_PARAMETER1 rootParameters[2] = {};
     rootParameters[0].InitAsConstants(16, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-    rootParameters[1].InitAsDescriptorTable(1, descRanges, D3D12_SHADER_VISIBILITY_PIXEL);
+    //rootParameters[1].InitAsDescriptorTable(1, descRanges, D3D12_SHADER_VISIBILITY_PIXEL);
 
     CD3DX12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
     staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
@@ -504,10 +403,12 @@ void Renderer::CreatePipelineState()
     ComPtr<ID3DBlob> vsBlob;
     ComPtr<ID3DBlob> psBlob;
 
-    DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Default_VS.hlsl", nullptr, nullptr, "main", "vs_5_1", compileFlags, 0, &vsBlob, &errorBlob));
-    DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Default_PS.hlsl", nullptr, nullptr, "main", "ps_5_1", compileFlags, 0, &psBlob, &errorBlob));
+    //DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Default_VS.hlsl", nullptr, nullptr, "main", "vs_5_1", compileFlags, 0, &vsBlob, &errorBlob));
+    //DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Default_PS.hlsl", nullptr, nullptr, "main", "ps_5_1", compileFlags, 0, &psBlob, &errorBlob));
+    DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Particle_VS.hlsl", nullptr, nullptr, "main", "vs_5_1", compileFlags, 0, &vsBlob, &errorBlob));
+    DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Particle_PS.hlsl", nullptr, nullptr, "main", "ps_5_1", compileFlags, 0, &psBlob, &errorBlob));
 
-    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+    /*D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
@@ -515,22 +416,30 @@ void Renderer::CreatePipelineState()
         { "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
         { "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
         { "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+    };*/
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+        { "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+        { "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+        { "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
     };
 
     D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
     rtBlendDesc.BlendEnable = TRUE;
     rtBlendDesc.LogicOpEnable = FALSE;
-    rtBlendDesc.SrcBlend = D3D12_BLEND_ONE;
-    rtBlendDesc.DestBlend = D3D12_BLEND_ZERO;
+    rtBlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    rtBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
     rtBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
-    rtBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
-    rtBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+    rtBlendDesc.SrcBlendAlpha = D3D12_BLEND_SRC_ALPHA;
+    rtBlendDesc.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
     rtBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
     rtBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
     rtBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
     D3D12_BLEND_DESC blendDesc = {};
-    blendDesc.AlphaToCoverageEnable = TRUE;
+    blendDesc.AlphaToCoverageEnable = FALSE;
     blendDesc.IndependentBlendEnable = FALSE;
     blendDesc.RenderTarget[0] = rtBlendDesc;
 

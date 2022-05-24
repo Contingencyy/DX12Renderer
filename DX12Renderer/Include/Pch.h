@@ -10,6 +10,7 @@
 #include <chrono>
 #include <string>
 #include <queue>
+#include <unordered_map>
 
 /*
 
@@ -25,6 +26,7 @@
 
 */
 #include <glm/glm/glm.hpp>
+#include <glm/glm/gtx/compatibility.hpp>
 #include <glm/glm/gtc/matrix_transform.hpp>
 
 /*

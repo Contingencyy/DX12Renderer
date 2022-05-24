@@ -25,7 +25,7 @@ public:
 
 	void Initialize(uint32_t width, uint32_t height);
 	void BeginFrame();
-	void Render();
+	void GUIRender();
 	void EndFrame();
 	void Finalize();
 
@@ -40,7 +40,6 @@ public:
 	void ToggleVSync() { m_RenderSettings.VSync = !m_RenderSettings.VSync; }
 	bool IsVSyncEnabled() const { return m_RenderSettings.VSync; }
 
-	RenderSettings GetRenderSettings() const { return m_RenderSettings; }
 	ComPtr<ID3D12Device> GetD3D12Device() const { return m_d3d12Device; }
 
 private:
@@ -64,6 +63,7 @@ private:
 
 private:
 	friend class GUI;
+	friend class ParticleSystem;
 
 	static const uint32_t s_BackBufferCount = 3;
 
@@ -85,9 +85,6 @@ private:
 
 	ComPtr<ID3D12RootSignature> m_d3d12RootSignature;
 	ComPtr<ID3D12PipelineState> m_d3d12PipelineState;
-
-	std::shared_ptr<Buffer> m_QuadBuffers[3];
-	std::shared_ptr<Texture> m_Texture;
 
 	D3D12_VIEWPORT m_Viewport = D3D12_VIEWPORT();
 	D3D12_RECT m_ScissorRect = D3D12_RECT();
