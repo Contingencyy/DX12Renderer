@@ -10,6 +10,31 @@
 #include "imgui/imgui_impl_win32.h"
 #include "imgui/imgui_impl_dx12.h"
 
+struct Vertex
+{
+    glm::vec3 Position;
+    //glm::vec2 TexCoord;
+};
+
+//std::vector<Vertex> QuadVertices = {
+//    { glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec2(0.0f, 1.0f) },
+//    { glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec2(0.0f, 0.0f) },
+//    { glm::vec3(0.5f, 0.5f, 0.0f), glm::vec2(1.0f, 0.0f) },
+//    { glm::vec3(0.5f, -0.5f, 0.0f), glm::vec2(1.0f, 1.0f) }
+//};
+
+std::vector<Vertex> QuadVertices = {
+    { glm::vec3(-0.5f, -0.5f, 0.0f) },
+    { glm::vec3(-0.5f, 0.5f, 0.0f) },
+    { glm::vec3(0.5f, 0.5f, 0.0f) },
+    { glm::vec3(0.5f, -0.5f, 0.0f) }
+};
+
+std::vector<WORD> QuadIndices = {
+    0, 1, 2,
+    2, 3, 0
+};
+
 Renderer::Renderer()
 {
 }
@@ -42,10 +67,26 @@ void Renderer::Initialize(uint32_t width, uint32_t height)
     CreatePipelineState();
 
     UpdateRenderTargetViews();
+
+    m_QuadVertexBuffer = std::make_unique<Buffer>(BufferDesc(), QuadVertices.size(), sizeof(QuadVertices[0]));
+    Buffer quadVBUploadBuffer(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadVertexBuffer->GetAlignedSize());
+    Application::Get().GetRenderer()->CopyBuffer(quadVBUploadBuffer, *m_QuadVertexBuffer.get(), &QuadVertices[0]);
+
+    m_QuadIndexBuffer = std::make_unique<Buffer>(BufferDesc(), QuadIndices.size(), sizeof(QuadIndices[0]));
+    Buffer quadIBUploadBuffer(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadIndexBuffer->GetAlignedSize());
+    Application::Get().GetRenderer()->CopyBuffer(quadIBUploadBuffer, *m_QuadIndexBuffer.get(), &QuadIndices[0]);
+
 }
 
-void Renderer::BeginFrame()
+void Renderer::Finalize()
 {
+    Flush();
+}
+
+void Renderer::BeginFrame(const Camera& camera)
+{
+    m_SceneData.Camera = camera;
+
     auto commandList = m_CommandQueueDirect->GetCommandList();
     auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
 
@@ -66,27 +107,69 @@ void Renderer::BeginFrame()
     m_CommandQueueDirect->ExecuteCommandList(commandList);
 }
 
+void Renderer::Render()
+{
+    auto commandList = m_CommandQueueDirect->GetCommandList();
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->GetCPUDescriptorHandleForHeapStart(),
+        m_CurrentBackBufferIndex, m_DescriptorSize[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]);
+    CD3DX12_CPU_DESCRIPTOR_HANDLE dsv(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_DSV]->GetCPUDescriptorHandleForHeapStart());
+
+    commandList->SetViewports(1, &m_Viewport);
+    commandList->SetScissorRects(1, &m_ScissorRect);
+    commandList->SetRenderTargets(1, &rtv, &dsv);
+
+    commandList->SetPipelineState(m_d3d12PipelineState.Get());
+    commandList->SetRootSignature(m_d3d12RootSignature.Get());
+    commandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    glm::mat4 viewProjection = m_SceneData.Camera.GetViewProjection();
+    commandList->SetRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
+
+    commandList->SetVertexBuffers(0, 1, *m_QuadVertexBuffer.get());
+    commandList->SetIndexBuffer(*m_QuadIndexBuffer.get());
+
+    for (auto& data : m_QuadRenderData)
+    {
+        commandList->SetVertexBuffers(1, 1, *data.InstanceBuffer);
+        commandList->DrawIndexed(QuadIndices.size(), data.NumQuads);
+
+        m_RenderStatistics.DrawCallCount++;
+        m_RenderStatistics.QuadCount += data.NumQuads;
+    }
+
+    m_CommandQueueDirect->ExecuteCommandList(commandList);
+}
+
 void Renderer::GUIRender()
 {
     ImGui::Begin("Profiler");
 
-    float lastFrameDuration = Application::Get().GetLastFrameTime().count() * 1000.0f;
+    float lastFrameDuration = Application::Get().GetLastFrameTime() * 1000.0f;
 
     ImGui::Text("Resolution: %ux%u", m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
     ImGui::Text("VSync: %s", m_RenderSettings.VSync ? "On" : "Off");
     ImGui::Text("Frametime: %.3f ms", lastFrameDuration);
     ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / lastFrameDuration));
+    ImGui::Text("Draw calls: %u", m_RenderStatistics.DrawCallCount);
+    ImGui::Text("Quad count: %u", m_RenderStatistics.QuadCount);
+
     ImGui::End();
 }
 
 void Renderer::EndFrame()
 {
     Present();
+
+    m_QuadRenderData.clear();
+
+    m_RenderStatistics.DrawCallCount = 0;
+    m_RenderStatistics.QuadCount = 0;
 }
 
-void Renderer::Finalize()
+void Renderer::DrawQuads(std::shared_ptr<Buffer> instanceBuffer, std::size_t numQuads)
 {
-    Flush();
+    m_QuadRenderData.push_back({ instanceBuffer, numQuads });
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)

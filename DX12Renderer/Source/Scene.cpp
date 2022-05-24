@@ -1,5 +1,7 @@
 #include "Pch.h"
 #include "Scene.h"
+#include "Application.h"
+#include "Renderer.h"
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
@@ -7,6 +9,10 @@
 
 Scene::Scene()
 {
+	Renderer::RenderSettings renderSettings = Application::Get().GetRenderer()->GetRenderSettings();
+	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -10.0f), glm::vec3(0.0f), 60.0f,
+		static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
+
 	m_ParticleProps.ColorBegin = { 254 / 255.0f, 182 / 255.0f, 40 / 255.0f, 1.0f };
 	m_ParticleProps.ColorEnd = { 254 / 255.0f, 59 / 255.0f, 10 / 255.0f, 1.0f };
 	m_ParticleProps.BaseRotation = 0.0f, m_ParticleProps.BaseRotationVariation = 0.5f;

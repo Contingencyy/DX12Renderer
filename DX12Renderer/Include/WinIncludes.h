@@ -25,3 +25,11 @@ using namespace Microsoft::WRL;
 #include <dxgidebug.h>
 
 #include "D3DX/d3dx12.h"
+
+#if defined(near)
+#undef near
+#endif
+
+#if defined(far)
+#undef far
+#endif

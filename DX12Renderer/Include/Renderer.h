@@ -1,6 +1,7 @@
 #pragma once
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
+#include "Camera.h"
 
 class CommandQueue;
 
@@ -19,16 +20,25 @@ public:
 		bool TearingSupported = false;
 	};
 
+	struct RenderStatistics
+	{
+		uint32_t DrawCallCount = 0;
+		uint32_t QuadCount = 0;
+	};
+
 public:
 	Renderer();
 	~Renderer();
 
 	void Initialize(uint32_t width, uint32_t height);
-	void BeginFrame();
-	void GUIRender();
-	void EndFrame();
 	void Finalize();
 
+	void BeginFrame(const Camera& camera);
+	void Render();
+	void GUIRender();
+	void EndFrame();
+
+	void DrawQuads(std::shared_ptr<Buffer> instanceBuffer, std::size_t numQuads);
 	void Resize(uint32_t width, uint32_t height);
 
 	void CreateBuffer(ComPtr<ID3D12Resource>& resource, D3D12_HEAP_TYPE bufferType, D3D12_RESOURCE_STATES initialState, std::size_t size);
@@ -41,6 +51,9 @@ public:
 	bool IsVSyncEnabled() const { return m_RenderSettings.VSync; }
 
 	ComPtr<ID3D12Device> GetD3D12Device() const { return m_d3d12Device; }
+
+	RenderSettings GetRenderSettings() const { return m_RenderSettings; }
+	RenderStatistics GetRenderStatistics() const { return m_RenderStatistics; }
 
 private:
 	void Present();
@@ -63,7 +76,6 @@ private:
 
 private:
 	friend class GUI;
-	friend class ParticleSystem;
 
 	static const uint32_t s_BackBufferCount = 3;
 
@@ -90,5 +102,26 @@ private:
 	D3D12_RECT m_ScissorRect = D3D12_RECT();
 
 	RenderSettings m_RenderSettings;
+	RenderStatistics m_RenderStatistics;
+	
+	std::unique_ptr<Buffer> m_QuadVertexBuffer;
+	std::unique_ptr<Buffer> m_QuadIndexBuffer;
+
+	struct RenderData
+	{
+		std::shared_ptr<Buffer> InstanceBuffer;
+		std::size_t NumQuads;
+	};
+
+	std::vector<RenderData> m_QuadRenderData;
+
+	struct SceneData
+	{
+		SceneData() {}
+
+		Camera Camera;
+	};
+
+	SceneData m_SceneData;
 
 };

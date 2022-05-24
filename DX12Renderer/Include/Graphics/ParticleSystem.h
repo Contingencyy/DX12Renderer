@@ -55,9 +55,7 @@ private:
 
 	std::vector<ParticleInstanceData> m_ParticleInstanceData;
 
-	std::shared_ptr<Buffer> m_QuadVB;
 	std::shared_ptr<Buffer> m_QuadInstanceDataBuffer;
-	std::shared_ptr<Buffer> m_QuadIB;
 	std::shared_ptr<Buffer> m_UploadBuffer;
 
 	uint32_t m_NumActiveParticles;

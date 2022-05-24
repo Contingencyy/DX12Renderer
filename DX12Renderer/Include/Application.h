@@ -17,8 +17,10 @@ public:
 	void Run();
 	void Finalize();
 
+	void OnWindowResize(uint32_t width, uint32_t height);
+
 	bool IsInitialized() const { return m_Initialized; }
-	std::chrono::duration<float> GetLastFrameTime() const { return m_LastFrameTime; }
+	float GetLastFrameTime() const { return m_LastFrameTime; }
 
 	Window* GetWindow() const { return m_Window.get(); }
 	Renderer* GetRenderer() const { return m_Renderer.get(); }
@@ -47,7 +49,7 @@ private:
 	std::unique_ptr<InputHandler> m_InputHandler = nullptr;
 	std::unique_ptr<Scene> m_Scene = nullptr;
 
-	std::chrono::duration<float> m_LastFrameTime = std::chrono::duration<float>(0.0f);
+	float m_LastFrameTime = 0.0f;
 
 	bool m_Initialized = false;
 

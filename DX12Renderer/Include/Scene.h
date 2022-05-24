@@ -1,5 +1,6 @@
 #pragma once
 #include "Graphics/ParticleSystem.h"
+#include "Camera.h"
 
 class Scene
 {
@@ -11,7 +12,11 @@ public:
 	void Render();
 	void GUIRender();
 
+	Camera& GetActiveCamera() { return m_ActiveCamera; }
+
 private:
+	Camera m_ActiveCamera;
+
 	ParticleSystem m_ParticleSystem;
 	ParticleProps m_ParticleProps;
 

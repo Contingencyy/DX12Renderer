@@ -73,6 +73,8 @@ void Application::Run()
 
 	while (!m_Window->ShouldClose())
 	{
+		Timer timer;
+
 		current = std::chrono::high_resolution_clock::now();
 		deltaTime = current - last;
 
@@ -81,7 +83,7 @@ void Application::Run()
 		Render();
 		
 		last = current;
-		m_LastFrameTime = deltaTime;
+		m_LastFrameTime = timer.Elapsed();
 	}
 }
 
@@ -97,6 +99,13 @@ void Application::Finalize()
 	Logger::Log("Finalized Window", Logger::Severity::INFO);
 }
 
+void Application::OnWindowResize(uint32_t width, uint32_t height)
+{
+	m_Renderer->Resize(width, height);
+
+	m_Scene->GetActiveCamera().ResizeProjection(static_cast<float>(width), static_cast<float>(height));
+}
+
 void Application::PollEvents()
 {
 	m_Window->PollEvents();
@@ -110,10 +119,11 @@ void Application::Update(float deltaTime)
 
 void Application::Render()
 {
-	m_Renderer->BeginFrame();
+	m_Renderer->BeginFrame(m_Scene->GetActiveCamera());
 	m_GUI->BeginFrame();
 
 	m_Scene->Render();
+	m_Renderer->Render();
 
 	m_Renderer->GUIRender();
 	m_Scene->GUIRender();
