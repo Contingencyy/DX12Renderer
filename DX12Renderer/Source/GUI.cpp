@@ -76,10 +76,10 @@ void GUI::EndFrame()
 	auto renderer = Application::Get().GetRenderer();
 	auto& commandQueue = renderer->m_CommandQueueDirect;
 	auto commandList = commandQueue->GetCommandList();
+	auto& backBuffer = renderer->m_BackBuffers[renderer->m_CurrentBackBufferIndex];
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(renderer->m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->GetCPUDescriptorHandleForHeapStart(),
-		renderer->m_CurrentBackBufferIndex, renderer->m_DescriptorSize[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv(renderer->m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_DSV]->GetCPUDescriptorHandleForHeapStart());
+	auto rtv = backBuffer->GetDescriptorHandle();
+	auto dsv = renderer->m_DepthBuffer->GetDescriptorHandle();
 
 	commandList->SetRenderTargets(1, &rtv, &dsv);
 	ID3D12DescriptorHeap* descriptorHeap = m_d3d12DescriptorHeap.Get();

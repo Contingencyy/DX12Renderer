@@ -43,7 +43,7 @@ public:
 
 	void CreateBuffer(ComPtr<ID3D12Resource>& resource, D3D12_HEAP_TYPE bufferType, D3D12_RESOURCE_STATES initialState, std::size_t size);
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
-	void CreateTexture(ComPtr<ID3D12Resource>& resource, const D3D12_RESOURCE_DESC& textureDesc, D3D12_RESOURCE_STATES initialState, std::size_t size);
+	void CreateTexture(ComPtr<ID3D12Resource>& resource, const D3D12_RESOURCE_DESC& textureDesc, D3D12_RESOURCE_STATES initialState, std::size_t size, const D3D12_CLEAR_VALUE* clearValue = nullptr);
 	void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
 	D3D12_CPU_DESCRIPTOR_HANDLE AllocateDescriptors(uint32_t numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type);
 
@@ -91,8 +91,8 @@ private:
 	uint64_t m_FenceValues[s_BackBufferCount] = {};
 
 	ComPtr<IDXGISwapChain4> m_dxgiSwapChain;
-	ComPtr<ID3D12Resource> m_BackBuffers[s_BackBufferCount];
-	ComPtr<ID3D12Resource> m_DepthBuffer;
+	std::unique_ptr<Texture> m_BackBuffers[s_BackBufferCount];
+	std::unique_ptr<Texture> m_DepthBuffer;
 	uint32_t m_CurrentBackBufferIndex = 0;
 
 	ComPtr<ID3D12RootSignature> m_d3d12RootSignature;
