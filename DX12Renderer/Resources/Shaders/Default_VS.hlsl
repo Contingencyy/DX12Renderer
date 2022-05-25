@@ -3,7 +3,7 @@ struct VertexShaderInput
 	float3 Position : POSITION;
 	float2 TexCoord : TEXCOORD;
 	matrix Model : MODEL;
-	float3 Color : COLOR;
+	float4 Color : COLOR;
 };
 
 struct ViewProjection
@@ -17,7 +17,7 @@ struct VertexShaderOutput
 {
 	float4 Position : SV_POSITION;
 	float2 TexCoord : TEXCOORD;
-	float3 Color : COLOR;
+	float4 Color : COLOR;
 };
 
 VertexShaderOutput main(VertexShaderInput IN)

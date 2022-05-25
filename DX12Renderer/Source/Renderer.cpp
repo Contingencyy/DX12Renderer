@@ -13,21 +13,14 @@
 struct Vertex
 {
     glm::vec3 Position;
-    //glm::vec2 TexCoord;
+    glm::vec2 TexCoord;
 };
 
-//std::vector<Vertex> QuadVertices = {
-//    { glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec2(0.0f, 1.0f) },
-//    { glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec2(0.0f, 0.0f) },
-//    { glm::vec3(0.5f, 0.5f, 0.0f), glm::vec2(1.0f, 0.0f) },
-//    { glm::vec3(0.5f, -0.5f, 0.0f), glm::vec2(1.0f, 1.0f) }
-//};
-
 std::vector<Vertex> QuadVertices = {
-    { glm::vec3(-0.5f, -0.5f, 0.0f) },
-    { glm::vec3(-0.5f, 0.5f, 0.0f) },
-    { glm::vec3(0.5f, 0.5f, 0.0f) },
-    { glm::vec3(0.5f, -0.5f, 0.0f) }
+    { glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec2(0.0f, 1.0f) },
+    { glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec2(0.0f, 0.0f) },
+    { glm::vec3(0.5f, 0.5f, 0.0f), glm::vec2(1.0f, 0.0f) },
+    { glm::vec3(0.5f, -0.5f, 0.0f), glm::vec2(1.0f, 1.0f) }
 };
 
 std::vector<WORD> QuadIndices = {
@@ -128,9 +121,13 @@ void Renderer::Render()
     commandList->SetVertexBuffers(0, 1, *m_QuadVertexBuffer.get());
     commandList->SetIndexBuffer(*m_QuadIndexBuffer.get());
 
-    for (auto& data : m_QuadRenderData)
+    commandList->SetDescriptorHeap(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].Get());
+
+    for (auto& data : m_QuadDrawData)
     {
         commandList->SetVertexBuffers(1, 1, *data.InstanceBuffer);
+        commandList->SetShaderResourceView(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].Get(), data.Texture->GetDescriptorHandle());
+
         commandList->DrawIndexed(QuadIndices.size(), data.NumQuads);
 
         m_RenderStatistics.DrawCallCount++;
@@ -160,15 +157,15 @@ void Renderer::EndFrame()
 {
     Present();
 
-    m_QuadRenderData.clear();
+    m_QuadDrawData.clear();
 
     m_RenderStatistics.DrawCallCount = 0;
     m_RenderStatistics.QuadCount = 0;
 }
 
-void Renderer::DrawQuads(std::shared_ptr<Buffer> instanceBuffer, std::size_t numQuads)
+void Renderer::DrawQuads(std::shared_ptr<Buffer> instanceBuffer, std::shared_ptr<Texture> texture, std::size_t numQuads)
 {
-    m_QuadRenderData.push_back({ instanceBuffer, numQuads });
+    m_QuadDrawData.push_back({ instanceBuffer, texture, numQuads });
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)
@@ -429,10 +426,9 @@ void Renderer::CreateRootSignature()
     CD3DX12_DESCRIPTOR_RANGE1 descRanges[1] = {};
     descRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
-    CD3DX12_ROOT_PARAMETER1 rootParameters[1] = {};
-    //CD3DX12_ROOT_PARAMETER1 rootParameters[2] = {};
+    CD3DX12_ROOT_PARAMETER1 rootParameters[2] = {};
     rootParameters[0].InitAsConstants(16, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-    //rootParameters[1].InitAsDescriptorTable(1, descRanges, D3D12_SHADER_VISIBILITY_PIXEL);
+    rootParameters[1].InitAsDescriptorTable(1, descRanges, D3D12_SHADER_VISIBILITY_PIXEL);
 
     CD3DX12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
     staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
@@ -471,22 +467,12 @@ void Renderer::CreatePipelineState()
     ComPtr<ID3DBlob> vsBlob;
     ComPtr<ID3DBlob> psBlob;
 
-    //DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Default_VS.hlsl", nullptr, nullptr, "main", "vs_5_1", compileFlags, 0, &vsBlob, &errorBlob));
-    //DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Default_PS.hlsl", nullptr, nullptr, "main", "ps_5_1", compileFlags, 0, &psBlob, &errorBlob));
-    DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Particle_VS.hlsl", nullptr, nullptr, "main", "vs_5_1", compileFlags, 0, &vsBlob, &errorBlob));
-    DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Particle_PS.hlsl", nullptr, nullptr, "main", "ps_5_1", compileFlags, 0, &psBlob, &errorBlob));
+    DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Default_VS.hlsl", nullptr, nullptr, "main", "vs_5_1", compileFlags, 0, &vsBlob, &errorBlob));
+    DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Default_PS.hlsl", nullptr, nullptr, "main", "ps_5_1", compileFlags, 0, &psBlob, &errorBlob));
 
-    /*D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-        { "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-        { "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-        { "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-        { "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-    };*/
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
         { "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
         { "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },

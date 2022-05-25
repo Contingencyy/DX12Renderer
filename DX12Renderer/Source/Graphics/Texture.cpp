@@ -22,6 +22,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetDescriptorHandle()
 	{
 		switch (m_TextureDesc.Flags)
 		{
+		case D3D12_RESOURCE_FLAG_NONE:
 		case D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS:
 		{
 			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};

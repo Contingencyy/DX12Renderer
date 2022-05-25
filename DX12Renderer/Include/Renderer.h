@@ -38,7 +38,7 @@ public:
 	void GUIRender();
 	void EndFrame();
 
-	void DrawQuads(std::shared_ptr<Buffer> instanceBuffer, std::size_t numQuads);
+	void DrawQuads(std::shared_ptr<Buffer> instanceBuffer, std::shared_ptr<Texture> texture, std::size_t numQuads);
 	void Resize(uint32_t width, uint32_t height);
 
 	void CreateBuffer(ComPtr<ID3D12Resource>& resource, D3D12_HEAP_TYPE bufferType, D3D12_RESOURCE_STATES initialState, std::size_t size);
@@ -107,13 +107,14 @@ private:
 	std::unique_ptr<Buffer> m_QuadVertexBuffer;
 	std::unique_ptr<Buffer> m_QuadIndexBuffer;
 
-	struct RenderData
+	struct QuadDrawData
 	{
-		std::shared_ptr<Buffer> InstanceBuffer;
-		std::size_t NumQuads;
+		std::shared_ptr<Buffer> InstanceBuffer = nullptr;
+		std::shared_ptr<Texture> Texture = nullptr;
+		std::size_t NumQuads = 1;
 	};
 
-	std::vector<RenderData> m_QuadRenderData;
+	std::vector<QuadDrawData> m_QuadDrawData;
 
 	struct SceneData
 	{

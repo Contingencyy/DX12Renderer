@@ -12,6 +12,7 @@ struct ParticleProps
 };
 
 class Buffer;
+class Texture;
 
 class ParticleSystem
 {
@@ -57,6 +58,7 @@ private:
 
 	std::shared_ptr<Buffer> m_QuadInstanceDataBuffer;
 	std::shared_ptr<Buffer> m_UploadBuffer;
+	std::shared_ptr<Texture> m_Texture;
 
 	uint32_t m_NumActiveParticles;
 
