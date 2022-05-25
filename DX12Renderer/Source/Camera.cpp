@@ -18,6 +18,10 @@ Camera::~Camera()
 {
 }
 
+void Camera::Update(float deltaTime)
+{
+}
+
 void Camera::ResizeProjection(float width, float height)
 {
 	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), width, height, m_Near, m_Far);

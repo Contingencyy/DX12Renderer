@@ -2,9 +2,9 @@
 #include "GUI.h"
 #include "Application.h"
 #include "Renderer.h"
-#include "InputHandler.h"
 #include "Graphics/CommandQueue.h"
 #include "Graphics/CommandList.h"
+
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
 #include "imgui/imgui_impl_dx12.h"
@@ -60,18 +60,6 @@ void GUI::Initialize(HWND hWnd)
 
 void GUI::Update(float deltaTime)
 {
-	ImGuiIO& io = ImGui::GetIO();
-
-	auto inputHandler = Application::Get().GetInputHandler();
-	if (inputHandler->IsKeyPressed(InputHandler::KeyCode::KC_LEFT_MOUSE))
-		io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
-	else
-		io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
-
-	if (inputHandler->IsKeyPressed(InputHandler::KeyCode::KC_RIGHT_MOUSE))
-		io.AddMouseButtonEvent(ImGuiMouseButton_Right, true);
-	else
-		io.AddMouseButtonEvent(ImGuiMouseButton_Right, false);
 }
 
 void GUI::BeginFrame()

@@ -128,7 +128,7 @@ void CommandList::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, 
 	{
 		D3D12_SUBRESOURCE_DATA subresourceData = {};
 		subresourceData.pData = textureData;
-		subresourceData.RowPitch = textureDesc.Width * 4;
+		subresourceData.RowPitch = static_cast<std::size_t>(textureDesc.Width * 4);
 		subresourceData.SlicePitch = subresourceData.RowPitch * textureDesc.Height;
 
 		UpdateSubresources(m_d3d12CommandList.Get(), destTexture.GetD3D12Resource().Get(),

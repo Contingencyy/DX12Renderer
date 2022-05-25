@@ -7,10 +7,14 @@
 RECT windowRect = RECT();
 RECT clientRect = RECT();
 
+extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     if (Application::Get().IsInitialized())
     {
+        if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+            return true;
+
         switch (message)
         {
             case WM_SYSKEYDOWN:
@@ -24,7 +28,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     break;
                 case VK_RETURN:
                     if (alt)
-                    {
+                    { 
                 case VK_F11:
                     Application::Get().GetWindow()->ToggleFullScreen();
                     }
@@ -55,7 +59,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 ::GetClientRect(Application::Get().GetWindow()->GetHandle(), &clientRect);
                 auto window = Application::Get().GetWindow();
 
-                Application::Get().GetRenderer()->Resize(window->GetWidth(), window->GetHeight());
+                Application::Get().OnWindowResize(window->GetWidth(), window->GetHeight());
             }
             break;
 

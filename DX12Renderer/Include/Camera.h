@@ -7,6 +7,8 @@ public:
 	Camera(const glm::vec3& pos, const glm::vec3& target, float fov, float width, float height, float near = 0.1f, float far = 1000.0f);
 	~Camera();
 
+	void Update(float deltaTime);
+
 	void ResizeProjection(float width, float height);
 
 	glm::mat4 GetViewProjection() const { return m_ViewProjectionMatrix; };
