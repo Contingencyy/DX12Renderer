@@ -74,10 +74,10 @@ void Texture::Create()
 		clearValue.Format = m_TextureDesc.Format;
 		clearValue.DepthStencil = { 1.0f, 0 };
 
-		Application::Get().GetRenderer()->CreateTexture(m_d3d12Resource, d3d12ResourceDesc, m_TextureDesc.InitialState, m_AlignedBufferSize, &clearValue);
+		Application::Get().GetRenderer()->CreateTexture(*this, d3d12ResourceDesc, m_TextureDesc.InitialState, m_AlignedBufferSize, &clearValue);
 	}
 	else
 	{
-		Application::Get().GetRenderer()->CreateTexture(m_d3d12Resource, d3d12ResourceDesc, m_TextureDesc.InitialState, m_AlignedBufferSize);
+		Application::Get().GetRenderer()->CreateTexture(*this, d3d12ResourceDesc, m_TextureDesc.InitialState, m_AlignedBufferSize);
 	}
 }

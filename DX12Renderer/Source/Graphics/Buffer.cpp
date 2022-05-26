@@ -25,7 +25,7 @@ Buffer::~Buffer()
 void Buffer::Create()
 {
 	auto renderer = Application::Get().GetRenderer();
-	renderer->CreateBuffer(m_d3d12Resource, m_BufferDesc.Type, m_BufferDesc.InitialState, m_AlignedBufferSize);
+	renderer->CreateBuffer(*this, m_BufferDesc.Type, m_BufferDesc.InitialState, m_AlignedBufferSize);
 
 	if (m_BufferDesc.Type == D3D12_HEAP_TYPE_UPLOAD)
 	{

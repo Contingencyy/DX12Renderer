@@ -187,19 +187,22 @@ void Renderer::Resize(uint32_t width, uint32_t height)
     }
 }
 
-void Renderer::CreateBuffer(ComPtr<ID3D12Resource>& resource, D3D12_HEAP_TYPE bufferType, D3D12_RESOURCE_STATES initialState, std::size_t size)
+void Renderer::CreateBuffer(Buffer& buffer, D3D12_HEAP_TYPE bufferType, D3D12_RESOURCE_STATES initialState, std::size_t size)
 {
     CD3DX12_HEAP_PROPERTIES heapProps(bufferType);
     CD3DX12_RESOURCE_DESC heapDesc(CD3DX12_RESOURCE_DESC::Buffer(size));
 
+    ComPtr<ID3D12Resource> d3d12Resource;
     DX_CALL(m_d3d12Device->CreateCommittedResource(
         &heapProps,
         D3D12_HEAP_FLAG_NONE,
         &heapDesc,
         initialState,
         nullptr,
-        IID_PPV_ARGS(&resource)
+        IID_PPV_ARGS(&d3d12Resource)
     ));
+
+    buffer.SetD3D12Resource(d3d12Resource);
 }
 
 void Renderer::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData)
@@ -211,18 +214,21 @@ void Renderer::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const 
     m_CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
 
-void Renderer::CreateTexture(ComPtr<ID3D12Resource>& resource, const D3D12_RESOURCE_DESC& textureDesc, D3D12_RESOURCE_STATES initialState, std::size_t size, const D3D12_CLEAR_VALUE* clearValue)
+void Renderer::CreateTexture(Texture& texture, const D3D12_RESOURCE_DESC& textureDesc, D3D12_RESOURCE_STATES initialState, std::size_t size, const D3D12_CLEAR_VALUE* clearValue)
 {
     CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
 
+    ComPtr<ID3D12Resource> d3d12Resource;
     DX_CALL(m_d3d12Device->CreateCommittedResource(
         &heapProps,
         D3D12_HEAP_FLAG_NONE,
         &textureDesc,
         initialState,
         clearValue,
-        IID_PPV_ARGS(&resource)
+        IID_PPV_ARGS(&d3d12Resource)
     ));
+
+    texture.SetD3D12Resource(d3d12Resource);
 }
 
 void Renderer::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData)
