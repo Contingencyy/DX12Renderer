@@ -5,6 +5,7 @@
 #include "Graphics/CommandQueue.h"
 #include "Graphics/CommandList.h"
 #include "Graphics/Buffer.h"
+#include "Graphics/Shader.h"
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
@@ -469,12 +470,8 @@ void Renderer::CreatePipelineState()
     compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
-    ComPtr<ID3DBlob> errorBlob;
-    ComPtr<ID3DBlob> vsBlob;
-    ComPtr<ID3DBlob> psBlob;
-
-    DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Default_VS.hlsl", nullptr, nullptr, "main", "vs_5_1", compileFlags, 0, &vsBlob, &errorBlob));
-    DX_CALL(D3DCompileFromFile(L"Resources/Shaders/Default_PS.hlsl", nullptr, nullptr, "main", "ps_5_1", compileFlags, 0, &psBlob, &errorBlob));
+    Shader vertexShader(L"Resources/Shaders/Default_VS.hlsl", "main", "vs_5_1");
+    Shader pixelShader(L"Resources/Shaders/Default_PS.hlsl", "main", "ps_5_1");
 
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -505,8 +502,8 @@ void Renderer::CreatePipelineState()
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
-    psoDesc.VS = CD3DX12_SHADER_BYTECODE(vsBlob.Get());
-    psoDesc.PS = CD3DX12_SHADER_BYTECODE(psBlob.Get());
+    psoDesc.VS = vertexShader.GetShaderByteCode();
+    psoDesc.PS = pixelShader.GetShaderByteCode();
     psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     psoDesc.BlendState = blendDesc;
     psoDesc.DepthStencilState.DepthEnable = TRUE;

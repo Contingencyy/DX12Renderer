@@ -193,6 +193,7 @@
     <ClCompile Include="Source\Graphics\CommandList.cpp" />
     <ClCompile Include="Source\Graphics\CommandQueue.cpp" />
     <ClCompile Include="Source\Graphics\ParticleSystem.cpp" />
+    <ClCompile Include="Source\Graphics\Shader.cpp" />
     <ClCompile Include="Source\Graphics\Texture.cpp" />
     <ClCompile Include="Source\GUI.cpp" />
     <ClCompile Include="Source\InputHandler.cpp" />
@@ -219,6 +220,7 @@
     <ClInclude Include="Include\Graphics\CommandList.h" />
     <ClInclude Include="Include\Graphics\CommandQueue.h" />
     <ClInclude Include="Include\Graphics\ParticleSystem.h" />
+    <ClInclude Include="Include\Graphics\Shader.h" />
     <ClInclude Include="Include\Graphics\Texture.h" />
     <ClInclude Include="Include\GUI.h" />
     <ClInclude Include="Include\InputHandler.h" />
