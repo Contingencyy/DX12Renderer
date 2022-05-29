@@ -4,9 +4,7 @@
 #include "Graphics/Texture.h"
 #include "Application.h"
 #include "Renderer.h"
-
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image/stb_image.h"
+#include "ResourceLoader.h"
 
 ParticleSystem::ParticleSystem()
 {
@@ -16,17 +14,13 @@ ParticleSystem::ParticleSystem()
 	m_QuadInstanceDataBuffer = std::make_shared<Buffer>(BufferDesc(), m_ParticlePool.size(), sizeof(ParticleInstanceData));
 	m_UploadBuffer = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadInstanceDataBuffer->GetAlignedSize());
 	
-	int textureWidth, textureHeight, channelsPerPixel;
-	unsigned char* textureData = stbi_load("Resources/Textures/kermit.jpg", &textureWidth, &textureHeight, &channelsPerPixel, STBI_rgb_alpha);
-	if (textureData == nullptr)
-	{
-		Logger::Log("Could not load texture", Logger::Severity::ERR);
-	}
-
-	m_Texture = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE, textureWidth, textureHeight));
+	ImageInfo imageInfo = ResourceLoader::LoadImage("Resources/Textures/kermit.jpg");
+	m_Texture = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE,
+		static_cast<uint32_t>(imageInfo.Width), static_cast<uint32_t>(imageInfo.Height)));
 	Buffer textureUploadBuffer(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), GetRequiredIntermediateSize(m_Texture->GetD3D12Resource().Get(), 0, 1));
 
-	Application::Get().GetRenderer()->CopyTexture(textureUploadBuffer, *m_Texture, textureData);
+	Application::Get().GetRenderer()->CopyTexture(textureUploadBuffer, *m_Texture, imageInfo.Data);
+	delete imageInfo.Data;
 }
 
 void ParticleSystem::Update(float deltaTime)

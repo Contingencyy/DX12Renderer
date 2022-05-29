@@ -1,12 +1,20 @@
 #pragma once
 
+struct WindowProps
+{
+	std::wstring Title;
+
+	uint32_t Width;
+	uint32_t Height;
+};
+
 class Window
 {
 public:
 	Window();
 	~Window();
 
-	void Initialize(HINSTANCE hInst, uint32_t width, uint32_t height);
+	void Initialize(const WindowProps& properties);
 	void Finalize();
 
 	void PollEvents();
@@ -21,8 +29,8 @@ public:
 	HWND GetHandle() const { return m_hWnd; }
 
 private:
-	void RegisterWindow(HINSTANCE hInst);
-	void CreateWindow(HINSTANCE hInst, uint32_t width, uint32_t height);
+	void RegisterWindow();
+	void CreateWindow(const WindowProps& properties);
 
 private:
 	HWND m_hWnd = HWND();

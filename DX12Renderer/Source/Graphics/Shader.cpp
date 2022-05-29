@@ -1,5 +1,6 @@
 #include "Pch.h"
 #include "Graphics/Shader.h"
+#include "ResourceLoader.h"
 
 Shader::Shader(const std::wstring& filepath, const std::string& entryPoint, const std::string& target)
 {
@@ -18,10 +19,14 @@ void Shader::Compile(const std::wstring& filepath, const std::string& entryPoint
 #endif
 
     ComPtr<ID3DBlob> errorBlob;
-    HRESULT hr = D3DCompileFromFile(filepath.c_str(), nullptr, nullptr, entryPoint.c_str(), target.c_str(),
-        compileFlags, 0, &m_ShaderBlob, &errorBlob);
 
-    if (hr || errorBlob)
+    std::string filepathStr = StringHelper::WStringToString(filepath);
+    std::string shaderCode = ResourceLoader::LoadShader(filepathStr);
+
+    HRESULT hr = D3DCompile(&shaderCode[0], shaderCode.length(), filepathStr.c_str(), nullptr, nullptr,
+        entryPoint.c_str(), target.c_str(), compileFlags, 0, &m_ShaderBlob, &errorBlob);
+
+    if (!SUCCEEDED(hr) || errorBlob)
     {
         Logger::Log(static_cast<const char*>(errorBlob->GetBufferPointer()), Logger::Severity::ERR);
         errorBlob->Release();

@@ -86,10 +86,10 @@ Window::~Window()
 {
 }
 
-void Window::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
+void Window::Initialize(const WindowProps& properties)
 {
-	RegisterWindow(hInst);
-	CreateWindow(hInst, width, height);
+	RegisterWindow();
+	CreateWindow(properties);
 }
 
 void Window::Finalize()
@@ -167,8 +167,10 @@ uint32_t Window::GetHeight() const
     return clientRect.bottom - clientRect.top;
 }
 
-void Window::RegisterWindow(HINSTANCE hInst)
+void Window::RegisterWindow()
 {
+    HINSTANCE hInst = GetModuleHandle(NULL);
+
     const wchar_t* windowClassName = L"DX12RendererWindow";
     WNDCLASSEXW windowClass = {};
 
@@ -189,12 +191,12 @@ void Window::RegisterWindow(HINSTANCE hInst)
     assert(atom > 0);
 }
 
-void Window::CreateWindow(HINSTANCE hInst, uint32_t width, uint32_t height)
+void Window::CreateWindow(const WindowProps& properties)
 {
     int screenWidth = ::GetSystemMetrics(SM_CXSCREEN);
     int screenHeight = ::GetSystemMetrics(SM_CYSCREEN);
 
-    windowRect = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
+    windowRect = { 0, 0, static_cast<LONG>(properties.Width), static_cast<LONG>(properties.Height) };
     ::AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
 
     int windowWidth = windowRect.right - windowRect.left;
@@ -203,8 +205,8 @@ void Window::CreateWindow(HINSTANCE hInst, uint32_t width, uint32_t height)
     int windowX = std::max<int>(0, (screenWidth - windowWidth) / 2);
     int windowY = std::max<int>(0, (screenHeight - windowHeight) / 2);
 
-    m_hWnd = ::CreateWindowExW(NULL, L"DX12RendererWindow", L"DX12 Renderer", WS_OVERLAPPEDWINDOW,
-        windowX, windowY, windowWidth, windowHeight, NULL, NULL, hInst, nullptr);
+    m_hWnd = ::CreateWindowExW(NULL, L"DX12RendererWindow", properties.Title.c_str(), WS_OVERLAPPEDWINDOW,
+        windowX, windowY, windowWidth, windowHeight, NULL, NULL, GetModuleHandle(NULL), nullptr);
 
     assert(m_hWnd && "Failed to create window\n");
 

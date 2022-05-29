@@ -39,8 +39,13 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 {
 	Random::Initialize();
 
+	WindowProps windowProps = {};
+	windowProps.Title = L"DX12 Renderer";
+	windowProps.Width = width;
+	windowProps.Height = height;
+
 	m_Window = std::make_unique<Window>();
-	m_Window->Initialize(hInst, width, height);
+	m_Window->Initialize(windowProps);
 	m_Window->Show();
 
 	Logger::Log("Initialized Window", Logger::Severity::INFO);
