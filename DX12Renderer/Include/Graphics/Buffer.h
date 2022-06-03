@@ -13,12 +13,13 @@ struct BufferDesc
 class Buffer
 {
 public:
+	Buffer(const BufferDesc& bufferdesc, std::size_t numElements, std::size_t elementSize, const void* data);
 	Buffer(const BufferDesc& bufferDesc, std::size_t numElements, std::size_t elementSize);
 	Buffer(const BufferDesc& bufferDesc, std::size_t alignedSize);
 	~Buffer();
 
 	BufferDesc GetBufferDesc() const { return m_BufferDesc; }
-	std::size_t GetAlignedSize() const { return m_AlignedBufferSize; }
+	std::size_t GetByteSize() const { return m_ByteSize; }
 	std::size_t GetNumElements() const { return m_NumElements; }
 	std::size_t GetElementSize() const { return m_ElementSize; }
 
@@ -34,6 +35,6 @@ private:
 
 	std::size_t m_NumElements = 0;
 	std::size_t m_ElementSize = 0;
-	std::size_t m_AlignedBufferSize = 0;
+	std::size_t m_ByteSize = 0;
 
 };

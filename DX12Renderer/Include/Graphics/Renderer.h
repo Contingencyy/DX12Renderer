@@ -4,6 +4,7 @@
 #include "Camera.h"
 
 class CommandQueue;
+class SwapChain;
 class Model;
 
 class Renderer
@@ -18,13 +19,17 @@ public:
 		} Resolution;
 
 		bool VSync = true;
-		bool TearingSupported = false;
 	};
 
 	struct RenderStatistics
 	{
+		void Reset()
+		{
+			DrawCallCount = 0;
+			TriangleCount = 0;
+		}
+
 		uint32_t DrawCallCount = 0;
-		uint32_t QuadCount = 0;
 		uint32_t TriangleCount = 0;
 	};
 
@@ -37,7 +42,7 @@ public:
 
 	void BeginFrame(const Camera& camera);
 	void Render();
-	void GUIRender();
+	void ImGuiRender();
 	void EndFrame();
 
 	void DrawQuads(std::shared_ptr<Buffer> instanceBuffer, std::shared_ptr<Texture> texture, std::size_t numQuads);
@@ -53,13 +58,16 @@ public:
 	void ToggleVSync() { m_RenderSettings.VSync = !m_RenderSettings.VSync; }
 	bool IsVSyncEnabled() const { return m_RenderSettings.VSync; }
 
+	std::shared_ptr<SwapChain> GetSwapChain() const { return m_SwapChain; }
+	std::shared_ptr<CommandQueue> GetCommandQueueDirect() const { return m_CommandQueueDirect; }
+
+	ComPtr<IDXGIAdapter4> GetDXGIAdapter() const { return m_dxgiAdapter; }
 	ComPtr<ID3D12Device> GetD3D12Device() const { return m_d3d12Device; }
 
 	RenderSettings GetRenderSettings() const { return m_RenderSettings; }
 	RenderStatistics GetRenderStatistics() const { return m_RenderStatistics; }
 
 private:
-	void Present();
 	void Flush();
 
 	void EnableDebugLayer();
@@ -68,22 +76,14 @@ private:
 	void CreateDevice();
 
 	void CreateDescriptorHeap();
-	void CreateSwapChain(HWND hWnd);
-	void CreateDepthBuffer();
-
-	void CreateRootSignature();
-	void CreatePipelineState();
-
-	void ResizeBackBuffers();
-	void UpdateRenderTargetViews();
 
 private:
 	friend class GUI;
 
-	static const uint32_t s_BackBufferCount = 3;
-
 	ComPtr<IDXGIAdapter4> m_dxgiAdapter;
 	ComPtr<ID3D12Device2> m_d3d12Device;
+
+	std::shared_ptr<SwapChain> m_SwapChain;
 
 	ComPtr<ID3D12DescriptorHeap> m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 	uint32_t m_DescriptorOffsets[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
@@ -91,15 +91,6 @@ private:
 
 	std::shared_ptr<CommandQueue> m_CommandQueueDirect;
 	std::shared_ptr<CommandQueue> m_CommandQueueCopy;
-	uint64_t m_FenceValues[s_BackBufferCount] = {};
-
-	ComPtr<IDXGISwapChain4> m_dxgiSwapChain;
-	std::unique_ptr<Texture> m_BackBuffers[s_BackBufferCount];
-	std::unique_ptr<Texture> m_DepthBuffer;
-	uint32_t m_CurrentBackBufferIndex = 0;
-
-	ComPtr<ID3D12RootSignature> m_d3d12RootSignature;
-	ComPtr<ID3D12PipelineState> m_d3d12PipelineState;
 
 	D3D12_VIEWPORT m_Viewport = D3D12_VIEWPORT();
 	D3D12_RECT m_ScissorRect = D3D12_RECT();

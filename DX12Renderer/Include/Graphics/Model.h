@@ -12,6 +12,12 @@ public:
 
 	void Render();
 
+	ComPtr<ID3D12RootSignature> GetRootSignature() const { return m_d3d12RootSignature; }
+	ComPtr<ID3D12PipelineState> GetPipelineState() const { return m_d3d12PipelineState; }
+
+	std::shared_ptr<Buffer> GetBuffer(uint32_t index) const { return m_Buffers[index]; }
+	std::shared_ptr<Texture> GetTexture(uint32_t index) const { return m_Textures[index]; }
+
 private:
 	void CreateRootSignature();
 	void CreatePipelineState();
@@ -19,8 +25,6 @@ private:
 	void CreateTextures();
 
 private:
-	friend class Renderer;
-
 	tinygltf::Model m_TinyglTFModel;
 
 	ComPtr<ID3D12RootSignature> m_d3d12RootSignature;

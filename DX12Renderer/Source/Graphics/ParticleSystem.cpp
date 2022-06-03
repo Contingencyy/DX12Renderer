@@ -3,7 +3,7 @@
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
 #include "Application.h"
-#include "Renderer.h"
+#include "Graphics/Renderer.h"
 #include "ResourceLoader.h"
 
 ParticleSystem::ParticleSystem()
@@ -12,7 +12,7 @@ ParticleSystem::ParticleSystem()
 	m_ParticleInstanceData.reserve(1000);
 
 	m_QuadInstanceDataBuffer = std::make_shared<Buffer>(BufferDesc(), m_ParticlePool.size(), sizeof(ParticleInstanceData));
-	m_UploadBuffer = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadInstanceDataBuffer->GetAlignedSize());
+	m_UploadBuffer = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadInstanceDataBuffer->GetByteSize());
 	
 	/*ImageInfo imageInfo = ResourceLoader::LoadImage("Resources/Textures/kermit.jpg");
 	m_Texture = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE,

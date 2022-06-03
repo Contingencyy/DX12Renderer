@@ -1,17 +1,27 @@
 #include "Pch.h"
 #include "Application.h"
-#include "Renderer.h"
+#include "Graphics/Renderer.h"
 #include "Graphics/Buffer.h"
+
+Buffer::Buffer(const BufferDesc& bufferDesc, std::size_t numElements, std::size_t elementSize, const void* data)
+	: m_BufferDesc(bufferDesc), m_NumElements(numElements), m_ElementSize(elementSize)
+{
+	m_ByteSize = MathHelper::AlignUp(numElements * elementSize, elementSize);
+	Create();
+
+	Buffer uploadBuffer(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_ByteSize);
+	Application::Get().GetRenderer()->CopyBuffer(uploadBuffer, *this, data);
+}
 
 Buffer::Buffer(const BufferDesc& bufferDesc, std::size_t numElements, std::size_t elementSize)
 	: m_BufferDesc(bufferDesc), m_NumElements(numElements), m_ElementSize(elementSize)
 {
-	m_AlignedBufferSize = MathHelper::AlignUp(numElements * elementSize, elementSize);
+	m_ByteSize = MathHelper::AlignUp(numElements * elementSize, elementSize);
 	Create();
 }
 
 Buffer::Buffer(const BufferDesc& bufferDesc, std::size_t alignedSize)
-	: m_BufferDesc(bufferDesc), m_AlignedBufferSize(alignedSize)
+	: m_BufferDesc(bufferDesc), m_ByteSize(alignedSize)
 {
 	Create();
 }
@@ -25,7 +35,7 @@ Buffer::~Buffer()
 void Buffer::Create()
 {
 	auto renderer = Application::Get().GetRenderer();
-	renderer->CreateBuffer(*this, m_BufferDesc.Type, m_BufferDesc.InitialState, m_AlignedBufferSize);
+	renderer->CreateBuffer(*this, m_BufferDesc.Type, m_BufferDesc.InitialState, m_ByteSize);
 
 	if (m_BufferDesc.Type == D3D12_HEAP_TYPE_UPLOAD)
 	{

@@ -1,7 +1,7 @@
 #include "Pch.h"
 #include "Application.h"
 #include "Window.h"
-#include "Renderer.h"
+#include "Graphics/Renderer.h"
 #include "GUI.h"
 #include "Scene.h"
 #include "InputHandler.h"
@@ -130,8 +130,8 @@ void Application::Render()
 	m_Scene->Render();
 	m_Renderer->Render();
 
-	m_Renderer->GUIRender();
-	m_Scene->GUIRender();
+	m_Renderer->ImGuiRender();
+	m_Scene->ImGuiRender();
 
 	m_GUI->EndFrame();
 	m_Renderer->EndFrame();

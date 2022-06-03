@@ -1,7 +1,7 @@
 #include "Pch.h"
 #include "Window.h"
 #include "Application.h"
-#include "Renderer.h"
+#include "Graphics/Renderer.h"
 #include "InputHandler.h"
 
 RECT windowRect = RECT();

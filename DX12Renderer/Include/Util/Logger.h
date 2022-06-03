@@ -18,7 +18,7 @@ public:
 
 		std::string strMessage(message);
 		std::string fullMessage = SeverityToString(severity) + strMessage + "\n";
-
+		
 		printf(fullMessage.c_str());
 	}
 

@@ -27,7 +27,7 @@
     <ClCompile Include="Source\Window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Renderer.cpp">
+    <ClCompile Include="Source\Graphics\Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\Buffer.cpp">
@@ -93,6 +93,9 @@
     <ClCompile Include="Source\Graphics\Model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Graphics\SwapChain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Pch.h">
@@ -110,7 +113,7 @@
     <ClInclude Include="Include\Window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Renderer.h">
+    <ClInclude Include="Include\Graphics\Renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Util\Random.h">
@@ -176,11 +179,14 @@
     <ClInclude Include="Include\Graphics\Model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Graphics\SwapChain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Default_VS.hlsl" />
     <FxCompile Include="Resources\Shaders\Default_PS.hlsl" />
-    <FxCompile Include="Resources\Shaders\Particle_PS.hlsl" />
-    <FxCompile Include="Resources\Shaders\Particle_VS.hlsl" />
+    <FxCompile Include="Resources\Shaders\FlatColor_PS.hlsl" />
+    <FxCompile Include="Resources\Shaders\FlatColor_VS.hlsl" />
   </ItemGroup>
 </Project>

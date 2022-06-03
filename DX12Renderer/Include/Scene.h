@@ -12,7 +12,7 @@ public:
 
 	void Update(float deltaTime);
 	void Render();
-	void GUIRender();
+	void ImGuiRender();
 
 	Camera& GetActiveCamera() { return m_ActiveCamera; }
 

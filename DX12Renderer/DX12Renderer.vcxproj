@@ -195,6 +195,7 @@
     <ClCompile Include="Source\Graphics\Model.cpp" />
     <ClCompile Include="Source\Graphics\ParticleSystem.cpp" />
     <ClCompile Include="Source\Graphics\Shader.cpp" />
+    <ClCompile Include="Source\Graphics\SwapChain.cpp" />
     <ClCompile Include="Source\Graphics\Texture.cpp" />
     <ClCompile Include="Source\GUI.cpp" />
     <ClCompile Include="Source\InputHandler.cpp" />
@@ -203,7 +204,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Source\Renderer.cpp" />
+    <ClCompile Include="Source\Graphics\Renderer.cpp" />
     <ClCompile Include="Source\ResourceLoader.cpp" />
     <ClCompile Include="Source\Scene.cpp" />
     <ClCompile Include="Source\Util\Random.cpp" />
@@ -224,6 +225,7 @@
     <ClInclude Include="Include\Graphics\Model.h" />
     <ClInclude Include="Include\Graphics\ParticleSystem.h" />
     <ClInclude Include="Include\Graphics\Shader.h" />
+    <ClInclude Include="Include\Graphics\SwapChain.h" />
     <ClInclude Include="Include\Graphics\Texture.h" />
     <ClInclude Include="Include\GUI.h" />
     <ClInclude Include="Include\InputHandler.h" />
@@ -233,7 +235,7 @@
     <ClInclude Include="Include\Util\MathHelper.h" />
     <ClInclude Include="Include\Pch.h" />
     <ClInclude Include="Include\Util\Random.h" />
-    <ClInclude Include="Include\Renderer.h" />
+    <ClInclude Include="Include\Graphics\Renderer.h" />
     <ClInclude Include="Include\Util\StringHelper.h" />
     <ClInclude Include="Include\Util\Timer.h" />
     <ClInclude Include="Include\Window.h" />
@@ -260,7 +262,7 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">5.1</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
     </FxCompile>
-    <FxCompile Include="Resources\Shaders\Particle_PS.hlsl">
+    <FxCompile Include="Resources\Shaders\FlatColor_PS.hlsl">
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">5.1</ShaderModel>
@@ -270,7 +272,7 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Resources\Shaders\Particle_VS.hlsl">
+    <FxCompile Include="Resources\Shaders\FlatColor_VS.hlsl">
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">5.1</ShaderModel>

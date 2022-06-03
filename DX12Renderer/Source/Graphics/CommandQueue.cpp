@@ -2,7 +2,7 @@
 #include "Graphics/CommandQueue.h"
 #include "Graphics/CommandList.h"
 #include "Application.h"
-#include "Renderer.h"
+#include "Graphics/Renderer.h"
 
 CommandQueue::CommandQueue(D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_QUEUE_PRIORITY priority)
     : m_d3d12CommandListType(type)

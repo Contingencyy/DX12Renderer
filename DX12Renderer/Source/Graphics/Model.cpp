@@ -5,7 +5,7 @@
 #include "Graphics/Texture.h"
 #include "ResourceLoader.h"
 #include "Application.h"
-#include "Renderer.h"
+#include "Graphics/Renderer.h"
 
 Model::Model(const std::string& filepath)
 {
@@ -182,22 +182,29 @@ void Model::CreatePipelineState()
 
 void Model::CreateBuffers()
 {
-	m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON),
-		m_TinyglTFModel.accessors[1].count, m_TinyglTFModel.accessors[1].ByteStride(m_TinyglTFModel.bufferViews[1])));
-	Buffer uploadBuffer(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_Buffers[0]->GetAlignedSize());
+	// Load vertex attributes from glTF model
+	std::string attributeNames[] = { "POSITION", "TEXCOORD_0" };
 
-	unsigned char* dataPtr = &m_TinyglTFModel.buffers[0].data[0];
-	dataPtr += m_TinyglTFModel.bufferViews[1].byteOffset;
-	Application::Get().GetRenderer()->CopyBuffer(uploadBuffer, *m_Buffers[0], dataPtr);
+	for (const std::string& attributeName : attributeNames)
+	{
+		auto iter = m_TinyglTFModel.meshes[0].primitives[0].attributes.find(attributeName);
+		if (iter != m_TinyglTFModel.meshes[0].primitives[0].attributes.end())
+		{
+			uint32_t attributeIndex = iter->second;
+			auto& accessor = m_TinyglTFModel.accessors[attributeIndex];
+			auto& bufferView = m_TinyglTFModel.bufferViews[accessor.bufferView];
+			auto& buffer = m_TinyglTFModel.buffers[bufferView.buffer];
 
-	m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON),
-		m_TinyglTFModel.accessors[3].count, m_TinyglTFModel.accessors[3].ByteStride(m_TinyglTFModel.bufferViews[3])));
-	Buffer uploadBuffer2(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_Buffers[1]->GetAlignedSize());
+			unsigned char* dataPtr = &buffer.data[0] + bufferView.byteOffset;
+			m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(), accessor.count, accessor.ByteStride(bufferView), dataPtr));
+		}
+		else
+		{
+			ASSERT(false, "glTF model mesh does not contain attribute " + attributeName);
+		}
+	}
 
-	dataPtr = &m_TinyglTFModel.buffers[0].data[0];
-	dataPtr += m_TinyglTFModel.bufferViews[3].byteOffset;
-	Application::Get().GetRenderer()->CopyBuffer(uploadBuffer2, *m_Buffers[1], dataPtr);
-
+	// Make instance data buffer
 	struct InstanceData
 	{
 		glm::mat4 transform = glm::identity<glm::mat4>();
@@ -209,23 +216,25 @@ void Model::CreateBuffers()
 	instanceData.transform = glm::rotate(instanceData.transform, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	instanceData.transform = glm::rotate(instanceData.transform, glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
-	m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON), 1, 80));
-	Buffer uploadBuffer3(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_Buffers[2]->GetAlignedSize());
-	Application::Get().GetRenderer()->CopyBuffer(uploadBuffer3, *m_Buffers[2], &instanceData);
+	m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(), 1, 80, &instanceData));
 
-	m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON),
-		m_TinyglTFModel.accessors[0].count, m_TinyglTFModel.accessors[0].ByteStride(m_TinyglTFModel.bufferViews[0])));
-	Buffer uploadBuffer4(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_Buffers[3]->GetAlignedSize());
+	// Load indices from glTF model
+	uint32_t indiciesIndex = m_TinyglTFModel.meshes[0].primitives[0].indices;
+	auto& accessor = m_TinyglTFModel.accessors[indiciesIndex];
+	auto& bufferView = m_TinyglTFModel.bufferViews[accessor.bufferView];
+	auto& buffer = m_TinyglTFModel.buffers[bufferView.buffer];
 
-	dataPtr = &m_TinyglTFModel.buffers[0].data[0];
-	dataPtr += m_TinyglTFModel.bufferViews[0].byteOffset;
-	Application::Get().GetRenderer()->CopyBuffer(uploadBuffer4, *m_Buffers[3], dataPtr);
+	unsigned char* dataPtr = &m_TinyglTFModel.buffers[0].data[0] + bufferView.byteOffset;
+
+	m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(), accessor.count, accessor.ByteStride(bufferView), dataPtr));
 }
 
 void Model::CreateTextures()
 {
+	auto& material = m_TinyglTFModel.materials[0];
+	uint32_t albedoTextureIndex = material.pbrMetallicRoughness.baseColorTexture.index;
+	uint32_t imageIndex = m_TinyglTFModel.textures[albedoTextureIndex].source;
+
 	m_Textures.push_back(std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE,
-		m_TinyglTFModel.images[0].width, m_TinyglTFModel.images[0].height)));
-	Buffer uploadBuffer(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_Textures[0]->GetAlignedSize());
-	Application::Get().GetRenderer()->CopyTexture(uploadBuffer, *m_Textures[0], &m_TinyglTFModel.images[0].image[0]);
+		m_TinyglTFModel.images[imageIndex].width, m_TinyglTFModel.images[imageIndex].height), &m_TinyglTFModel.images[imageIndex].image[0]));
 }
