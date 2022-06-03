@@ -24,6 +24,7 @@ public:
 	void SetVertexBuffers(uint32_t slot, uint32_t numViews, const Buffer& vertexBuffer);
 	void SetIndexBuffer(const Buffer& indexBuffer);
 	
+	void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex = 0, uint32_t startInstance = 0);
 	void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0);
 
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);

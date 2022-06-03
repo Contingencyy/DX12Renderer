@@ -6,6 +6,7 @@
 #include "Graphics/CommandList.h"
 #include "Graphics/Buffer.h"
 #include "Graphics/Shader.h"
+#include "Graphics/Model.h"
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
@@ -112,7 +113,7 @@ void Renderer::Render()
     commandList->SetScissorRects(1, &m_ScissorRect);
     commandList->SetRenderTargets(1, &rtv, &dsv);
 
-    commandList->SetPipelineState(m_d3d12PipelineState.Get());
+    /*commandList->SetPipelineState(m_d3d12PipelineState.Get());
     commandList->SetRootSignature(m_d3d12RootSignature.Get());
     commandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -133,6 +134,29 @@ void Renderer::Render()
 
         m_RenderStatistics.DrawCallCount++;
         m_RenderStatistics.QuadCount += data.NumQuads;
+    }*/
+
+    for (auto& model : m_ModelDrawData)
+    {
+        commandList->SetPipelineState(model->m_d3d12PipelineState.Get());
+        commandList->SetRootSignature(model->m_d3d12RootSignature.Get());
+        commandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        glm::mat4 viewProjection = m_SceneData.Camera.GetViewProjection();
+        commandList->SetRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
+
+        commandList->SetVertexBuffers(0, 1, *model->m_Buffers[0].get());
+        commandList->SetVertexBuffers(1, 1, *model->m_Buffers[1].get());
+        commandList->SetVertexBuffers(2, 1, *model->m_Buffers[2].get());
+        commandList->SetIndexBuffer(*model->m_Buffers[3].get());
+
+        commandList->SetDescriptorHeap(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].Get());
+        commandList->SetShaderResourceView(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].Get(), model->m_Textures[0]->GetDescriptorHandle());
+
+        commandList->DrawIndexed(model->m_Buffers[3]->GetNumElements(), 1);
+
+        m_RenderStatistics.DrawCallCount++;
+        m_RenderStatistics.TriangleCount += model->m_Buffers[0]->GetNumElements();
     }
 
     m_CommandQueueDirect->ExecuteCommandList(commandList);
@@ -150,6 +174,7 @@ void Renderer::GUIRender()
     ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / lastFrameDuration));
     ImGui::Text("Draw calls: %u", m_RenderStatistics.DrawCallCount);
     ImGui::Text("Quad count: %u", m_RenderStatistics.QuadCount);
+    ImGui::Text("Triangle count: %u", m_RenderStatistics.TriangleCount);
 
     ImGui::End();
 }
@@ -159,14 +184,21 @@ void Renderer::EndFrame()
     Present();
 
     m_QuadDrawData.clear();
+    m_ModelDrawData.clear();
 
     m_RenderStatistics.DrawCallCount = 0;
     m_RenderStatistics.QuadCount = 0;
+    m_RenderStatistics.TriangleCount = 0;
 }
 
 void Renderer::DrawQuads(std::shared_ptr<Buffer> instanceBuffer, std::shared_ptr<Texture> texture, std::size_t numQuads)
 {
     m_QuadDrawData.push_back({ instanceBuffer, texture, numQuads });
+}
+
+void Renderer::DrawModel(Model* model)
+{
+    m_ModelDrawData.push_back(model);
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)
@@ -215,7 +247,7 @@ void Renderer::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const 
     m_CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
 
-void Renderer::CreateTexture(Texture& texture, const D3D12_RESOURCE_DESC& textureDesc, D3D12_RESOURCE_STATES initialState, std::size_t size, const D3D12_CLEAR_VALUE* clearValue)
+void Renderer::CreateTexture(Texture& texture, const D3D12_RESOURCE_DESC& textureDesc, D3D12_RESOURCE_STATES initialState, const D3D12_CLEAR_VALUE* clearValue)
 {
     CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
 

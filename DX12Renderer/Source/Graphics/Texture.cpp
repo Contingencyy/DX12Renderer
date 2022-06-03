@@ -66,18 +66,18 @@ void Texture::Create()
 	d3d12ResourceDesc.Format = m_TextureDesc.Format;
 	d3d12ResourceDesc.Flags = m_TextureDesc.Flags;
 
-	m_AlignedBufferSize = MathHelper::AlignUp(static_cast<std::size_t>(m_TextureDesc.Width * m_TextureDesc.Height * 4), 4);
-
 	if (m_TextureDesc.Flags == D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
 	{
 		D3D12_CLEAR_VALUE clearValue = {};
 		clearValue.Format = m_TextureDesc.Format;
 		clearValue.DepthStencil = { 1.0f, 0 };
 
-		Application::Get().GetRenderer()->CreateTexture(*this, d3d12ResourceDesc, m_TextureDesc.InitialState, m_AlignedBufferSize, &clearValue);
+		Application::Get().GetRenderer()->CreateTexture(*this, d3d12ResourceDesc, m_TextureDesc.InitialState, &clearValue);
 	}
 	else
 	{
-		Application::Get().GetRenderer()->CreateTexture(*this, d3d12ResourceDesc, m_TextureDesc.InitialState, m_AlignedBufferSize);
+		Application::Get().GetRenderer()->CreateTexture(*this, d3d12ResourceDesc, m_TextureDesc.InitialState);
 	}
+
+	m_AlignedBufferSize = GetRequiredIntermediateSize(m_d3d12Resource.Get(), 0, 1);
 }

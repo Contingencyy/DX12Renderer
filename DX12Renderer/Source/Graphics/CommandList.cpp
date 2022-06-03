@@ -92,6 +92,11 @@ void CommandList::SetIndexBuffer(const Buffer& indexBuffer)
 	m_d3d12CommandList->IASetIndexBuffer(&ibView);
 }
 
+void CommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance)
+{
+	m_d3d12CommandList->DrawInstanced(vertexCount, instanceCount, startVertex, startInstance);
+}
+
 void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex, int32_t baseVertex, uint32_t startInstance)
 {
 	m_d3d12CommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndex, baseVertex, startInstance);

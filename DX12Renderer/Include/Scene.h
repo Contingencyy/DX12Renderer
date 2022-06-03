@@ -2,6 +2,8 @@
 #include "Graphics/ParticleSystem.h"
 #include "Camera.h"
 
+class Model;
+
 class Scene
 {
 public:
@@ -16,6 +18,7 @@ public:
 
 private:
 	Camera m_ActiveCamera;
+	std::unique_ptr<Model> m_Model;
 
 	ParticleSystem m_ParticleSystem;
 	ParticleProps m_ParticleProps;

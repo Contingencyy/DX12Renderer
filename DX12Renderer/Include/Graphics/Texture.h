@@ -23,6 +23,7 @@ public:
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle();
 
 	TextureDesc GetTextureDesc() const { return m_TextureDesc; }
+	std::size_t GetAlignedSize() const { return m_AlignedBufferSize; }
 
 	ComPtr<ID3D12Resource> GetD3D12Resource() const { return m_d3d12Resource; }
 	void SetD3D12Resource(ComPtr<ID3D12Resource> resource) { m_d3d12Resource = resource; }

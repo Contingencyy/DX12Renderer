@@ -2,6 +2,7 @@
 #include "Scene.h"
 #include "Application.h"
 #include "Renderer.h"
+#include "Graphics/Model.h"
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
@@ -21,6 +22,8 @@ Scene::Scene()
 	m_ParticleProps.Velocity = { 0.0f, 1.0f };
 	m_ParticleProps.VelocityVariation = { 0.2f, 0.2f };
 	m_ParticleProps.Position = { 0.0f, 0.0f };
+
+	m_Model = std::make_unique<Model>("Resources/Models/DamagedHelmet/DamagedHelmet.gltf");
 }
 
 Scene::~Scene()
@@ -42,6 +45,7 @@ void Scene::Update(float deltaTime)
 void Scene::Render()
 {
 	m_ParticleSystem.Render();
+	m_Model->Render();
 }
 
 void Scene::GUIRender()

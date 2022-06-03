@@ -90,6 +90,9 @@
     <ClCompile Include="Source\ResourceLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Graphics\Model.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Pch.h">
@@ -170,11 +173,14 @@
     <ClInclude Include="Include\Util\StringHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Graphics\Model.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Default_VS.hlsl" />
     <FxCompile Include="Resources\Shaders\Default_PS.hlsl" />
-    <FxCompile Include="Resources\Shaders\Particle_VS.hlsl" />
     <FxCompile Include="Resources\Shaders\Particle_PS.hlsl" />
+    <FxCompile Include="Resources\Shaders\Particle_VS.hlsl" />
   </ItemGroup>
 </Project>

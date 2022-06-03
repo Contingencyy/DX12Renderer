@@ -4,6 +4,7 @@
 #include "Camera.h"
 
 class CommandQueue;
+class Model;
 
 class Renderer
 {
@@ -24,6 +25,7 @@ public:
 	{
 		uint32_t DrawCallCount = 0;
 		uint32_t QuadCount = 0;
+		uint32_t TriangleCount = 0;
 	};
 
 public:
@@ -39,11 +41,12 @@ public:
 	void EndFrame();
 
 	void DrawQuads(std::shared_ptr<Buffer> instanceBuffer, std::shared_ptr<Texture> texture, std::size_t numQuads);
+	void DrawModel(Model* model);
 	void Resize(uint32_t width, uint32_t height);
 
 	void CreateBuffer(Buffer& buffer, D3D12_HEAP_TYPE bufferType, D3D12_RESOURCE_STATES initialState, std::size_t size);
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
-	void CreateTexture(Texture& texture, const D3D12_RESOURCE_DESC& textureDesc, D3D12_RESOURCE_STATES initialState, std::size_t size, const D3D12_CLEAR_VALUE* clearValue = nullptr);
+	void CreateTexture(Texture& texture, const D3D12_RESOURCE_DESC& textureDesc, D3D12_RESOURCE_STATES initialState, const D3D12_CLEAR_VALUE* clearValue = nullptr);
 	void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
 	D3D12_CPU_DESCRIPTOR_HANDLE AllocateDescriptors(uint32_t numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type);
 
@@ -115,6 +118,7 @@ private:
 	};
 
 	std::vector<QuadDrawData> m_QuadDrawData;
+	std::vector<Model*> m_ModelDrawData;
 
 	struct SceneData
 	{
