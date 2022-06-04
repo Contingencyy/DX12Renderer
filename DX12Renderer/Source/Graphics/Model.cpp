@@ -15,8 +15,8 @@ Model::Model(const std::string& filepath)
 	CreateRootSignature();
 	CreatePipelineState();
 
-	CreateBuffers(glTFModel);
-	CreateTextures(glTFModel);
+	CreateBuffers(&glTFModel);
+	CreateTextures(&glTFModel);
 }
 
 Model::~Model()
@@ -61,12 +61,7 @@ void Model::CreateRootSignature()
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
 	rootSignatureDesc.Init_1_1(_countof(rootParameters), &rootParameters[0], _countof(staticSamplers), &staticSamplers[0], rootSignatureFlags);
 
-	ComPtr<ID3DBlob> serializedRootSig;
-	ComPtr<ID3DBlob> errorBlob;
-	DX_CALL(D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &serializedRootSig, &errorBlob));
-
-	DX_CALL(Application::Get().GetRenderer()->GetDevice()->GetD3D12Device()->CreateRootSignature(0, serializedRootSig->GetBufferPointer(),
-		serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&m_d3d12RootSignature)));
+	Application::Get().GetRenderer()->GetDevice()->CreateRootSignature(rootSignatureDesc, m_d3d12RootSignature);
 }
 
 void Model::CreatePipelineState()
@@ -124,23 +119,23 @@ void Model::CreatePipelineState()
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.pRootSignature = m_d3d12RootSignature.Get();
 
-	DX_CALL(Application::Get().GetRenderer()->GetDevice()->GetD3D12Device()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_d3d12PipelineState)));
+	Application::Get().GetRenderer()->GetDevice()->CreatePipelineState(psoDesc, m_d3d12PipelineState);
 }
 
-void Model::CreateBuffers(tinygltf::Model glTFModel)
+void Model::CreateBuffers(tinygltf::Model* glTFModel)
 {
 	// Load vertex attributes from glTF model
 	std::string attributeNames[] = { "POSITION", "TEXCOORD_0" };
 
 	for (const std::string& attributeName : attributeNames)
 	{
-		auto iter = glTFModel.meshes[0].primitives[0].attributes.find(attributeName);
-		if (iter != glTFModel.meshes[0].primitives[0].attributes.end())
+		auto iter = glTFModel->meshes[0].primitives[0].attributes.find(attributeName);
+		if (iter != glTFModel->meshes[0].primitives[0].attributes.end())
 		{
 			uint32_t attributeIndex = iter->second;
-			auto& accessor = glTFModel.accessors[attributeIndex];
-			auto& bufferView = glTFModel.bufferViews[accessor.bufferView];
-			auto& buffer = glTFModel.buffers[bufferView.buffer];
+			auto& accessor = glTFModel->accessors[attributeIndex];
+			auto& bufferView = glTFModel->bufferViews[accessor.bufferView];
+			auto& buffer = glTFModel->buffers[bufferView.buffer];
 
 			unsigned char* dataPtr = &buffer.data[0] + bufferView.byteOffset;
 			m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(), accessor.count, accessor.ByteStride(bufferView), dataPtr));
@@ -166,22 +161,22 @@ void Model::CreateBuffers(tinygltf::Model glTFModel)
 	m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(), 1, 80, &instanceData));
 
 	// Load indices from glTF model
-	uint32_t indiciesIndex = glTFModel.meshes[0].primitives[0].indices;
-	auto& accessor = glTFModel.accessors[indiciesIndex];
-	auto& bufferView = glTFModel.bufferViews[accessor.bufferView];
-	auto& buffer = glTFModel.buffers[bufferView.buffer];
+	uint32_t indiciesIndex = glTFModel->meshes[0].primitives[0].indices;
+	auto& accessor = glTFModel->accessors[indiciesIndex];
+	auto& bufferView = glTFModel->bufferViews[accessor.bufferView];
+	auto& buffer = glTFModel->buffers[bufferView.buffer];
 
-	unsigned char* dataPtr = &glTFModel.buffers[0].data[0] + bufferView.byteOffset;
+	unsigned char* dataPtr = &glTFModel->buffers[0].data[0] + bufferView.byteOffset;
 
 	m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(), accessor.count, accessor.ByteStride(bufferView), dataPtr));
 }
 
-void Model::CreateTextures(tinygltf::Model glTFModel)
+void Model::CreateTextures(tinygltf::Model* glTFModel)
 {
-	auto& material = glTFModel.materials[0];
+	auto& material = glTFModel->materials[0];
 	uint32_t albedoTextureIndex = material.pbrMetallicRoughness.baseColorTexture.index;
-	uint32_t imageIndex = glTFModel.textures[albedoTextureIndex].source;
+	uint32_t imageIndex = glTFModel->textures[albedoTextureIndex].source;
 
 	m_Textures.push_back(std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE,
-		glTFModel.images[imageIndex].width, glTFModel.images[imageIndex].height), &glTFModel.images[imageIndex].image[0]));
+		glTFModel->images[imageIndex].width, glTFModel->images[imageIndex].height), &glTFModel->images[imageIndex].image[0]));
 }

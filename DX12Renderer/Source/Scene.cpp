@@ -4,9 +4,9 @@
 #include "Graphics/Renderer.h"
 #include "Graphics/Model.h"
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_win32.h"
-#include "imgui/imgui_impl_dx12.h"
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_win32.h>
+#include <imgui/imgui_impl_dx12.h>
 
 Scene::Scene()
 {
@@ -24,6 +24,7 @@ Scene::Scene()
 	m_ParticleProps.Position = { 0.0f, 0.0f };*/
 
 	m_Model = std::make_unique<Model>("Resources/Models/DamagedHelmet/DamagedHelmet.gltf");
+	//m_Model = std::make_unique<Model>("Resources/Models/SpaceStation/SS.gltf");
 }
 
 Scene::~Scene()

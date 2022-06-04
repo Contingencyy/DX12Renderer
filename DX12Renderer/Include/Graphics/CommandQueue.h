@@ -18,6 +18,9 @@ public:
 
 	void Flush();
 
+	void SetD3D12CommandQueue(ComPtr<ID3D12CommandQueue> d3d12CommandQueue) { m_d3d12CommandQueue = d3d12CommandQueue; }
+	void SetD3D12Fence(ComPtr<ID3D12Fence> d3d12Fence) { m_d3d12Fence = d3d12Fence; }
+
 	ComPtr<ID3D12CommandQueue> GetD3D12CommandQueue() const { return m_d3d12CommandQueue; }
 
 private:

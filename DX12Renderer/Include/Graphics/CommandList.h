@@ -37,6 +37,10 @@ public:
 	void Close();
 	void Reset();
 
+	void SetD3D12CommandAllocator(ComPtr<ID3D12CommandAllocator> d3d12CommandAllocator) { m_d3d12CommandAllocator = d3d12CommandAllocator; }
+	void SetD3D12CommandList(ComPtr<ID3D12GraphicsCommandList2> d3d12CommandList) { m_d3d12CommandList = d3d12CommandList; }
+
+	D3D12_COMMAND_LIST_TYPE GetCommandListType() const { return m_d3d12CommandListType; }
 	ComPtr<ID3D12GraphicsCommandList2> GetGraphicsCommandList() const { return m_d3d12CommandList; }
 
 private:

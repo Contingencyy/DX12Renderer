@@ -77,8 +77,8 @@ private:
 	std::shared_ptr<SwapChain> m_SwapChain;
 
 	ComPtr<ID3D12DescriptorHeap> m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
-	uint32_t m_DescriptorOffsets[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
-	uint32_t m_DescriptorSize[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+	uint32_t m_DescriptorOffsets[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {};
+	uint32_t m_DescriptorSize[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {};
 
 	D3D12_VIEWPORT m_Viewport = D3D12_VIEWPORT();
 	D3D12_RECT m_ScissorRect = D3D12_RECT();

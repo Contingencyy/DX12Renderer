@@ -13,6 +13,49 @@ Device::~Device()
 {
 }
 
+void Device::CreateCommandQueue(CommandQueue& commandQueue, const D3D12_COMMAND_QUEUE_DESC& queueDesc)
+{
+    ComPtr<ID3D12CommandQueue> d3d12CommandQueue;
+    DX_CALL(m_d3d12Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&d3d12CommandQueue)));
+    commandQueue.SetD3D12CommandQueue(d3d12CommandQueue);
+
+    ComPtr<ID3D12Fence> d3d12Fence;
+    DX_CALL(m_d3d12Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&d3d12Fence)));
+    commandQueue.SetD3D12Fence(d3d12Fence);
+}
+
+void Device::CreateCommandList(CommandList& commandList)
+{
+    ComPtr<ID3D12CommandAllocator> d3d12Allocator;
+    DX_CALL(m_d3d12Device->CreateCommandAllocator(commandList.GetCommandListType(), IID_PPV_ARGS(&d3d12Allocator)));
+
+    ComPtr<ID3D12GraphicsCommandList2> d3d12CommandList;
+    DX_CALL(m_d3d12Device->CreateCommandList(0, commandList.GetCommandListType(), d3d12Allocator.Get(), nullptr, IID_PPV_ARGS(&d3d12CommandList)));
+
+    commandList.SetD3D12CommandAllocator(d3d12Allocator);
+    commandList.SetD3D12CommandList(d3d12CommandList);
+}
+
+void Device::CreateDescriptorHeap(const D3D12_DESCRIPTOR_HEAP_DESC& heapDesc, ComPtr<ID3D12DescriptorHeap>& heap)
+{
+    DX_CALL(m_d3d12Device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&heap)));
+}
+
+void Device::CreatePipelineState(const D3D12_GRAPHICS_PIPELINE_STATE_DESC& pipelineStateDesc, ComPtr<ID3D12PipelineState>& pipelineState)
+{
+    DX_CALL(m_d3d12Device->CreateGraphicsPipelineState(&pipelineStateDesc, IID_PPV_ARGS(&pipelineState)));
+}
+
+void Device::CreateRootSignature(const CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC& rootSignatureDesc, ComPtr<ID3D12RootSignature>& rootSignature)
+{
+    ComPtr<ID3DBlob> serializedRootSig;
+    ComPtr<ID3DBlob> errorBlob;
+    DX_CALL(D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &serializedRootSig, &errorBlob));
+
+    DX_CALL(m_d3d12Device->CreateRootSignature(0, serializedRootSig->GetBufferPointer(),
+        serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
+}
+
 void Device::CreateBuffer(Buffer& buffer, D3D12_HEAP_TYPE bufferType, D3D12_RESOURCE_STATES initialState, std::size_t size)
 {
     CD3DX12_HEAP_PROPERTIES heapProps(bufferType);
@@ -61,6 +104,11 @@ void Device::CreateDepthStencilView(Texture& texture, const D3D12_DEPTH_STENCIL_
 void Device::CreateShaderResourceView(Texture& texture, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor)
 {
     m_d3d12Device->CreateShaderResourceView(texture.GetD3D12Resource().Get(), &srvDesc, descriptor);
+}
+
+uint32_t Device::GetDescriptorIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type)
+{
+    return m_d3d12Device->GetDescriptorHandleIncrementSize(type);
 }
 
 void Device::EnableDebugLayer()

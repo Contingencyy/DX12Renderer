@@ -56,13 +56,8 @@ void Renderer::Initialize(uint32_t width, uint32_t height)
     m_SwapChain = std::make_shared<SwapChain>(Application::Get().GetWindow()->GetHandle(), width, height);
     CreateDescriptorHeap();
 
-    m_QuadVertexBuffer = std::make_unique<Buffer>(BufferDesc(), QuadVertices.size(), sizeof(QuadVertices[0]));
-    Buffer quadVBUploadBuffer(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadVertexBuffer->GetByteSize());
-    Application::Get().GetRenderer()->CopyBuffer(quadVBUploadBuffer, *m_QuadVertexBuffer.get(), &QuadVertices[0]);
-
-    m_QuadIndexBuffer = std::make_unique<Buffer>(BufferDesc(), QuadIndices.size(), sizeof(QuadIndices[0]));
-    Buffer quadIBUploadBuffer(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadIndexBuffer->GetByteSize());
-    Application::Get().GetRenderer()->CopyBuffer(quadIBUploadBuffer, *m_QuadIndexBuffer.get(), &QuadIndices[0]);
+    m_QuadVertexBuffer = std::make_unique<Buffer>(BufferDesc(), QuadVertices.size(), sizeof(QuadVertices[0]), &QuadVertices[0]);
+    m_QuadIndexBuffer = std::make_unique<Buffer>(BufferDesc(), QuadIndices.size(), sizeof(QuadIndices[0]), &QuadIndices[0]);
 }
 
 void Renderer::Finalize()
@@ -228,8 +223,8 @@ void Renderer::CreateDescriptorHeap()
         if (i == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
             heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
-        DX_CALL(m_Device->GetD3D12Device()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_d3d12DescriptorHeap[i])));
-        m_DescriptorSize[i] = m_Device->GetD3D12Device()->GetDescriptorHandleIncrementSize(heapDesc.Type);
+        m_Device->CreateDescriptorHeap(heapDesc, m_d3d12DescriptorHeap[i]);
+        m_DescriptorSize[i] = m_Device->GetDescriptorIncrementSize(heapDesc.Type);
 
         m_DescriptorOffsets[i] = 0;
     }
