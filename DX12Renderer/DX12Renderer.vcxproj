@@ -192,6 +192,7 @@
     <ClCompile Include="Source\Graphics\Buffer.cpp" />
     <ClCompile Include="Source\Graphics\CommandList.cpp" />
     <ClCompile Include="Source\Graphics\CommandQueue.cpp" />
+    <ClCompile Include="Source\Graphics\Device.cpp" />
     <ClCompile Include="Source\Graphics\Model.cpp" />
     <ClCompile Include="Source\Graphics\ParticleSystem.cpp" />
     <ClCompile Include="Source\Graphics\Shader.cpp" />
@@ -208,7 +209,6 @@
     <ClCompile Include="Source\ResourceLoader.cpp" />
     <ClCompile Include="Source\Scene.cpp" />
     <ClCompile Include="Source\Util\Random.cpp" />
-    <ClCompile Include="Source\Util\Timer.cpp" />
     <ClCompile Include="Source\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -222,6 +222,7 @@
     <ClInclude Include="Include\Graphics\Buffer.h" />
     <ClInclude Include="Include\Graphics\CommandList.h" />
     <ClInclude Include="Include\Graphics\CommandQueue.h" />
+    <ClInclude Include="Include\Graphics\Device.h" />
     <ClInclude Include="Include\Graphics\Model.h" />
     <ClInclude Include="Include\Graphics\ParticleSystem.h" />
     <ClInclude Include="Include\Graphics\Shader.h" />
@@ -237,7 +238,7 @@
     <ClInclude Include="Include\Util\Random.h" />
     <ClInclude Include="Include\Graphics\Renderer.h" />
     <ClInclude Include="Include\Util\StringHelper.h" />
-    <ClInclude Include="Include\Util\Timer.h" />
+    <ClInclude Include="Include\Util\Profiler.h" />
     <ClInclude Include="Include\Window.h" />
     <ClInclude Include="Include\WinIncludes.h" />
   </ItemGroup>

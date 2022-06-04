@@ -3,11 +3,12 @@
 #include "Graphics/Buffer.h"
 #include "Application.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/Device.h"
 
 CommandList::CommandList(D3D12_COMMAND_LIST_TYPE type)
 	: m_d3d12CommandListType(type)
 {
-	auto d3d12Device = Application::Get().GetRenderer()->GetD3D12Device();
+	auto d3d12Device = Application::Get().GetRenderer()->GetDevice()->GetD3D12Device();
 
 	DX_CALL(d3d12Device->CreateCommandAllocator(m_d3d12CommandListType, IID_PPV_ARGS(&m_d3d12CommandAllocator)));
 	DX_CALL(d3d12Device->CreateCommandList(0, m_d3d12CommandListType, m_d3d12CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_d3d12CommandList)));

@@ -2,6 +2,7 @@
 #include "GUI.h"
 #include "Application.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/Device.h"
 #include "Graphics/CommandQueue.h"
 #include "Graphics/CommandList.h"
 #include "Graphics/SwapChain.h"
@@ -46,13 +47,13 @@ void GUI::Initialize(HWND hWnd)
 	heapDesc.NodeMask = 0;
 
 	auto renderer = Application::Get().GetRenderer();
-	DX_CALL(renderer->m_d3d12Device->CreateDescriptorHeap(
+	DX_CALL(renderer->m_Device->GetD3D12Device()->CreateDescriptorHeap(
 		&heapDesc, IID_PPV_ARGS(&m_d3d12DescriptorHeap)
 	));
 
 	ImGui_ImplWin32_Init(hWnd);
 	ImGui_ImplDX12_Init(
-		renderer->m_d3d12Device.Get(), renderer->GetSwapChain()->GetBackBufferCount(),
+		renderer->m_Device->GetD3D12Device().Get(), renderer->GetSwapChain()->GetBackBufferCount(),
 		DXGI_FORMAT_R8G8B8A8_UNORM, m_d3d12DescriptorHeap.Get(),
 		m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
 		m_d3d12DescriptorHeap->GetGPUDescriptorHandleForHeapStart()

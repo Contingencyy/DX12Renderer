@@ -6,6 +6,10 @@
 #include "Scene.h"
 #include "InputHandler.h"
 
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_win32.h>
+#include <imgui/imgui_impl_dx12.h>
+
 static Application* s_Instance = nullptr;
 
 void Application::Create()
@@ -78,7 +82,7 @@ void Application::Run()
 
 	while (!m_Window->ShouldClose())
 	{
-		Timer timer;
+		SCOPED_TIMER("Application::Run");
 
 		current = std::chrono::high_resolution_clock::now();
 		deltaTime = current - last;
@@ -88,7 +92,6 @@ void Application::Run()
 		Render();
 		
 		last = current;
-		m_LastFrameTime = timer.Elapsed();
 	}
 }
 
@@ -130,8 +133,36 @@ void Application::Render()
 	m_Scene->Render();
 	m_Renderer->Render();
 
-	m_Renderer->ImGuiRender();
 	m_Scene->ImGuiRender();
+	m_Renderer->ImGuiRender();
+
+	// Profiler
+	{
+		ImGui::Begin("Profiler");
+
+		auto& timerResults = Profiler::Get().GetTimerResults();
+		auto appTimer = std::find_if(timerResults.begin(), timerResults.end(), [](const TimerResult& timerResult) {
+			return timerResult.Name == "Application::Run";
+		});
+
+		if (appTimer != timerResults.end())
+		{
+			ImGui::Text("Frametime: %.3f ms", appTimer->Duration);
+			ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / (appTimer->Duration)));
+		}
+
+		for (auto& timerResult : timerResults)
+		{
+			char buf[50];
+			strcpy_s(buf, timerResult.Name);
+			strcat_s(buf, ": %.3fms");
+
+			ImGui::Text(buf, timerResult.Duration);
+		}
+
+		ImGui::End();
+		Profiler::Get().Reset();
+	}
 
 	m_GUI->EndFrame();
 	m_Renderer->EndFrame();

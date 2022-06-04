@@ -3,6 +3,7 @@
 #include "Graphics/CommandList.h"
 #include "Application.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/Device.h"
 
 CommandQueue::CommandQueue(D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_QUEUE_PRIORITY priority)
     : m_d3d12CommandListType(type)
@@ -13,7 +14,7 @@ CommandQueue::CommandQueue(D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_QUEUE_PRI
     queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     queueDesc.NodeMask = 0;
 
-    auto d3d12Device = Application::Get().GetRenderer()->GetD3D12Device();
+    auto d3d12Device = Application::Get().GetRenderer()->GetDevice()->GetD3D12Device();
 
     DX_CALL(d3d12Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_d3d12CommandQueue)));
     DX_CALL(d3d12Device->CreateFence(m_FenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_d3d12Fence)));

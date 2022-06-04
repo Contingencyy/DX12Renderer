@@ -5,6 +5,7 @@
 
 class CommandQueue;
 class SwapChain;
+class Device;
 class Model;
 
 class Renderer
@@ -49,9 +50,7 @@ public:
 	void DrawModel(Model* model);
 	void Resize(uint32_t width, uint32_t height);
 
-	void CreateBuffer(Buffer& buffer, D3D12_HEAP_TYPE bufferType, D3D12_RESOURCE_STATES initialState, std::size_t size);
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
-	void CreateTexture(Texture& texture, const D3D12_RESOURCE_DESC& textureDesc, D3D12_RESOURCE_STATES initialState, const D3D12_CLEAR_VALUE* clearValue = nullptr);
 	void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
 	D3D12_CPU_DESCRIPTOR_HANDLE AllocateDescriptors(uint32_t numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type);
 
@@ -60,37 +59,26 @@ public:
 
 	std::shared_ptr<SwapChain> GetSwapChain() const { return m_SwapChain; }
 	std::shared_ptr<CommandQueue> GetCommandQueueDirect() const { return m_CommandQueueDirect; }
-
-	ComPtr<IDXGIAdapter4> GetDXGIAdapter() const { return m_dxgiAdapter; }
-	ComPtr<ID3D12Device> GetD3D12Device() const { return m_d3d12Device; }
+	std::shared_ptr<Device> GetDevice() const { return m_Device; }
 
 	RenderSettings GetRenderSettings() const { return m_RenderSettings; }
 	RenderStatistics GetRenderStatistics() const { return m_RenderStatistics; }
 
 private:
 	void Flush();
-
-	void EnableDebugLayer();
-
-	void CreateAdapter();
-	void CreateDevice();
-
 	void CreateDescriptorHeap();
 
 private:
 	friend class GUI;
 
-	ComPtr<IDXGIAdapter4> m_dxgiAdapter;
-	ComPtr<ID3D12Device2> m_d3d12Device;
-
+	std::shared_ptr<Device> m_Device;
+	std::shared_ptr<CommandQueue> m_CommandQueueDirect;
+	std::shared_ptr<CommandQueue> m_CommandQueueCopy;
 	std::shared_ptr<SwapChain> m_SwapChain;
 
 	ComPtr<ID3D12DescriptorHeap> m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 	uint32_t m_DescriptorOffsets[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 	uint32_t m_DescriptorSize[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
-
-	std::shared_ptr<CommandQueue> m_CommandQueueDirect;
-	std::shared_ptr<CommandQueue> m_CommandQueueCopy;
 
 	D3D12_VIEWPORT m_Viewport = D3D12_VIEWPORT();
 	D3D12_RECT m_ScissorRect = D3D12_RECT();

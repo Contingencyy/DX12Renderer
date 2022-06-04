@@ -11,6 +11,8 @@
 #include <string>
 #include <queue>
 #include <unordered_map>
+#include <algorithm>
+#include <functional>
 
 /*
 
@@ -18,7 +20,7 @@
 
 */
 #include "WinIncludes.h"
-#define DX_CALL(x) if (x != S_OK) throw std::exception()
+#define DX_CALL(hr) if (hr != S_OK) throw std::exception()
 
 /*
 
@@ -44,5 +46,5 @@
 #include "Util/MathHelper.h"
 #include "Util/Random.h"
 #include "Util/Logger.h"
-#include "Util/Timer.h"
+#include "Util/Profiler.h"
 #include "Util/StringHelper.h"

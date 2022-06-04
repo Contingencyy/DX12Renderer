@@ -21,12 +21,11 @@ public:
 private:
 	void CreateRootSignature();
 	void CreatePipelineState();
-	void CreateBuffers();
-	void CreateTextures();
+
+	void CreateBuffers(tinygltf::Model glTFModel);
+	void CreateTextures(tinygltf::Model glTFModel);
 
 private:
-	tinygltf::Model m_TinyglTFModel;
-
 	ComPtr<ID3D12RootSignature> m_d3d12RootSignature;
 	ComPtr<ID3D12PipelineState> m_d3d12PipelineState;
 

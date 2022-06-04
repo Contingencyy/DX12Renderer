@@ -16,9 +16,9 @@ public:
 	uint32_t GetBackBufferCount() const { return s_BackBufferCount; }
 
 private:
-	void CreateDepthBuffer(uint32_t width, uint32_t height);
+	void CreateBackBufferTextures();
+	void CreateDepthBufferTexture(uint32_t width, uint32_t height);
 	void ResizeBackBuffers(uint32_t width, uint32_t height);
-	void UpdateRenderTargetViews();
 
 private:
 	static const uint32_t s_BackBufferCount = 3;

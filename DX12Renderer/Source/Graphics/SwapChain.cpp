@@ -3,6 +3,7 @@
 #include "Graphics/Texture.h"
 #include "Application.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/Device.h"
 #include "Graphics/CommandQueue.h"
 #include "Graphics/CommandList.h"
 
@@ -11,7 +12,7 @@ SwapChain::SwapChain(HWND hWnd, uint32_t width, uint32_t height)
     ComPtr<IDXGIFactory> dxgiFactory;
     ComPtr<IDXGIFactory5> dxgiFactory5;
 
-    DX_CALL(Application::Get().GetRenderer()->GetDXGIAdapter()->GetParent(IID_PPV_ARGS(&dxgiFactory)));
+    DX_CALL(Application::Get().GetRenderer()->GetDevice()->GetDXGIAdapter()->GetParent(IID_PPV_ARGS(&dxgiFactory)));
     DX_CALL(dxgiFactory.As(&dxgiFactory5));
 
     BOOL allowTearing = false;
@@ -44,8 +45,8 @@ SwapChain::SwapChain(HWND hWnd, uint32_t width, uint32_t height)
 
     m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
 
-    CreateDepthBuffer(width, height);
-    UpdateRenderTargetViews();
+    CreateDepthBufferTexture(width, height);
+    CreateBackBufferTextures();
 }
 
 SwapChain::~SwapChain()
@@ -80,10 +81,26 @@ void SwapChain::Resize(uint32_t width, uint32_t height)
     ResizeBackBuffers(width, height);
     m_DepthBuffer->Resize(width, height);
 
-    UpdateRenderTargetViews();
+    CreateBackBufferTextures();
 }
 
-void SwapChain::CreateDepthBuffer(uint32_t width, uint32_t height)
+void SwapChain::CreateBackBufferTextures()
+{
+    for (uint32_t i = 0; i < s_BackBufferCount; ++i)
+    {
+        ComPtr<ID3D12Resource> backBuffer;
+        DX_CALL(m_dxgiSwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+
+        D3D12_RESOURCE_DESC backBufferDesc = backBuffer->GetDesc();
+
+        m_BackBuffers[i] = std::make_shared<Texture>(TextureDesc(backBufferDesc.Format, D3D12_RESOURCE_STATE_RENDER_TARGET,
+            D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, backBufferDesc.Width, backBufferDesc.Height));
+        m_BackBuffers[i]->SetD3D12Resource(backBuffer);
+    }
+}
+
+
+void SwapChain::CreateDepthBufferTexture(uint32_t width, uint32_t height)
 {
     m_DepthBuffer = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_D32_FLOAT, D3D12_RESOURCE_STATE_DEPTH_WRITE,
         D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, width, height));
@@ -105,19 +122,4 @@ void SwapChain::ResizeBackBuffers(uint32_t width, uint32_t height)
         swapChainDesc.BufferDesc.Format, swapChainDesc.Flags));
 
     m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
-}
-
-void SwapChain::UpdateRenderTargetViews()
-{
-    for (uint32_t i = 0; i < s_BackBufferCount; ++i)
-    {
-        ComPtr<ID3D12Resource> backBuffer;
-        DX_CALL(m_dxgiSwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
-
-        D3D12_RESOURCE_DESC backBufferDesc = backBuffer->GetDesc();
-
-        m_BackBuffers[i] = std::make_shared<Texture>(TextureDesc(backBufferDesc.Format, D3D12_RESOURCE_STATE_RENDER_TARGET,
-            D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, backBufferDesc.Width, backBufferDesc.Height));
-        m_BackBuffers[i]->SetD3D12Resource(backBuffer);
-    }
 }

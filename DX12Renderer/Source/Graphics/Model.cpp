@@ -6,70 +6,17 @@
 #include "ResourceLoader.h"
 #include "Application.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/Device.h"
 
 Model::Model(const std::string& filepath)
 {
-	m_TinyglTFModel = ResourceLoader::LoadModel(filepath);
-
-	std::map<std::string, int>& meshAttribs = m_TinyglTFModel.meshes[0].primitives[0].attributes;
-	std::vector<tinygltf::Accessor> accessors = m_TinyglTFModel.accessors;
-	std::vector<tinygltf::BufferView> bufferViews = m_TinyglTFModel.bufferViews;
-	std::vector<tinygltf::Buffer> buffers = m_TinyglTFModel.buffers;
-
-	for (auto& attrib : meshAttribs)
-	{
-		uint32_t componentSize;
-		uint32_t numComponents;
-
-		switch (accessors[attrib.second].componentType)
-		{
-		case TINYGLTF_COMPONENT_TYPE_BYTE:
-		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-			componentSize = 1;
-			break;
-		case TINYGLTF_COMPONENT_TYPE_SHORT:
-		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-			componentSize = 2;
-			break;
-		case TINYGLTF_COMPONENT_TYPE_INT:
-		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-		case TINYGLTF_COMPONENT_TYPE_FLOAT:
-			componentSize = 4;
-			break;
-		case TINYGLTF_COMPONENT_TYPE_DOUBLE:
-			componentSize = 8;
-			break;
-		}
-
-		switch (accessors[attrib.second].type)
-		{
-		case TINYGLTF_TYPE_SCALAR:
-			numComponents = 1;
-			break;
-		case TINYGLTF_TYPE_VEC2:
-			numComponents = 2;
-			break;
-		case TINYGLTF_TYPE_VEC3:
-			numComponents = 3;
-			break;
-		case TINYGLTF_TYPE_VEC4:
-		case TINYGLTF_TYPE_MAT2:
-			numComponents = 4;
-			break;
-		case TINYGLTF_TYPE_MAT3:
-			numComponents = 9;
-			break;
-		case TINYGLTF_TYPE_MAT4:
-			numComponents = 16;
-			break;
-		}
-	}
+	tinygltf::Model glTFModel = ResourceLoader::LoadModel(filepath);
 
 	CreateRootSignature();
 	CreatePipelineState();
 
-	CreateBuffers();
-	CreateTextures();
+	CreateBuffers(glTFModel);
+	CreateTextures(glTFModel);
 }
 
 Model::~Model()
@@ -118,7 +65,7 @@ void Model::CreateRootSignature()
 	ComPtr<ID3DBlob> errorBlob;
 	DX_CALL(D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &serializedRootSig, &errorBlob));
 
-	DX_CALL(Application::Get().GetRenderer()->GetD3D12Device()->CreateRootSignature(0, serializedRootSig->GetBufferPointer(),
+	DX_CALL(Application::Get().GetRenderer()->GetDevice()->GetD3D12Device()->CreateRootSignature(0, serializedRootSig->GetBufferPointer(),
 		serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&m_d3d12RootSignature)));
 }
 
@@ -177,23 +124,23 @@ void Model::CreatePipelineState()
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.pRootSignature = m_d3d12RootSignature.Get();
 
-	DX_CALL(Application::Get().GetRenderer()->GetD3D12Device()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_d3d12PipelineState)));
+	DX_CALL(Application::Get().GetRenderer()->GetDevice()->GetD3D12Device()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_d3d12PipelineState)));
 }
 
-void Model::CreateBuffers()
+void Model::CreateBuffers(tinygltf::Model glTFModel)
 {
 	// Load vertex attributes from glTF model
 	std::string attributeNames[] = { "POSITION", "TEXCOORD_0" };
 
 	for (const std::string& attributeName : attributeNames)
 	{
-		auto iter = m_TinyglTFModel.meshes[0].primitives[0].attributes.find(attributeName);
-		if (iter != m_TinyglTFModel.meshes[0].primitives[0].attributes.end())
+		auto iter = glTFModel.meshes[0].primitives[0].attributes.find(attributeName);
+		if (iter != glTFModel.meshes[0].primitives[0].attributes.end())
 		{
 			uint32_t attributeIndex = iter->second;
-			auto& accessor = m_TinyglTFModel.accessors[attributeIndex];
-			auto& bufferView = m_TinyglTFModel.bufferViews[accessor.bufferView];
-			auto& buffer = m_TinyglTFModel.buffers[bufferView.buffer];
+			auto& accessor = glTFModel.accessors[attributeIndex];
+			auto& bufferView = glTFModel.bufferViews[accessor.bufferView];
+			auto& buffer = glTFModel.buffers[bufferView.buffer];
 
 			unsigned char* dataPtr = &buffer.data[0] + bufferView.byteOffset;
 			m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(), accessor.count, accessor.ByteStride(bufferView), dataPtr));
@@ -219,22 +166,22 @@ void Model::CreateBuffers()
 	m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(), 1, 80, &instanceData));
 
 	// Load indices from glTF model
-	uint32_t indiciesIndex = m_TinyglTFModel.meshes[0].primitives[0].indices;
-	auto& accessor = m_TinyglTFModel.accessors[indiciesIndex];
-	auto& bufferView = m_TinyglTFModel.bufferViews[accessor.bufferView];
-	auto& buffer = m_TinyglTFModel.buffers[bufferView.buffer];
+	uint32_t indiciesIndex = glTFModel.meshes[0].primitives[0].indices;
+	auto& accessor = glTFModel.accessors[indiciesIndex];
+	auto& bufferView = glTFModel.bufferViews[accessor.bufferView];
+	auto& buffer = glTFModel.buffers[bufferView.buffer];
 
-	unsigned char* dataPtr = &m_TinyglTFModel.buffers[0].data[0] + bufferView.byteOffset;
+	unsigned char* dataPtr = &glTFModel.buffers[0].data[0] + bufferView.byteOffset;
 
 	m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(), accessor.count, accessor.ByteStride(bufferView), dataPtr));
 }
 
-void Model::CreateTextures()
+void Model::CreateTextures(tinygltf::Model glTFModel)
 {
-	auto& material = m_TinyglTFModel.materials[0];
+	auto& material = glTFModel.materials[0];
 	uint32_t albedoTextureIndex = material.pbrMetallicRoughness.baseColorTexture.index;
-	uint32_t imageIndex = m_TinyglTFModel.textures[albedoTextureIndex].source;
+	uint32_t imageIndex = glTFModel.textures[albedoTextureIndex].source;
 
 	m_Textures.push_back(std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE,
-		m_TinyglTFModel.images[imageIndex].width, m_TinyglTFModel.images[imageIndex].height), &m_TinyglTFModel.images[imageIndex].image[0]));
+		glTFModel.images[imageIndex].width, glTFModel.images[imageIndex].height), &glTFModel.images[imageIndex].image[0]));
 }

@@ -1,6 +1,7 @@
 #include "Pch.h"
 #include "Application.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/Device.h"
 #include "Graphics/Buffer.h"
 
 Buffer::Buffer(const BufferDesc& bufferDesc, std::size_t numElements, std::size_t elementSize, const void* data)
@@ -34,8 +35,8 @@ Buffer::~Buffer()
 
 void Buffer::Create()
 {
-	auto renderer = Application::Get().GetRenderer();
-	renderer->CreateBuffer(*this, m_BufferDesc.Type, m_BufferDesc.InitialState, m_ByteSize);
+	auto device = Application::Get().GetRenderer()->GetDevice();
+	device->CreateBuffer(*this, m_BufferDesc.Type, m_BufferDesc.InitialState, m_ByteSize);
 
 	if (m_BufferDesc.Type == D3D12_HEAP_TYPE_UPLOAD)
 	{
