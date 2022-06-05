@@ -64,7 +64,6 @@ void Model::CreateBuffers(tinygltf::Model* glTFModel)
 		glm::vec4 color = glm::vec4(1.0f);
 	} instanceData;
 
-	instanceData.transform = glm::scale(instanceData.transform, glm::vec3(3.0f));
 	instanceData.transform = glm::rotate(instanceData.transform, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 	instanceData.transform = glm::rotate(instanceData.transform, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	instanceData.transform = glm::rotate(instanceData.transform, glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f));

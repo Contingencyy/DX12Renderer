@@ -36,22 +36,35 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 case 0x56:
                     Application::Get().GetRenderer()->ToggleVSync();
                     break;
+                default:
+                    InputHandler::OnKeyPressed(InputHandler::WParamToKeyCode(wParam));
+                    break;
                 }
             }
             break;
 
-            /*case WM_LBUTTONDOWN:
-                Application::Get().GetInputHandler()->OnKeyPressed(InputHandler::KeyCode::KC_LEFT_MOUSE);
-                break;
+            case WM_SYSKEYUP:
+            case WM_KEYUP:
+            {
+                switch (wParam)
+                {
+                default:
+                    InputHandler::OnKeyReleased(InputHandler::WParamToKeyCode(wParam));
+                    break;
+                }
+            }
+            break;
+
+            case WM_LBUTTONDOWN:
+            case WM_MBUTTONDOWN:
             case WM_RBUTTONDOWN:
-                Application::Get().GetInputHandler()->OnKeyPressed(InputHandler::KeyCode::KC_RIGHT_MOUSE);
+                InputHandler::OnKeyPressed(InputHandler::WParamToKeyCode(wParam));
                 break;
             case WM_LBUTTONUP:
-                Application::Get().GetInputHandler()->OnKeyReleased(InputHandler::KeyCode::KC_LEFT_MOUSE);
-                break;
+            case WM_MBUTTONUP:
             case WM_RBUTTONUP:
-                Application::Get().GetInputHandler()->OnKeyReleased(InputHandler::KeyCode::KC_RIGHT_MOUSE);
-                break;*/
+                InputHandler::OnKeyReleased(InputHandler::WParamToKeyCode(wParam));
+                break;
 
             case WM_SIZE:
             case WM_SIZING:
@@ -68,6 +81,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 break;
             default:
                 return ::DefWindowProcW(hWnd, message, wParam, lParam);
+                break;
         }
     }
     else

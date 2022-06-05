@@ -11,8 +11,7 @@
 Scene::Scene()
 {
 	Renderer::RenderSettings renderSettings = Application::Get().GetRenderer()->GetRenderSettings();
-	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -10.0f), glm::vec3(0.0f), 60.0f,
-		static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
+	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f), 60.0f, static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
 
 	/*m_ParticleProps.ColorBegin = { 254 / 255.0f, 182 / 255.0f, 40 / 255.0f, 1.0f };
 	m_ParticleProps.ColorEnd = { 254 / 255.0f, 59 / 255.0f, 10 / 255.0f, 1.0f };
@@ -24,7 +23,7 @@ Scene::Scene()
 	m_ParticleProps.Position = { 0.0f, 0.0f };*/
 
 	m_Models.push_back(std::make_unique<Model>("Resources/Models/DamagedHelmet/DamagedHelmet.gltf"));
-	m_Models.push_back(std::make_unique<Model>("Resources/Models/SpaceStation/SS.gltf"));
+	//m_Models.push_back(std::make_unique<Model>("Resources/Models/SpaceStation/SS.gltf"));
 }
 
 Scene::~Scene()
@@ -41,6 +40,8 @@ void Scene::Update(float deltaTime)
 	}
 
 	m_ParticleSystem.Update(deltaTime);*/
+
+	m_ActiveCamera.Update(deltaTime);
 }
 
 void Scene::Render()

@@ -64,10 +64,6 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 
 	Logger::Log("Initialized GUI", Logger::Severity::INFO);
 
-	m_InputHandler = std::make_unique<InputHandler>();
-
-	Logger::Log("Created input handler", Logger::Severity::INFO);
-
 	m_Scene = std::make_unique<Scene>();
 
 	Logger::Log("Created new scene", Logger::Severity::INFO);

@@ -44,7 +44,6 @@ private:
 	std::unique_ptr<Window> m_Window = nullptr;
 	std::unique_ptr<Renderer> m_Renderer = nullptr;
 	std::unique_ptr<GUI> m_GUI = nullptr;
-	std::unique_ptr<InputHandler> m_InputHandler = nullptr;
 	std::unique_ptr<Scene> m_Scene = nullptr;
 
 	bool m_Initialized = false;

@@ -16,8 +16,8 @@ public:
 	RootSignature();
 	~RootSignature();
 
-	const std::vector<DescriptorTableRange> GetDescriptorTableRanges() const { return m_DescriptorTableRanges; }
-	const std::vector<DescriptorTableRange> GetSamplerTableRanges() const { return m_SamplerTableRanges; }
+	const std::vector<DescriptorTableRange>& GetDescriptorTableRanges() const { return m_DescriptorTableRanges; }
+	const std::vector<DescriptorTableRange>& GetSamplerTableRanges() const { return m_SamplerTableRanges; }
 
 	ComPtr<ID3D12RootSignature> GetD3D12RootSignature() const { return m_d3d12RootSignature; }
 
