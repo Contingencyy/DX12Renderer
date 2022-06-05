@@ -3,6 +3,8 @@
 
 class Buffer;
 class Texture;
+class PipelineState;
+class RootSignature;
 
 class Model
 {
@@ -12,22 +14,19 @@ public:
 
 	void Render();
 
-	ComPtr<ID3D12RootSignature> GetRootSignature() const { return m_d3d12RootSignature; }
-	ComPtr<ID3D12PipelineState> GetPipelineState() const { return m_d3d12PipelineState; }
+	PipelineState* GetPipelineState() const { return m_PipelineState.get(); }
 
 	std::shared_ptr<Buffer> GetBuffer(uint32_t index) const { return m_Buffers[index]; }
 	std::shared_ptr<Texture> GetTexture(uint32_t index) const { return m_Textures[index]; }
 
 private:
-	void CreateRootSignature();
 	void CreatePipelineState();
 
 	void CreateBuffers(tinygltf::Model* glTFModel);
 	void CreateTextures(tinygltf::Model* glTFModel);
 
 private:
-	ComPtr<ID3D12RootSignature> m_d3d12RootSignature;
-	ComPtr<ID3D12PipelineState> m_d3d12PipelineState;
+	std::unique_ptr<PipelineState> m_PipelineState;
 
 	std::vector<std::shared_ptr<Buffer>> m_Buffers;
 	std::vector<std::shared_ptr<Texture>> m_Textures;

@@ -6,9 +6,12 @@
 #include "Graphics/CommandList.h"
 #include "Graphics/Device.h"
 #include "Graphics/SwapChain.h"
+#include "Graphics/DescriptorHeap.h"
 #include "Graphics/Buffer.h"
 #include "Graphics/Shader.h"
 #include "Graphics/Model.h"
+#include "Graphics/PipelineState.h"
+#include "Graphics/RootSignature.h"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_win32.h>
@@ -54,7 +57,9 @@ void Renderer::Initialize(uint32_t width, uint32_t height)
     m_CommandQueueCopy = std::make_shared<CommandQueue>(D3D12_COMMAND_LIST_TYPE_COPY);
 
     m_SwapChain = std::make_shared<SwapChain>(Application::Get().GetWindow()->GetHandle(), width, height);
-    CreateDescriptorHeap();
+
+    for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+        m_DescriptorHeaps[i] = std::make_shared<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
 
     m_QuadVertexBuffer = std::make_unique<Buffer>(BufferDesc(), QuadVertices.size(), sizeof(QuadVertices[0]), &QuadVertices[0]);
     m_QuadIndexBuffer = std::make_unique<Buffer>(BufferDesc(), QuadIndices.size(), sizeof(QuadIndices[0]), &QuadIndices[0]);
@@ -104,8 +109,8 @@ void Renderer::Render()
 
     for (auto& model : m_ModelDrawData)
     {
-        commandList->SetPipelineState(model->GetPipelineState().Get());
-        commandList->SetRootSignature(model->GetRootSignature().Get());
+        commandList->SetPipelineState(*model->GetPipelineState());
+        commandList->SetRootSignature(*model->GetPipelineState()->GetRootSignature());
         commandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         glm::mat4 viewProjection = m_SceneData.Camera.GetViewProjection();
@@ -116,10 +121,13 @@ void Renderer::Render()
         commandList->SetVertexBuffers(2, 1, *model->GetBuffer(2).get());
         commandList->SetIndexBuffer(*model->GetBuffer(3).get());
 
-        commandList->SetDescriptorHeap(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].Get());
-        commandList->SetShaderResourceView(m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].Get(), model->GetTexture(0)->GetDescriptorHandle());
+        commandList->SetShaderResourceView(1, 0, *model->GetTexture(0).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         commandList->DrawIndexed(model->GetBuffer(3)->GetNumElements(), 1);
+
+        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(model->GetTexture(0)->GetD3D12Resource().Get(),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON);
+        commandList->ResourceBarrier(1, &barrier);
 
         m_RenderStatistics.DrawCallCount++;
         m_RenderStatistics.TriangleCount += model->GetBuffer(3)->GetNumElements() / 3;
@@ -175,7 +183,7 @@ void Renderer::Resize(uint32_t width, uint32_t height)
 
         Flush();
 
-        m_DescriptorOffsets[D3D12_DESCRIPTOR_HEAP_TYPE_RTV] = 0;
+        m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->Reset();
         m_SwapChain->Resize(m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
     }
 }
@@ -198,34 +206,12 @@ void Renderer::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, con
     m_CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Renderer::AllocateDescriptors(uint32_t numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type)
+DescriptorAllocation Renderer::AllocateDescriptors(uint32_t numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
-    CD3DX12_CPU_DESCRIPTOR_HANDLE descriptorHandle(m_d3d12DescriptorHeap[type]->GetCPUDescriptorHandleForHeapStart(),
-        m_DescriptorOffsets[type], m_DescriptorSize[type]);
-    m_DescriptorOffsets[type]++;
-
-    return descriptorHandle;
+    return m_DescriptorHeaps[type]->Allocate(numDescriptors);
 }
 
 void Renderer::Flush()
 {
     m_CommandQueueDirect->Flush();
-}
-
-void Renderer::CreateDescriptorHeap()
-{
-    for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-    {
-        D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-        heapDesc.NumDescriptors = 256;
-        heapDesc.Type = static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i);
-
-        if (i == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
-            heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-
-        m_Device->CreateDescriptorHeap(heapDesc, m_d3d12DescriptorHeap[i]);
-        m_DescriptorSize[i] = m_Device->GetDescriptorIncrementSize(heapDesc.Type);
-
-        m_DescriptorOffsets[i] = 0;
-    }
 }

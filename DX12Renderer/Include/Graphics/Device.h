@@ -25,6 +25,8 @@ public:
 	void CreateShaderResourceView(Texture& texture, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor);
 
 	uint32_t GetDescriptorIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type);
+	void CopyDescriptors(uint32_t numDescriptorRanges, const D3D12_CPU_DESCRIPTOR_HANDLE* destDescriptorRangeStarts, const uint32_t* destDescriptorRangeSizes,
+		uint32_t numSrcDescriptorRanges, const D3D12_CPU_DESCRIPTOR_HANDLE* srcDescriptorRangeStarts, const uint32_t* srcDescriptorRangeSizes, D3D12_DESCRIPTOR_HEAP_TYPE type);
 
 	ComPtr<IDXGIAdapter4> GetDXGIAdapter() const { return m_dxgiAdapter; }
 	ComPtr<ID3D12Device2> GetD3D12Device() const { return m_d3d12Device; }

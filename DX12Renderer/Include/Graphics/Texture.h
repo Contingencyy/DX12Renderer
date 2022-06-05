@@ -1,4 +1,5 @@
 #pragma once
+#include "Graphics/DescriptorAllocation.h"
 
 struct TextureDesc
 {
@@ -38,7 +39,7 @@ private:
 	TextureDesc m_TextureDesc = {};
 	ComPtr<ID3D12Resource> m_d3d12Resource;
 
-	D3D12_CPU_DESCRIPTOR_HANDLE m_DescriptorHandle = {};
+	DescriptorAllocation m_DescriptorAllocation = {};
 	std::size_t m_ByteSize = 0;
 
 };

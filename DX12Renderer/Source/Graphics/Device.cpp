@@ -111,6 +111,11 @@ uint32_t Device::GetDescriptorIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type)
     return m_d3d12Device->GetDescriptorHandleIncrementSize(type);
 }
 
+void Device::CopyDescriptors(uint32_t numDescriptorRanges, const D3D12_CPU_DESCRIPTOR_HANDLE* destDescriptorRangeStarts, const uint32_t* destDescriptorRangeSizes, uint32_t numSrcDescriptorRanges, const D3D12_CPU_DESCRIPTOR_HANDLE* srcDescriptorRangeStarts, const uint32_t* srcDescriptorRangeSizes, D3D12_DESCRIPTOR_HEAP_TYPE type)
+{
+    m_d3d12Device->CopyDescriptors(numDescriptorRanges, destDescriptorRangeStarts, destDescriptorRangeSizes, numSrcDescriptorRanges, srcDescriptorRangeStarts, srcDescriptorRangeSizes, type);
+}
+
 void Device::EnableDebugLayer()
 {
 #if defined(_DEBUG)

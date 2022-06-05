@@ -1,11 +1,13 @@
 #pragma once
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
+#include "Graphics/DescriptorAllocation.h"
 #include "Camera.h"
 
+class Device;
 class CommandQueue;
 class SwapChain;
-class Device;
+class DescriptorHeap;
 class Model;
 
 class Renderer
@@ -52,7 +54,7 @@ public:
 
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
 	void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
-	D3D12_CPU_DESCRIPTOR_HANDLE AllocateDescriptors(uint32_t numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type);
+	DescriptorAllocation AllocateDescriptors(uint32_t numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type);
 
 	void ToggleVSync() { m_RenderSettings.VSync = !m_RenderSettings.VSync; }
 	bool IsVSyncEnabled() const { return m_RenderSettings.VSync; }
@@ -66,7 +68,6 @@ public:
 
 private:
 	void Flush();
-	void CreateDescriptorHeap();
 
 private:
 	friend class GUI;
@@ -75,10 +76,7 @@ private:
 	std::shared_ptr<CommandQueue> m_CommandQueueDirect;
 	std::shared_ptr<CommandQueue> m_CommandQueueCopy;
 	std::shared_ptr<SwapChain> m_SwapChain;
-
-	ComPtr<ID3D12DescriptorHeap> m_d3d12DescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
-	uint32_t m_DescriptorOffsets[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {};
-	uint32_t m_DescriptorSize[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {};
+	std::shared_ptr<DescriptorHeap> m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 
 	D3D12_VIEWPORT m_Viewport = D3D12_VIEWPORT();
 	D3D12_RECT m_ScissorRect = D3D12_RECT();

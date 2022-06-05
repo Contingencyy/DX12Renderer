@@ -23,8 +23,8 @@ Scene::Scene()
 	m_ParticleProps.VelocityVariation = { 0.2f, 0.2f };
 	m_ParticleProps.Position = { 0.0f, 0.0f };*/
 
-	m_Model = std::make_unique<Model>("Resources/Models/DamagedHelmet/DamagedHelmet.gltf");
-	//m_Model = std::make_unique<Model>("Resources/Models/SpaceStation/SS.gltf");
+	m_Models.push_back(std::make_unique<Model>("Resources/Models/DamagedHelmet/DamagedHelmet.gltf"));
+	m_Models.push_back(std::make_unique<Model>("Resources/Models/SpaceStation/SS.gltf"));
 }
 
 Scene::~Scene()
@@ -46,7 +46,9 @@ void Scene::Update(float deltaTime)
 void Scene::Render()
 {
 	//m_ParticleSystem.Render();
-	m_Model->Render();
+
+	for (auto& model : m_Models)
+		model->Render();
 }
 
 void Scene::ImGuiRender()

@@ -18,7 +18,7 @@ public:
 
 private:
 	Camera m_ActiveCamera;
-	std::unique_ptr<Model> m_Model;
+	std::vector<std::unique_ptr<Model>> m_Models;
 
 	ParticleSystem m_ParticleSystem;
 	ParticleProps m_ParticleProps;

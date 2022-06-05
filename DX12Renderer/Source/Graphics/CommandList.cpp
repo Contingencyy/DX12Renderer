@@ -4,12 +4,21 @@
 #include "Application.h"
 #include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
+#include "Graphics/DescriptorHeap.h"
+#include "Graphics/DynamicDescriptorHeap.h"
 
 CommandList::CommandList(D3D12_COMMAND_LIST_TYPE type)
 	: m_d3d12CommandListType(type)
 {
 	auto device = Application::Get().GetRenderer()->GetDevice();
 	device->CreateCommandList(*this);
+	
+	m_RootSignature = nullptr;
+	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+	{
+		m_DescriptorHeaps[i] = nullptr;
+		m_DynamicDescriptorHeaps[i] = std::make_unique<DynamicDescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+	}
 }
 
 CommandList::~CommandList()
@@ -41,29 +50,27 @@ void CommandList::SetRenderTargets(uint32_t numRTVs, const D3D12_CPU_DESCRIPTOR_
 	m_d3d12CommandList->OMSetRenderTargets(numRTVs, rtv, false, dsv);
 }
 
-void CommandList::SetPipelineState(ID3D12PipelineState* pipelineState)
+void CommandList::SetPipelineState(const PipelineState& pipelineState)
 {
-	m_d3d12CommandList->SetPipelineState(pipelineState);
+	m_d3d12CommandList->SetPipelineState(pipelineState.GetD3D12PipelineState().Get());
 }
 
-void CommandList::SetRootSignature(ID3D12RootSignature* rootSignature)
+void CommandList::SetRootSignature(const RootSignature& rootSignature)
 {
-	m_d3d12CommandList->SetGraphicsRootSignature(rootSignature);
+	ID3D12RootSignature* d3d12RootSignature = rootSignature.GetD3D12RootSignature().Get();
+	if (m_RootSignature != d3d12RootSignature)
+	{
+		m_RootSignature = d3d12RootSignature;
+		m_d3d12CommandList->SetGraphicsRootSignature(d3d12RootSignature);
+
+		for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+			m_DynamicDescriptorHeaps[i]->ParseRootSignature(rootSignature);
+	}
 }
 
 void CommandList::SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY topology)
 {
 	m_d3d12CommandList->IASetPrimitiveTopology(topology);
-}
-
-void CommandList::SetDescriptorHeap(ID3D12DescriptorHeap* descriptorHeap)
-{
-	m_d3d12CommandList->SetDescriptorHeaps(1, &descriptorHeap);
-}
-
-void CommandList::SetShaderResourceView(ID3D12DescriptorHeap* descriptorHeap, const D3D12_CPU_DESCRIPTOR_HANDLE& srcDescriptor)
-{
-	m_d3d12CommandList->SetGraphicsRootDescriptorTable(1, descriptorHeap->GetGPUDescriptorHandleForHeapStart());
 }
 
 void CommandList::SetRoot32BitConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset)
@@ -91,13 +98,48 @@ void CommandList::SetIndexBuffer(const Buffer& indexBuffer)
 	m_d3d12CommandList->IASetIndexBuffer(&ibView);
 }
 
+void CommandList::SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ID3D12DescriptorHeap* heap)
+{
+	if (m_DescriptorHeaps[type] != heap)
+	{
+		m_DescriptorHeaps[type] = heap;
+
+		uint32_t numDescriptorHeaps = 0;
+		ID3D12DescriptorHeap* descriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {};
+
+		for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+		{
+			ID3D12DescriptorHeap* descriptorHeap = m_DescriptorHeaps[i];
+			if (descriptorHeap)
+				descriptorHeaps[numDescriptorHeaps++] = descriptorHeap;
+		}
+
+		m_d3d12CommandList->SetDescriptorHeaps(numDescriptorHeaps, descriptorHeaps);
+	}
+}
+
+void CommandList::SetShaderResourceView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Texture& texture,
+	D3D12_RESOURCE_STATES stateAfter, const D3D12_SHADER_RESOURCE_VIEW_DESC* srvDesc)
+{
+	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(texture.GetD3D12Resource().Get(), D3D12_RESOURCE_STATE_COMMON, stateAfter, 0);
+	m_d3d12CommandList->ResourceBarrier(1, &barrier);
+
+	m_DynamicDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->StageDescriptors(rootParameterIndex, descriptorOffset, 1, texture.GetDescriptorHandle());
+}
+
 void CommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance)
 {
+	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+		m_DynamicDescriptorHeaps[i]->CommitStagedDescriptors(*this);
+
 	m_d3d12CommandList->DrawInstanced(vertexCount, instanceCount, startVertex, startInstance);
 }
 
 void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex, int32_t baseVertex, uint32_t startInstance)
 {
+	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+		m_DynamicDescriptorHeaps[i]->CommitStagedDescriptors(*this);
+
 	m_d3d12CommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndex, baseVertex, startInstance);
 }
 
@@ -173,4 +215,11 @@ void CommandList::Reset()
 	DX_CALL(m_d3d12CommandList->Reset(m_d3d12CommandAllocator.Get(), nullptr));
 
 	ReleaseTrackedObjects();
+
+	m_RootSignature = nullptr;
+	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+	{
+		m_DescriptorHeaps[i] = nullptr;
+		m_DynamicDescriptorHeaps[i]->Reset();
+	}
 }

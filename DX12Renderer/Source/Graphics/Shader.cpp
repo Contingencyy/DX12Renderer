@@ -15,7 +15,7 @@ void Shader::Compile(const std::wstring& filepath, const std::string& entryPoint
 {
     UINT compileFlags = 0;
 #ifdef _DEBUG
-    compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+    compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
     ComPtr<ID3DBlob> errorBlob;

@@ -101,6 +101,10 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <FxCompile>
+      <ShaderModel>5.1</ShaderModel>
+      <EnableUnboundedDescriptorTables>true</EnableUnboundedDescriptorTables>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -117,6 +121,10 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <FxCompile>
+      <ShaderModel>5.1</ShaderModel>
+      <EnableUnboundedDescriptorTables>true</EnableUnboundedDescriptorTables>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -135,6 +143,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <FxCompile>
+      <ShaderModel>5.1</ShaderModel>
+      <EnableUnboundedDescriptorTables>true</EnableUnboundedDescriptorTables>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -157,6 +169,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <FxCompile>
+      <ShaderModel>5.1</ShaderModel>
+      <EnableUnboundedDescriptorTables>true</EnableUnboundedDescriptorTables>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Extern\imgui\imgui.cpp">
@@ -192,9 +208,14 @@
     <ClCompile Include="Source\Graphics\Buffer.cpp" />
     <ClCompile Include="Source\Graphics\CommandList.cpp" />
     <ClCompile Include="Source\Graphics\CommandQueue.cpp" />
+    <ClCompile Include="Source\Graphics\DescriptorAllocation.cpp" />
+    <ClCompile Include="Source\Graphics\DescriptorHeap.cpp" />
     <ClCompile Include="Source\Graphics\Device.cpp" />
+    <ClCompile Include="Source\Graphics\DynamicDescriptorHeap.cpp" />
     <ClCompile Include="Source\Graphics\Model.cpp" />
     <ClCompile Include="Source\Graphics\ParticleSystem.cpp" />
+    <ClCompile Include="Source\Graphics\PipelineState.cpp" />
+    <ClCompile Include="Source\Graphics\RootSignature.cpp" />
     <ClCompile Include="Source\Graphics\Shader.cpp" />
     <ClCompile Include="Source\Graphics\SwapChain.cpp" />
     <ClCompile Include="Source\Graphics\Texture.cpp" />
@@ -222,9 +243,14 @@
     <ClInclude Include="Include\Graphics\Buffer.h" />
     <ClInclude Include="Include\Graphics\CommandList.h" />
     <ClInclude Include="Include\Graphics\CommandQueue.h" />
+    <ClInclude Include="Include\Graphics\DescriptorAllocation.h" />
+    <ClInclude Include="Include\Graphics\DescriptorHeap.h" />
     <ClInclude Include="Include\Graphics\Device.h" />
+    <ClInclude Include="Include\Graphics\DynamicDescriptorHeap.h" />
     <ClInclude Include="Include\Graphics\Model.h" />
     <ClInclude Include="Include\Graphics\ParticleSystem.h" />
+    <ClInclude Include="Include\Graphics\PipelineState.h" />
+    <ClInclude Include="Include\Graphics\RootSignature.h" />
     <ClInclude Include="Include\Graphics\Shader.h" />
     <ClInclude Include="Include\Graphics\SwapChain.h" />
     <ClInclude Include="Include\Graphics\Texture.h" />

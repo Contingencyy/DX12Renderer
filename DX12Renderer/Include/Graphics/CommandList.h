@@ -1,6 +1,11 @@
 #pragma once
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
+#include "Graphics/PipelineState.h"
+#include "Graphics/RootSignature.h"
+
+class DescriptorHeap;
+class DynamicDescriptorHeap;
 
 class CommandList
 {
@@ -14,15 +19,16 @@ public:
 	void SetViewports(uint32_t numViewports, const D3D12_VIEWPORT* viewports);
 	void SetScissorRects(uint32_t numRects, const D3D12_RECT* rects);
 	void SetRenderTargets(uint32_t numRTVs, const D3D12_CPU_DESCRIPTOR_HANDLE* rtv, const D3D12_CPU_DESCRIPTOR_HANDLE* dsv);
-	void SetPipelineState(ID3D12PipelineState* pipelineState);
-	void SetRootSignature(ID3D12RootSignature* rootSignature);
+	void SetPipelineState(const PipelineState& pipelineState);
+	void SetRootSignature(const RootSignature& rootSignature);
 	void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY topology);
-	void SetDescriptorHeap(ID3D12DescriptorHeap* descriptorHeap);
-	void SetShaderResourceView(ID3D12DescriptorHeap* descriptorHeap, const D3D12_CPU_DESCRIPTOR_HANDLE& srcDescriptor);
 
 	void SetRoot32BitConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset);
 	void SetVertexBuffers(uint32_t slot, uint32_t numViews, const Buffer& vertexBuffer);
 	void SetIndexBuffer(const Buffer& indexBuffer);
+	void SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ID3D12DescriptorHeap* heap);
+	void SetShaderResourceView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Texture& texture,
+		D3D12_RESOURCE_STATES stateAfter, const D3D12_SHADER_RESOURCE_VIEW_DESC* srvDesc = nullptr);
 	
 	void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex = 0, uint32_t startInstance = 0);
 	void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0);
@@ -49,5 +55,10 @@ private:
 	ComPtr<ID3D12CommandAllocator> m_d3d12CommandAllocator;
 
 	std::vector<ComPtr<ID3D12Object>> m_TrackedObjects;
+
+	ID3D12RootSignature* m_RootSignature;
+	ID3D12DescriptorHeap* m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+
+	std::unique_ptr<DynamicDescriptorHeap> m_DynamicDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 
 };
