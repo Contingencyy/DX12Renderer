@@ -18,6 +18,8 @@ public:
 	Buffer(const BufferDesc& bufferDesc, std::size_t alignedSize);
 	~Buffer();
 
+	void SetBufferData(const void* data, uint32_t numElements = 0);
+
 	BufferDesc GetBufferDesc() const { return m_BufferDesc; }
 	std::size_t GetByteSize() const { return m_ByteSize; }
 	std::size_t GetNumElements() const { return m_NumElements; }

@@ -9,18 +9,6 @@
 ParticleSystem::ParticleSystem()
 {
 	m_ParticlePool.resize(1000);
-	m_ParticleInstanceData.reserve(1000);
-
-	m_QuadInstanceDataBuffer = std::make_shared<Buffer>(BufferDesc(), m_ParticlePool.size(), sizeof(ParticleInstanceData));
-	m_UploadBuffer = std::make_shared<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_QuadInstanceDataBuffer->GetByteSize());
-	
-	/*ImageInfo imageInfo = ResourceLoader::LoadImage("Resources/Textures/kermit.jpg");
-	m_Texture = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE,
-		static_cast<uint32_t>(imageInfo.Width), static_cast<uint32_t>(imageInfo.Height)));
-	Buffer textureUploadBuffer(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), GetRequiredIntermediateSize(m_Texture->GetD3D12Resource().Get(), 0, 1));
-
-	Application::Get().GetRenderer()->CopyTexture(textureUploadBuffer, *m_Texture, imageInfo.Data);
-	delete imageInfo.Data;*/
 }
 
 void ParticleSystem::Update(float deltaTime)
@@ -44,35 +32,22 @@ void ParticleSystem::Update(float deltaTime)
 
 void ParticleSystem::Render()
 {
-	m_ParticleInstanceData.clear();
+	m_NumActiveParticles = 0;
 
 	for (auto& particle : m_ParticlePool)
 	{
 		if (!particle.Active)
 			continue;
 
-		// Lerp particle values based on life remaining
 		float life = particle.LifeRemaining / particle.LifeTime;
 		glm::vec4 color = glm::lerp(particle.ColorEnd, particle.ColorBegin, life);
 		color.a = color.a * life;
 
 		float size = glm::lerp(particle.SizeEnd, particle.SizeBegin, life);
 
-		// Set particle instance data
-		glm::mat4 transform = glm::translate(glm::identity<glm::mat4>(), { particle.Position.x, particle.Position.y, 0.0f })
-			* glm::rotate(glm::identity<glm::mat4>(), particle.Rotation, { 0.0f, 0.0f, 1.0f })
-			* glm::scale(glm::identity<glm::mat4>(), { size, size, 1.0f });
-		m_ParticleInstanceData.emplace_back(transform, color);
+		// Draw Quad
+		m_NumActiveParticles++;
 	}
-
-	// Render
-	auto renderer = Application::Get().GetRenderer();
-	if (m_ParticleInstanceData.size() > 0)
-		renderer->CopyBuffer(*m_UploadBuffer, *m_QuadInstanceDataBuffer, &m_ParticleInstanceData[0]);
-
-	renderer->DrawQuads(m_QuadInstanceDataBuffer, m_Texture, m_ParticleInstanceData.size());
-
-	m_NumActiveParticles = m_ParticleInstanceData.size();
 }
 
 void ParticleSystem::Emit(const ParticleProps& particleProps)

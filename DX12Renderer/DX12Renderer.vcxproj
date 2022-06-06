@@ -229,7 +229,10 @@
     <ClCompile Include="Source\Graphics\Renderer.cpp" />
     <ClCompile Include="Source\ResourceLoader.cpp" />
     <ClCompile Include="Source\Scene.cpp" />
+    <ClCompile Include="Source\Util\Logger.cpp" />
+    <ClCompile Include="Source\Util\Profiler.cpp" />
     <ClCompile Include="Source\Util\Random.cpp" />
+    <ClCompile Include="Source\Util\StringHelper.cpp" />
     <ClCompile Include="Source\Window.cpp" />
   </ItemGroup>
   <ItemGroup>

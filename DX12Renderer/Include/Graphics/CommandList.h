@@ -20,8 +20,6 @@ public:
 	void SetScissorRects(uint32_t numRects, const D3D12_RECT* rects);
 	void SetRenderTargets(uint32_t numRTVs, const D3D12_CPU_DESCRIPTOR_HANDLE* rtv, const D3D12_CPU_DESCRIPTOR_HANDLE* dsv);
 	void SetPipelineState(const PipelineState& pipelineState);
-	void SetRootSignature(const RootSignature& rootSignature);
-	void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY topology);
 
 	void SetRoot32BitConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset);
 	void SetVertexBuffers(uint32_t slot, uint32_t numViews, const Buffer& vertexBuffer);

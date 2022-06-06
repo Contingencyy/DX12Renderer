@@ -44,22 +44,6 @@ private:
 
 	std::vector<Particle> m_ParticlePool;
 	uint32_t m_PoolIndex = 999;
-
-	struct ParticleInstanceData
-	{
-		ParticleInstanceData(const glm::mat4& transform, const glm::vec4& color)
-			: Transform(transform), Color(color) {}
-
-		glm::mat4 Transform;
-		glm::vec4 Color;
-	};
-
-	std::vector<ParticleInstanceData> m_ParticleInstanceData;
-
-	std::shared_ptr<Buffer> m_QuadInstanceDataBuffer;
-	std::shared_ptr<Buffer> m_UploadBuffer;
-	std::shared_ptr<Texture> m_Texture;
-
-	uint32_t m_NumActiveParticles;
+	uint32_t m_NumActiveParticles = 0;
 
 };

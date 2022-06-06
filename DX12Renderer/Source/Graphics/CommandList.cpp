@@ -53,24 +53,20 @@ void CommandList::SetRenderTargets(uint32_t numRTVs, const D3D12_CPU_DESCRIPTOR_
 void CommandList::SetPipelineState(const PipelineState& pipelineState)
 {
 	m_d3d12CommandList->SetPipelineState(pipelineState.GetD3D12PipelineState().Get());
-}
 
-void CommandList::SetRootSignature(const RootSignature& rootSignature)
-{
-	ID3D12RootSignature* d3d12RootSignature = rootSignature.GetD3D12RootSignature().Get();
+	ID3D12RootSignature* d3d12RootSignature = pipelineState.GetRootSignature()->GetD3D12RootSignature().Get();
 	if (m_RootSignature != d3d12RootSignature)
 	{
 		m_RootSignature = d3d12RootSignature;
 		m_d3d12CommandList->SetGraphicsRootSignature(d3d12RootSignature);
 
 		for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-			m_DynamicDescriptorHeaps[i]->ParseRootSignature(rootSignature);
+		{
+			m_DynamicDescriptorHeaps[i]->ParseRootSignature(*pipelineState.GetRootSignature());
+		}
 	}
-}
 
-void CommandList::SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY topology)
-{
-	m_d3d12CommandList->IASetPrimitiveTopology(topology);
+	m_d3d12CommandList->IASetPrimitiveTopology(pipelineState.GetPrimitiveTopology());
 }
 
 void CommandList::SetRoot32BitConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset)

@@ -17,24 +17,6 @@
 #include <imgui/imgui_impl_win32.h>
 #include <imgui/imgui_impl_dx12.h>
 
-struct Vertex
-{
-    glm::vec3 Position;
-    glm::vec2 TexCoord;
-};
-
-std::vector<Vertex> QuadVertices = {
-    { glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec2(0.0f, 1.0f) },
-    { glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec2(0.0f, 0.0f) },
-    { glm::vec3(0.5f, 0.5f, 0.0f), glm::vec2(1.0f, 0.0f) },
-    { glm::vec3(0.5f, -0.5f, 0.0f), glm::vec2(1.0f, 1.0f) }
-};
-
-std::vector<WORD> QuadIndices = {
-    0, 1, 2,
-    2, 3, 0
-};
-
 Renderer::Renderer()
 {
 }
@@ -60,9 +42,6 @@ void Renderer::Initialize(uint32_t width, uint32_t height)
 
     for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
         m_DescriptorHeaps[i] = std::make_shared<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
-
-    m_QuadVertexBuffer = std::make_unique<Buffer>(BufferDesc(), QuadVertices.size(), sizeof(QuadVertices[0]), &QuadVertices[0]);
-    m_QuadIndexBuffer = std::make_unique<Buffer>(BufferDesc(), QuadIndices.size(), sizeof(QuadIndices[0]), &QuadIndices[0]);
 }
 
 void Renderer::Finalize()
@@ -110,8 +89,6 @@ void Renderer::Render()
     for (auto& model : m_ModelDrawData)
     {
         commandList->SetPipelineState(*model->GetPipelineState());
-        commandList->SetRootSignature(*model->GetPipelineState()->GetRootSignature());
-        commandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         glm::mat4 viewProjection = m_SceneData.Camera.GetViewProjection();
         commandList->SetRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
@@ -155,15 +132,9 @@ void Renderer::EndFrame()
     m_CommandQueueDirect->ResetCommandLists();
     m_CommandQueueCopy->ResetCommandLists();
 
-    m_QuadDrawData.clear();
     m_ModelDrawData.clear();
 
     m_RenderStatistics.Reset();
-}
-
-void Renderer::DrawQuads(std::shared_ptr<Buffer> instanceBuffer, std::shared_ptr<Texture> texture, std::size_t numQuads)
-{
-    m_QuadDrawData.push_back({ instanceBuffer, texture, numQuads });
 }
 
 void Renderer::DrawModel(Model* model)

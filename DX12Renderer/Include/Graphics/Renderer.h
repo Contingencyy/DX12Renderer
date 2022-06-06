@@ -48,7 +48,6 @@ public:
 	void ImGuiRender();
 	void EndFrame();
 
-	void DrawQuads(std::shared_ptr<Buffer> instanceBuffer, std::shared_ptr<Texture> texture, std::size_t numQuads);
 	void DrawModel(Model* model);
 	void Resize(uint32_t width, uint32_t height);
 
@@ -84,17 +83,6 @@ private:
 	RenderSettings m_RenderSettings;
 	RenderStatistics m_RenderStatistics;
 	
-	std::unique_ptr<Buffer> m_QuadVertexBuffer;
-	std::unique_ptr<Buffer> m_QuadIndexBuffer;
-
-	struct QuadDrawData
-	{
-		std::shared_ptr<Buffer> InstanceBuffer = nullptr;
-		std::shared_ptr<Texture> Texture = nullptr;
-		std::size_t NumQuads = 1;
-	};
-
-	std::vector<QuadDrawData> m_QuadDrawData;
 	std::vector<Model*> m_ModelDrawData;
 
 	struct SceneData

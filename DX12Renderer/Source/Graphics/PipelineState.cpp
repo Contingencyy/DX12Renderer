@@ -68,4 +68,6 @@ void PipelineState::Create(const std::wstring& vertexShaderPath, const std::wstr
 	psoDesc.pRootSignature = m_RootSignature->GetD3D12RootSignature().Get();
 
 	Application::Get().GetRenderer()->GetDevice()->CreatePipelineState(psoDesc, m_d3d12PipelineState);
+
+	m_d3d12PrimitiveToplogy = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 }
