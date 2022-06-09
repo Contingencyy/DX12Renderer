@@ -22,3 +22,7 @@ private:
 	static inline void SetSeverityConsoleColor(Severity severity);
 
 };
+
+#define LOG_INFO(message) Logger::Log(message, Logger::Severity::INFO)
+#define LOG_WARN(message) Logger::Log(message, Logger::Severity::WARN)
+#define LOG_ERR(message) Logger::Log(message, Logger::Severity::ERR)

@@ -77,10 +77,10 @@ void GUI::EndFrame()
 	auto renderer = Application::Get().GetRenderer();
 	auto& commandQueue = renderer->m_CommandQueueDirect;
 	auto commandList = commandQueue->GetCommandList();
-	auto backBuffer = renderer->GetSwapChain()->GetBackBuffer();
+	auto colorTarget = renderer->GetSwapChain()->GetColorTarget();
 	auto depthBuffer = renderer->GetSwapChain()->GetDepthBuffer();
 
-	auto rtv = backBuffer->GetDescriptorHandle();
+	auto rtv = colorTarget->GetDescriptorHandle();
 	auto dsv = depthBuffer->GetDescriptorHandle();
 
 	commandList->SetRenderTargets(1, &rtv, &dsv);

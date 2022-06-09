@@ -36,7 +36,7 @@
 	Project defines and macros
 
 */
-#define ASSERT(x, y) if (!x) Logger::Log(y, Logger::Severity::ERR); assert(x)
+#define ASSERT(x, y) if (!x) LOG_ERR(y); assert(x)
 
 /*
 

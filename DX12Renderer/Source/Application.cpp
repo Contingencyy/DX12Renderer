@@ -51,23 +51,17 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 	m_Window = std::make_unique<Window>();
 	m_Window->Initialize(windowProps);
 	m_Window->Show();
-
-	Logger::Log("Initialized Window", Logger::Severity::INFO);
+	LOG_INFO("Initialized Window");
 
 	m_Renderer = std::make_unique<Renderer>();
 	m_Renderer->Initialize(m_Window->GetWidth(), m_Window->GetHeight());
-
-	Logger::Log("Initialized Renderer", Logger::Severity::INFO);
+	LOG_INFO("Initialized Renderer");
 
 	m_GUI = std::make_unique<GUI>();
 	m_GUI->Initialize(m_Window->GetHandle());
-
-	Logger::Log("Initialized GUI", Logger::Severity::INFO);
+	LOG_INFO("Initialized GUI");
 
 	m_Scene = std::make_unique<Scene>();
-
-	Logger::Log("Created new scene", Logger::Severity::INFO);
-
 	m_Initialized = true;
 }
 
@@ -94,13 +88,13 @@ void Application::Run()
 void Application::Finalize()
 {
 	m_GUI->Finalize();
-	Logger::Log("Finalized GUI", Logger::Severity::INFO);
+	LOG_INFO("Finalized GUI");
 
 	m_Renderer->Finalize();
-	Logger::Log("Finalized Renderer", Logger::Severity::INFO);
+	LOG_INFO("Finalized Renderer");
 
 	m_Window->Finalize();
-	Logger::Log("Finalized Window", Logger::Severity::INFO);
+	LOG_INFO("Finalized Window");
 }
 
 void Application::OnWindowResize(uint32_t width, uint32_t height)

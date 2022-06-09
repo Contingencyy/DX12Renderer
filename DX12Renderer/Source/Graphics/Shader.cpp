@@ -28,7 +28,7 @@ void Shader::Compile(const std::wstring& filepath, const std::string& entryPoint
 
     if (!SUCCEEDED(hr) || errorBlob)
     {
-        Logger::Log(static_cast<const char*>(errorBlob->GetBufferPointer()), Logger::Severity::ERR);
+        LOG_ERR(static_cast<const char*>(errorBlob->GetBufferPointer()));
         errorBlob->Release();
     }
 

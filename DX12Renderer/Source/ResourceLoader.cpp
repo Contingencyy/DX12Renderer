@@ -38,7 +38,7 @@ std::string ResourceLoader::LoadShader(const std::string& filepath)
 	}
 	else
 	{
-		Logger::Log("Could not open shader file", Logger::Severity::ERR);
+		LOG_ERR("Could not open shader file");
 	}
 
 	return shaderCode;
@@ -53,9 +53,9 @@ tinygltf::Model ResourceLoader::LoadModel(const std::string& filepath)
 
 	bool result = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
 	if (!warn.empty())
-		Logger::Log(warn, Logger::Severity::WARN);
+		LOG_WARN(warn);
 	if (!err.empty())
-		Logger::Log(err, Logger::Severity::ERR);
+		LOG_ERR(err);
 
 	ASSERT(result, "Failed to parse glTF model");
 	return model;

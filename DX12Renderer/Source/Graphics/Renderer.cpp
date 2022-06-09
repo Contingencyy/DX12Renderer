@@ -54,15 +54,10 @@ void Renderer::BeginFrame(const Camera& camera)
     m_SceneData.Camera = camera;
 
     auto commandList = m_CommandQueueDirect->GetCommandList();
-    auto backBuffer = m_SwapChain->GetBackBuffer();
+    auto colorTarget = m_SwapChain->GetColorTarget();
     auto depthBuffer = m_SwapChain->GetDepthBuffer();
 
-    // Transition back buffer to render target state
-    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer->GetD3D12Resource().Get(),
-        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-    commandList->ResourceBarrier(1, &barrier);
-
-    auto rtv = backBuffer->GetDescriptorHandle();
+    auto rtv = colorTarget->GetDescriptorHandle();
     auto dsv = depthBuffer->GetDescriptorHandle();
 
     // Clear render target and depth stencil view
@@ -76,10 +71,10 @@ void Renderer::BeginFrame(const Camera& camera)
 void Renderer::Render()
 {
     auto commandList = m_CommandQueueDirect->GetCommandList();
-    auto backBuffer = m_SwapChain->GetBackBuffer();
+    auto colorTarget = m_SwapChain->GetColorTarget();
     auto depthBuffer = m_SwapChain->GetDepthBuffer();
 
-    auto rtv = backBuffer->GetDescriptorHandle();
+    auto rtv = colorTarget->GetDescriptorHandle();
     auto dsv = depthBuffer->GetDescriptorHandle();
 
     commandList->SetViewports(1, &m_Viewport);

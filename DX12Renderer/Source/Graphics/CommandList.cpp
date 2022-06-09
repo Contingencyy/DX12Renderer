@@ -185,6 +185,16 @@ void CommandList::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, 
 	ResourceBarrier(1, &barrier);
 }
 
+void CommandList::ResolveTexture(Texture& srcTexture, Texture& destTexture)
+{
+	m_d3d12CommandList->CopyResource(destTexture.GetD3D12Resource().Get(), srcTexture.GetD3D12Resource().Get());
+
+	TrackObject(destTexture.GetD3D12Resource());
+	TrackObject(srcTexture.GetD3D12Resource());
+
+	//m_d3d12CommandList->ResolveSubresource();
+}
+
 void CommandList::ResourceBarrier(uint32_t numBarriers, const D3D12_RESOURCE_BARRIER* barriers)
 {
 	m_d3d12CommandList->ResourceBarrier(numBarriers, barriers);

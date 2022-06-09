@@ -33,6 +33,7 @@ public:
 
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
 	void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
+	void ResolveTexture(Texture& srcTexture, Texture& destTexture);
 
 	void ResourceBarrier(uint32_t numBarriers, const D3D12_RESOURCE_BARRIER* barriers);
 	void TrackObject(ComPtr<ID3D12Object> object);
