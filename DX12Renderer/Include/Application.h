@@ -4,6 +4,7 @@ class Window;
 class Renderer;
 class GUI;
 class InputHandler;
+class ResourceManager;
 class Scene;
 
 class Application
@@ -23,6 +24,7 @@ public:
 
 	Window* GetWindow() const { return m_Window.get(); }
 	Renderer* GetRenderer() const { return m_Renderer.get(); }
+	ResourceManager* GetResourceManager() const { return m_ResourceManager.get(); }
 
 private:
 	Application();
@@ -44,6 +46,7 @@ private:
 	std::unique_ptr<Window> m_Window = nullptr;
 	std::unique_ptr<Renderer> m_Renderer = nullptr;
 	std::unique_ptr<GUI> m_GUI = nullptr;
+	std::unique_ptr<ResourceManager> m_ResourceManager = nullptr;
 	std::unique_ptr<Scene> m_Scene = nullptr;
 
 	bool m_Initialized = false;

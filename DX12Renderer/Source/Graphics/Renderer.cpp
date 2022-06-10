@@ -42,6 +42,8 @@ void Renderer::Initialize(uint32_t width, uint32_t height)
 
     for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
         m_DescriptorHeaps[i] = std::make_shared<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+
+    m_ModelInstanceBuffer = std::make_unique<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), 1, sizeof(ModelInstanceData));
 }
 
 void Renderer::Finalize()
@@ -70,42 +72,43 @@ void Renderer::BeginFrame(const Camera& camera)
 
 void Renderer::Render()
 {
-    auto commandList = m_CommandQueueDirect->GetCommandList();
     auto colorTarget = m_SwapChain->GetColorTarget();
     auto depthBuffer = m_SwapChain->GetDepthBuffer();
 
     auto rtv = colorTarget->GetDescriptorHandle();
     auto dsv = depthBuffer->GetDescriptorHandle();
 
-    commandList->SetViewports(1, &m_Viewport);
-    commandList->SetScissorRects(1, &m_ScissorRect);
-    commandList->SetRenderTargets(1, &rtv, &dsv);
-
-    for (auto& model : m_ModelDrawData)
+    for (auto& modelDrawData : m_ModelDrawData)
     {
-        commandList->SetPipelineState(*model->GetPipelineState());
+        auto commandList = m_CommandQueueDirect->GetCommandList();
+
+        commandList->SetViewports(1, &m_Viewport);
+        commandList->SetScissorRects(1, &m_ScissorRect);
+        commandList->SetRenderTargets(1, &rtv, &dsv);
+
+        commandList->SetPipelineState(*modelDrawData.Model->GetPipelineState());
 
         glm::mat4 viewProjection = m_SceneData.Camera.GetViewProjection();
         commandList->SetRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
 
-        commandList->SetVertexBuffers(0, 1, *model->GetBuffer(0).get());
-        commandList->SetVertexBuffers(1, 1, *model->GetBuffer(1).get());
-        commandList->SetVertexBuffers(2, 1, *model->GetBuffer(2).get());
-        commandList->SetIndexBuffer(*model->GetBuffer(3).get());
+        commandList->SetVertexBuffers(0, 1, *modelDrawData.Model->GetBuffer(0).get());
+        commandList->SetVertexBuffers(1, 1, *modelDrawData.Model->GetBuffer(1).get());
+        m_ModelInstanceBuffer->SetBufferDataStaging(&modelDrawData.ModelInstanceData, sizeof(ModelInstanceData));
+        commandList->SetVertexBuffers(2, 1, *m_ModelInstanceBuffer.get());
+        commandList->SetIndexBuffer(*modelDrawData.Model->GetBuffer(2).get());
+        commandList->SetShaderResourceView(1, 0, *modelDrawData.Model->GetTexture(0).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        commandList->SetShaderResourceView(1, 0, *model->GetTexture(0).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        commandList->DrawIndexed(modelDrawData.Model->GetBuffer(2)->GetNumElements(), 1);
 
-        commandList->DrawIndexed(model->GetBuffer(3)->GetNumElements(), 1);
-
-        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(model->GetTexture(0)->GetD3D12Resource().Get(),
+        CD3DX12_RESOURCE_BARRIER textureBarrier = CD3DX12_RESOURCE_BARRIER::Transition(modelDrawData.Model->GetTexture(0)->GetD3D12Resource().Get(),
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON);
-        commandList->ResourceBarrier(1, &barrier);
+        commandList->ResourceBarrier(1, &textureBarrier);
 
         m_RenderStatistics.DrawCallCount++;
-        m_RenderStatistics.TriangleCount += model->GetBuffer(3)->GetNumElements() / 3;
-    }
+        m_RenderStatistics.TriangleCount += modelDrawData.Model->GetBuffer(2)->GetNumElements() / 3;
 
-    m_CommandQueueDirect->ExecuteCommandList(commandList);
+        m_CommandQueueDirect->ExecuteCommandList(commandList);
+    }
 }
 
 void Renderer::ImGuiRender()
@@ -132,9 +135,9 @@ void Renderer::EndFrame()
     m_RenderStatistics.Reset();
 }
 
-void Renderer::DrawModel(Model* model)
+void Renderer::Submit(const std::shared_ptr<Model>& model, const glm::mat4& transform)
 {
-    m_ModelDrawData.push_back(model);
+    m_ModelDrawData.emplace_back(model, transform);
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)

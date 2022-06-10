@@ -34,10 +34,29 @@ Buffer::~Buffer()
 
 void Buffer::SetBufferData(const void* data, uint32_t numElements)
 {
-	uint32_t byteSize = numElements == 0 ? m_ByteSize : numElements * m_ElementSize;
+	if (m_BufferDesc.Type != D3D12_HEAP_TYPE_UPLOAD)
+	{
+		uint32_t byteSize = numElements == 0 ? m_ByteSize : numElements * m_ElementSize;
 
-	Buffer uploadBuffer(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), byteSize);
-	Application::Get().GetRenderer()->CopyBuffer(uploadBuffer, *this, data);
+		Buffer uploadBuffer(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), byteSize);
+		Application::Get().GetRenderer()->CopyBuffer(uploadBuffer, *this, data);
+	}
+	else
+	{
+		LOG_ERR("Should not call this SetBufferData function for upload heaps");
+	}
+}
+
+void Buffer::SetBufferDataStaging(const void* data, std::size_t alignedSize)
+{
+	if (m_BufferDesc.Type == D3D12_HEAP_TYPE_UPLOAD)
+	{
+		memcpy(m_CPUPtr, data, alignedSize);
+	}
+	else
+	{
+		LOG_ERR("Should not call this SetBufferData function for non-upload heaps");
+	}
 }
 
 void Buffer::Create()
@@ -47,7 +66,6 @@ void Buffer::Create()
 
 	if (m_BufferDesc.Type == D3D12_HEAP_TYPE_UPLOAD)
 	{
-		void* cpuPtr = nullptr;
-		m_d3d12Resource->Map(0, nullptr, &cpuPtr);
+		m_d3d12Resource->Map(0, nullptr, &m_CPUPtr);
 	}
 }

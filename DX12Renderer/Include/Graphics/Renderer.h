@@ -48,7 +48,7 @@ public:
 	void ImGuiRender();
 	void EndFrame();
 
-	void DrawModel(Model* model);
+	void Submit(const std::shared_ptr<Model>& model, const glm::mat4& transform);
 	void Resize(uint32_t width, uint32_t height);
 
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
@@ -82,8 +82,27 @@ private:
 
 	RenderSettings m_RenderSettings;
 	RenderStatistics m_RenderStatistics;
+
+	struct ModelInstanceData
+	{
+		glm::mat4 transform = glm::identity<glm::mat4>();
+		glm::vec4 color = glm::vec4(1.0f);
+	};
 	
-	std::vector<Model*> m_ModelDrawData;
+	struct ModelDrawData
+	{
+		ModelDrawData(const std::shared_ptr<Model>& model, const glm::mat4& transform)
+			: Model(model)
+		{
+			ModelInstanceData.transform = transform;
+		}
+
+		std::shared_ptr<Model> Model;
+		ModelInstanceData ModelInstanceData;
+	};
+
+	std::vector<ModelDrawData> m_ModelDrawData;
+	std::unique_ptr<Buffer> m_ModelInstanceBuffer;
 
 	struct SceneData
 	{

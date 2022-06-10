@@ -18,7 +18,10 @@ public:
 	Buffer(const BufferDesc& bufferDesc, std::size_t alignedSize);
 	~Buffer();
 
+	// This should not be called every frame, since it allocates another heap/buffer for upload in this function
+	// Might be a good idea to have a larger upload heap on the command list to suballocate from for copying/staging.
 	void SetBufferData(const void* data, uint32_t numElements = 0);
+	void SetBufferDataStaging(const void* data, std::size_t alignedSize = 0);
 
 	BufferDesc GetBufferDesc() const { return m_BufferDesc; }
 	std::size_t GetByteSize() const { return m_ByteSize; }
@@ -34,6 +37,8 @@ private:
 private:
 	BufferDesc m_BufferDesc = {};
 	ComPtr<ID3D12Resource> m_d3d12Resource;
+
+	void* m_CPUPtr = nullptr;
 
 	std::size_t m_NumElements = 0;
 	std::size_t m_ElementSize = 0;

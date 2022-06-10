@@ -9,10 +9,8 @@ class RootSignature;
 class Model
 {
 public:
-	Model(const std::string& filepath);
+	Model(const tinygltf::Model& glTFModel);
 	~Model();
-
-	void Render();
 
 	PipelineState* GetPipelineState() const { return m_PipelineState.get(); }
 
@@ -22,8 +20,8 @@ public:
 private:
 	void CreatePipelineState();
 
-	void CreateBuffers(tinygltf::Model* glTFModel);
-	void CreateTextures(tinygltf::Model* glTFModel);
+	void CreateBuffers(const tinygltf::Model& glTFModel);
+	void CreateTextures(const tinygltf::Model& glTFModel);
 
 private:
 	std::unique_ptr<PipelineState> m_PipelineState;

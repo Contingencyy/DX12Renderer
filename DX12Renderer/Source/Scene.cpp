@@ -2,7 +2,8 @@
 #include "Scene.h"
 #include "Application.h"
 #include "Graphics/Renderer.h"
-#include "Graphics/Model.h"
+#include "SceneObject.h"
+#include "ResourceManager.h"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_win32.h>
@@ -22,8 +23,19 @@ Scene::Scene()
 	m_ParticleProps.VelocityVariation = { 0.2f, 0.2f };
 	m_ParticleProps.Position = { 0.0f, 0.0f };*/
 
-	m_Models.push_back(std::make_unique<Model>("Resources/Models/DamagedHelmet/DamagedHelmet.gltf"));
-	//m_Models.push_back(std::make_unique<Model>("Resources/Models/SpaceStation/SS.gltf"));
+	glm::mat4 transform = glm::identity<glm::mat4>();
+	for (int y = -1; y <= 1; ++y)
+	{
+		for (int x = -1; x <= 1; ++x)
+		{
+			glm::mat4 currentTransform = glm::translate(transform, glm::vec3(static_cast<float>(x) * 2.0f, static_cast<float>(y) * 2.0f, 0.0f));
+			currentTransform = glm::rotate(currentTransform, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+			currentTransform = glm::rotate(currentTransform, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+			currentTransform = glm::rotate(currentTransform, glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+			m_SceneObjects.push_back(std::make_unique<SceneObject>(Application::Get().GetResourceManager()->GetModel("DamagedHelmet"), currentTransform));
+		}
+	}
 }
 
 Scene::~Scene()
@@ -32,6 +44,11 @@ Scene::~Scene()
 
 void Scene::Update(float deltaTime)
 {
+	m_ActiveCamera.Update(deltaTime);
+
+	for (auto& sceneObject : m_SceneObjects)
+		sceneObject->Update(deltaTime);
+
 	/*m_ParticleEmitAccumulator += deltaTime * 1000.0f;
 	while (m_ParticleEmitAccumulator >= m_TimeUntilParticleEmit)
 	{
@@ -40,16 +57,14 @@ void Scene::Update(float deltaTime)
 	}
 
 	m_ParticleSystem.Update(deltaTime);*/
-
-	m_ActiveCamera.Update(deltaTime);
 }
 
 void Scene::Render()
 {
-	//m_ParticleSystem.Render();
+	for (auto& sceneObject : m_SceneObjects)
+		sceneObject->Render();
 
-	for (auto& model : m_Models)
-		model->Render();
+	//m_ParticleSystem.Render();
 }
 
 void Scene::ImGuiRender()

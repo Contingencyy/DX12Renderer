@@ -228,7 +228,9 @@
     </ClCompile>
     <ClCompile Include="Source\Graphics\Renderer.cpp" />
     <ClCompile Include="Source\ResourceLoader.cpp" />
+    <ClCompile Include="Source\ResourceManager.cpp" />
     <ClCompile Include="Source\Scene.cpp" />
+    <ClCompile Include="Source\SceneObject.cpp" />
     <ClCompile Include="Source\Util\Logger.cpp" />
     <ClCompile Include="Source\Util\Profiler.cpp" />
     <ClCompile Include="Source\Util\Random.cpp" />
@@ -260,7 +262,9 @@
     <ClInclude Include="Include\GUI.h" />
     <ClInclude Include="Include\InputHandler.h" />
     <ClInclude Include="Include\ResourceLoader.h" />
+    <ClInclude Include="Include\ResourceManager.h" />
     <ClInclude Include="Include\Scene.h" />
+    <ClInclude Include="Include\SceneObject.h" />
     <ClInclude Include="Include\Util\Logger.h" />
     <ClInclude Include="Include\Util\MathHelper.h" />
     <ClInclude Include="Include\Pch.h" />

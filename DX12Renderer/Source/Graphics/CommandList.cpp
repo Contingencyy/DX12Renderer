@@ -145,6 +145,10 @@ void CommandList::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, con
 
 	if (alignedBufferSize > 0 && bufferData != nullptr)
 	{
+		CD3DX12_RESOURCE_BARRIER copyDestBarrier = CD3DX12_RESOURCE_BARRIER::Transition(destBuffer.GetD3D12Resource().Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		ResourceBarrier(1, &copyDestBarrier);
+
 		D3D12_SUBRESOURCE_DATA subresourceData = {};
 		subresourceData.pData = bufferData;
 		subresourceData.RowPitch = alignedBufferSize;
@@ -153,13 +157,13 @@ void CommandList::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, con
 		UpdateSubresources(m_d3d12CommandList.Get(), destBuffer.GetD3D12Resource().Get(),
 			intermediateBuffer.GetD3D12Resource().Get(), 0, 0, 1, &subresourceData);
 
+		CD3DX12_RESOURCE_BARRIER commonBarrier = CD3DX12_RESOURCE_BARRIER::Transition(destBuffer.GetD3D12Resource().Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
+		ResourceBarrier(1, &commonBarrier);
+
 		TrackObject(intermediateBuffer.GetD3D12Resource());
 		TrackObject(destBuffer.GetD3D12Resource());
 	}
-
-	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(destBuffer.GetD3D12Resource().Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
-	ResourceBarrier(1, &barrier);
 }
 
 void CommandList::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData)
@@ -176,13 +180,13 @@ void CommandList::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, 
 		UpdateSubresources(m_d3d12CommandList.Get(), destTexture.GetD3D12Resource().Get(),
 			intermediateBuffer.GetD3D12Resource().Get(), 0, 0, 1, &subresourceData);
 
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(destTexture.GetD3D12Resource().Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
+		ResourceBarrier(1, &barrier);
+
 		TrackObject(intermediateBuffer.GetD3D12Resource());
 		TrackObject(destTexture.GetD3D12Resource());
 	}
-
-	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(destTexture.GetD3D12Resource().Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
-	ResourceBarrier(1, &barrier);
 }
 
 void CommandList::ResolveTexture(Texture& srcTexture, Texture& destTexture)

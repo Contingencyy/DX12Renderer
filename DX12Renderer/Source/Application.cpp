@@ -5,6 +5,7 @@
 #include "GUI.h"
 #include "Scene.h"
 #include "InputHandler.h"
+#include "ResourceManager.h"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_win32.h>
@@ -60,6 +61,10 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 	m_GUI = std::make_unique<GUI>();
 	m_GUI->Initialize(m_Window->GetHandle());
 	LOG_INFO("Initialized GUI");
+
+	m_ResourceManager = std::make_unique<ResourceManager>();
+	m_ResourceManager->LoadTexture("Resources/Textures/kermit.jpg", "Kermit");
+	m_ResourceManager->LoadModel("Resources/Models/DamagedHelmet/DamagedHelmet.gltf", "DamagedHelmet");
 
 	m_Scene = std::make_unique<Scene>();
 	m_Initialized = true;
