@@ -2,7 +2,7 @@
 
 struct BufferDesc
 {
-	BufferDesc() {}
+	BufferDesc() = default;
 	BufferDesc(D3D12_HEAP_TYPE type, D3D12_RESOURCE_STATES initialState)
 		: Type(type), InitialState(initialState) {}
 

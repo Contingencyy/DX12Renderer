@@ -105,6 +105,7 @@ void Renderer::Render()
 
         m_RenderStatistics.DrawCallCount++;
         m_RenderStatistics.TriangleCount += (modelDrawData.Model->GetBuffer(2)->GetNumElements() / 3) * modelDrawData.ModelInstanceData.size();
+        m_RenderStatistics.ObjectCount += modelDrawData.ModelInstanceData.size();
     }
 
     m_CommandQueueDirect->ExecuteCommandList(commandList);
@@ -118,6 +119,7 @@ void Renderer::ImGuiRender()
     ImGui::Text("VSync: %s", m_RenderSettings.VSync ? "On" : "Off");
     ImGui::Text("Draw calls: %u", m_RenderStatistics.DrawCallCount);
     ImGui::Text("Triangle count: %u", m_RenderStatistics.TriangleCount);
+    ImGui::Text("Object count: %u", m_RenderStatistics.ObjectCount);
 
     ImGui::End();
 }

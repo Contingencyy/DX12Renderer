@@ -23,18 +23,16 @@ Scene::Scene()
 	m_ParticleProps.VelocityVariation = { 0.2f, 0.2f };
 	m_ParticleProps.Position = { 0.0f, 0.0f };*/
 
-	glm::mat4 transform = glm::identity<glm::mat4>();
+	glm::vec3 position = glm::vec3(0.0f);
+	glm::vec3 rotation = glm::vec3(90.0f, 0.0f, 180.0f);
 	for (float y = -9.5f; y <= 9.5f; y += 1.0f)
 	{
 		for (float x = -9.5f; x <= 9.5f; x += 1.0f)
 		{
-			glm::mat4 currentTransform = glm::translate(transform, glm::vec3(x * 2.0f, y * 2.0f, 0.0f));
+			position.x = x * 2.0f;
+			position.y = y * 2.0f;
 
-			currentTransform = glm::rotate(currentTransform, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-			currentTransform = glm::rotate(currentTransform, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-			currentTransform = glm::rotate(currentTransform, glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-			m_SceneObjects.push_back(std::make_unique<SceneObject>(Application::Get().GetResourceManager()->GetModel("DamagedHelmet"), currentTransform));
+			m_SceneObjects.push_back(std::make_unique<SceneObject>(Application::Get().GetResourceManager()->GetModel("DamagedHelmet"), position, rotation, glm::vec3(1.0f)));
 		}
 	}
 }
@@ -63,7 +61,16 @@ void Scene::Update(float deltaTime)
 void Scene::Render()
 {
 	for (auto& sceneObject : m_SceneObjects)
-		sceneObject->Render();
+	{
+		const glm::vec3& position = sceneObject->GetPosition();
+		const glm::vec3& scale = sceneObject->GetScale();
+
+		float radius = std::max(std::max(scale.x, scale.y), scale.z);
+		if (m_ActiveCamera.IsSphereInViewFrustum(position, radius))
+			sceneObject->Render();
+		//if (m_ActiveCamera.IsPointInViewFrustum({ sceneObject->GetTransform()[3].x, sceneObject->GetTransform()[3].y, sceneObject->GetTransform()[3].z }))
+		//	sceneObject->Render();
+	}
 
 	//m_ParticleSystem.Render();
 }

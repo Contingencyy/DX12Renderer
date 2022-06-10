@@ -3,7 +3,7 @@
 
 struct TextureDesc
 {
-	TextureDesc() {}
+	TextureDesc() = default;
 	TextureDesc(DXGI_FORMAT format, D3D12_RESOURCE_STATES initialState, D3D12_RESOURCE_FLAGS flags, uint32_t width, uint32_t height)
 		: Format(format), InitialState(initialState), Flags(flags), Width(width), Height(height) {}
 
@@ -11,8 +11,8 @@ struct TextureDesc
 	D3D12_RESOURCE_STATES InitialState = D3D12_RESOURCE_STATE_COMMON;
 	D3D12_RESOURCE_FLAGS Flags = D3D12_RESOURCE_FLAG_NONE;
 
-	uint32_t Width;
-	uint32_t Height;
+	uint32_t Width = 1280;
+	uint32_t Height = 720;
 };
 
 class Texture

@@ -17,8 +17,8 @@ public:
 	{
 		struct Resolution
 		{
-			uint32_t x;
-			uint32_t y;
+			uint32_t x = 1280;
+			uint32_t y = 720;
 		} Resolution;
 
 		bool VSync = true;
@@ -30,10 +30,12 @@ public:
 		{
 			DrawCallCount = 0;
 			TriangleCount = 0;
+			ObjectCount = 0;
 		}
 
 		uint32_t DrawCallCount = 0;
 		uint32_t TriangleCount = 0;
+		uint32_t ObjectCount = 0;
 	};
 
 public:
@@ -108,7 +110,7 @@ private:
 
 	struct SceneData
 	{
-		SceneData() {}
+		SceneData() = default;
 
 		Camera Camera;
 	};

@@ -104,9 +104,11 @@ void Application::Finalize()
 
 void Application::OnWindowResize(uint32_t width, uint32_t height)
 {
-	m_Renderer->Resize(width, height);
-
-	m_Scene->GetActiveCamera().ResizeProjection(static_cast<float>(width), static_cast<float>(height));
+	if (width > 0 && height > 0)
+	{
+		m_Renderer->Resize(width, height);
+		m_Scene->GetActiveCamera().ResizeProjection(static_cast<float>(width), static_cast<float>(height));
+	}
 }
 
 void Application::PollEvents()
