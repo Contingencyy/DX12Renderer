@@ -6,6 +6,7 @@ A 3D rendering project written in C++, using DirectX 12 as the graphics API.
 - GLTF model loading (single mesh only)
 - Albedo textures
 - Instancing
+- Geometric view frustum culling with points and spheres
 
 ![Rendering instanced models](https://user-images.githubusercontent.com/34250026/173068461-ad322038-f782-4ab7-a98d-2fb115ddfd78.png)
 
