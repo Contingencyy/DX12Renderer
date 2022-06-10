@@ -85,20 +85,22 @@ private:
 
 	struct ModelInstanceData
 	{
-		glm::mat4 transform = glm::identity<glm::mat4>();
-		glm::vec4 color = glm::vec4(1.0f);
+		ModelInstanceData(const glm::mat4& transform, const glm::vec4& color)
+			: Transform(transform), Color(color) {}
+
+		glm::mat4 Transform = glm::identity<glm::mat4>();
+		glm::vec4 Color = glm::vec4(1.0f);
 	};
 	
 	struct ModelDrawData
 	{
-		ModelDrawData(const std::shared_ptr<Model>& model, const glm::mat4& transform)
+		ModelDrawData(const std::shared_ptr<Model>& model)
 			: Model(model)
 		{
-			ModelInstanceData.transform = transform;
 		}
 
 		std::shared_ptr<Model> Model;
-		ModelInstanceData ModelInstanceData;
+		std::vector<ModelInstanceData> ModelInstanceData;
 	};
 
 	std::vector<ModelDrawData> m_ModelDrawData;

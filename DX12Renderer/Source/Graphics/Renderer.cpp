@@ -43,7 +43,7 @@ void Renderer::Initialize(uint32_t width, uint32_t height)
     for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
         m_DescriptorHeaps[i] = std::make_shared<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
 
-    m_ModelInstanceBuffer = std::make_unique<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), 1, sizeof(ModelInstanceData));
+    m_ModelInstanceBuffer = std::make_unique<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), 1000, sizeof(ModelInstanceData));
 }
 
 void Renderer::Finalize()
@@ -72,20 +72,19 @@ void Renderer::BeginFrame(const Camera& camera)
 
 void Renderer::Render()
 {
+    auto commandList = m_CommandQueueDirect->GetCommandList();
     auto colorTarget = m_SwapChain->GetColorTarget();
     auto depthBuffer = m_SwapChain->GetDepthBuffer();
 
     auto rtv = colorTarget->GetDescriptorHandle();
     auto dsv = depthBuffer->GetDescriptorHandle();
 
+    commandList->SetViewports(1, &m_Viewport);
+    commandList->SetScissorRects(1, &m_ScissorRect);
+    commandList->SetRenderTargets(1, &rtv, &dsv);
+
     for (auto& modelDrawData : m_ModelDrawData)
     {
-        auto commandList = m_CommandQueueDirect->GetCommandList();
-
-        commandList->SetViewports(1, &m_Viewport);
-        commandList->SetScissorRects(1, &m_ScissorRect);
-        commandList->SetRenderTargets(1, &rtv, &dsv);
-
         commandList->SetPipelineState(*modelDrawData.Model->GetPipelineState());
 
         glm::mat4 viewProjection = m_SceneData.Camera.GetViewProjection();
@@ -93,22 +92,22 @@ void Renderer::Render()
 
         commandList->SetVertexBuffers(0, 1, *modelDrawData.Model->GetBuffer(0).get());
         commandList->SetVertexBuffers(1, 1, *modelDrawData.Model->GetBuffer(1).get());
-        m_ModelInstanceBuffer->SetBufferDataStaging(&modelDrawData.ModelInstanceData, sizeof(ModelInstanceData));
+        m_ModelInstanceBuffer->SetBufferDataStaging(&modelDrawData.ModelInstanceData[0], modelDrawData.ModelInstanceData.size() * sizeof(ModelInstanceData));
         commandList->SetVertexBuffers(2, 1, *m_ModelInstanceBuffer.get());
         commandList->SetIndexBuffer(*modelDrawData.Model->GetBuffer(2).get());
         commandList->SetShaderResourceView(1, 0, *modelDrawData.Model->GetTexture(0).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        commandList->DrawIndexed(modelDrawData.Model->GetBuffer(2)->GetNumElements(), 1);
+        commandList->DrawIndexed(modelDrawData.Model->GetBuffer(2)->GetNumElements(), modelDrawData.ModelInstanceData.size());
 
         CD3DX12_RESOURCE_BARRIER textureBarrier = CD3DX12_RESOURCE_BARRIER::Transition(modelDrawData.Model->GetTexture(0)->GetD3D12Resource().Get(),
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON);
         commandList->ResourceBarrier(1, &textureBarrier);
 
         m_RenderStatistics.DrawCallCount++;
-        m_RenderStatistics.TriangleCount += modelDrawData.Model->GetBuffer(2)->GetNumElements() / 3;
-
-        m_CommandQueueDirect->ExecuteCommandList(commandList);
+        m_RenderStatistics.TriangleCount += (modelDrawData.Model->GetBuffer(2)->GetNumElements() / 3) * modelDrawData.ModelInstanceData.size();
     }
+
+    m_CommandQueueDirect->ExecuteCommandList(commandList);
 }
 
 void Renderer::ImGuiRender()
@@ -137,7 +136,19 @@ void Renderer::EndFrame()
 
 void Renderer::Submit(const std::shared_ptr<Model>& model, const glm::mat4& transform)
 {
-    m_ModelDrawData.emplace_back(model, transform);
+    auto iter = std::find_if(m_ModelDrawData.begin(), m_ModelDrawData.end(), [&](const ModelDrawData& modelDrawData) {
+        return model->GetName() == modelDrawData.Model->GetName();
+    });
+
+    if (iter != m_ModelDrawData.end())
+    {
+        iter->ModelInstanceData.emplace_back(transform, glm::vec4(1.0f));
+    }
+    else
+    {
+        auto& modelDrawData = m_ModelDrawData.emplace_back(model);
+        modelDrawData.ModelInstanceData.emplace_back(transform, glm::vec4(1.0f));
+    }
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)

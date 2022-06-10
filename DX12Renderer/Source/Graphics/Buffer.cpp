@@ -21,7 +21,7 @@ Buffer::Buffer(const BufferDesc& bufferDesc, std::size_t numElements, std::size_
 }
 
 Buffer::Buffer(const BufferDesc& bufferDesc, std::size_t alignedSize)
-	: m_BufferDesc(bufferDesc), m_ByteSize(alignedSize)
+	: m_BufferDesc(bufferDesc), m_NumElements(1), m_ElementSize(alignedSize), m_ByteSize(alignedSize)
 {
 	Create();
 }
@@ -51,6 +51,7 @@ void Buffer::SetBufferDataStaging(const void* data, std::size_t alignedSize)
 {
 	if (m_BufferDesc.Type == D3D12_HEAP_TYPE_UPLOAD)
 	{
+		std::size_t byteSize = alignedSize == 0 ? m_ByteSize : alignedSize;
 		memcpy(m_CPUPtr, data, alignedSize);
 	}
 	else

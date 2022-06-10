@@ -30,7 +30,7 @@ void Camera::Update(float deltaTime)
 	if (m_Velocity.x != 0.0f || m_Velocity.y != 0.0f || m_Velocity.z != 0.0f)
 	{
 		m_Velocity = glm::normalize(m_Velocity);
-		m_Position += m_Velocity * deltaTime;
+		m_Position += m_Velocity * m_Speed * deltaTime;
 
 		m_ViewMatrix = glm::inverse(glm::translate(glm::identity<glm::mat4>(), m_Position));
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;

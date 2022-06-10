@@ -27,7 +27,7 @@ void ResourceManager::LoadTexture(const std::string& filepath, const std::string
 void ResourceManager::LoadModel(const std::string& filepath, const std::string& name)
 {
 	const tinygltf::Model& glTFModel = ResourceLoader::LoadModel(filepath);
-	m_Models.insert(std::pair<std::string, std::shared_ptr<Model>>(name, std::make_shared<Model>(glTFModel)));
+	m_Models.insert(std::pair<std::string, std::shared_ptr<Model>>(name, std::make_shared<Model>(glTFModel, name)));
 }
 
 std::shared_ptr<Texture> ResourceManager::GetTexture(const std::string& name)

@@ -24,11 +24,12 @@ Scene::Scene()
 	m_ParticleProps.Position = { 0.0f, 0.0f };*/
 
 	glm::mat4 transform = glm::identity<glm::mat4>();
-	for (int y = -1; y <= 1; ++y)
+	for (float y = -9.5f; y <= 9.5f; y += 1.0f)
 	{
-		for (int x = -1; x <= 1; ++x)
+		for (float x = -9.5f; x <= 9.5f; x += 1.0f)
 		{
-			glm::mat4 currentTransform = glm::translate(transform, glm::vec3(static_cast<float>(x) * 2.0f, static_cast<float>(y) * 2.0f, 0.0f));
+			glm::mat4 currentTransform = glm::translate(transform, glm::vec3(x * 2.0f, y * 2.0f, 0.0f));
+
 			currentTransform = glm::rotate(currentTransform, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 			currentTransform = glm::rotate(currentTransform, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 			currentTransform = glm::rotate(currentTransform, glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f));

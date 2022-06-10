@@ -25,7 +25,7 @@ private:
 	glm::vec3 m_Position = glm::vec3(0.0f);
 	glm::vec3 m_Velocity = glm::vec3(0.0f);
 
-	float m_Speed = 100.0f;
+	float m_Speed = 5.0f;
 
 	float m_FOV = 60.0f;
 	float m_Near = 0.1f;

@@ -1,6 +1,5 @@
 #include "Pch.h"
 #include "Graphics/Model.h"
-#include "Graphics/Shader.h"
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
 #include "ResourceLoader.h"
@@ -9,7 +8,8 @@
 #include "Graphics/Device.h"
 #include "Graphics/PipelineState.h"
 
-Model::Model(const tinygltf::Model& glTFModel)
+Model::Model(const tinygltf::Model& glTFModel, const std::string& name)
+	: m_Name(name)
 {
 	CreatePipelineState();
 
