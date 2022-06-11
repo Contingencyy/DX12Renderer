@@ -4,9 +4,10 @@ A 3D rendering project written in C++, using DirectX 12 as the graphics API.
 
 ## Features
 - GLTF model loading (single mesh only)
-- Albedo textures
 - Instancing
+- Albedo and normal textures
 - Geometric view frustum culling with points and spheres
+- Point lights (ambient and diffuse)
 
 ## Images
 ##### Instancing
