@@ -9,6 +9,23 @@ class RootSignature;
 class Model
 {
 public:
+	enum InputType : uint32_t
+	{
+		INPUT_POSITION,
+		INPUT_TEX_COORD,
+		INPUT_NORMAL,
+		INPUT_INDEX,
+		NUM_INPUT_TYPES
+	};
+
+	enum TextureType : uint32_t
+	{
+		TEX_ALBEDO,
+		TEX_NORMAL,
+		NUM_TEXTURE_TYPES
+	};
+
+public:
 	Model(const tinygltf::Model& glTFModel, const std::string& name);
 	~Model();
 
@@ -16,8 +33,8 @@ public:
 
 	PipelineState* GetPipelineState() const { return m_PipelineState.get(); }
 
-	std::shared_ptr<Buffer> GetBuffer(uint32_t index) const { return m_Buffers[index]; }
-	std::shared_ptr<Texture> GetTexture(uint32_t index) const { return m_Textures[index]; }
+	std::shared_ptr<Buffer> GetBuffer(InputType type) const { return m_Buffers[type]; }
+	std::shared_ptr<Texture> GetTexture(TextureType type) const { return m_Textures[type]; }
 
 private:
 	void CreatePipelineState();

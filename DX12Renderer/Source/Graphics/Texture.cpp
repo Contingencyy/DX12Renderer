@@ -9,7 +9,7 @@ Texture::Texture(const TextureDesc& textureDesc, const void* data)
 {
 	Create();
 
-	Buffer uploadBuffer(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_ByteSize);
+	Buffer uploadBuffer(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_ByteSize);
 	Application::Get().GetRenderer()->CopyTexture(uploadBuffer, *this, data);
 }
 

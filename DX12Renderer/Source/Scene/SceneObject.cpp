@@ -1,5 +1,5 @@
 #include "Pch.h"
-#include "SceneObject.h"
+#include "Scene/SceneObject.h"
 #include "Graphics/Model.h"
 
 #include "Application.h"

@@ -1,12 +1,21 @@
 #pragma once
+#include "Graphics/DescriptorAllocation.h"
+
+enum class BufferUsage
+{
+	BUFFER_USAGE_VERTEX,
+	BUFFER_USAGE_INDEX,
+	BUFFER_USAGE_CONSTANT,
+	BUFFER_USAGE_UPLOAD
+};
 
 struct BufferDesc
 {
 	BufferDesc() = default;
-	BufferDesc(D3D12_HEAP_TYPE type, D3D12_RESOURCE_STATES initialState)
-		: Type(type), InitialState(initialState) {}
+	BufferDesc(BufferUsage usage, D3D12_RESOURCE_STATES initialState)
+		: Usage(usage), InitialState(initialState) {}
 
-	D3D12_HEAP_TYPE Type = D3D12_HEAP_TYPE_DEFAULT;
+	BufferUsage Usage = BufferUsage::BUFFER_USAGE_VERTEX;
 	D3D12_RESOURCE_STATES InitialState = D3D12_RESOURCE_STATE_COMMON;
 };
 
@@ -24,6 +33,7 @@ public:
 	void SetBufferDataStaging(const void* data, std::size_t alignedSize = 0);
 
 	BufferDesc GetBufferDesc() const { return m_BufferDesc; }
+	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle();
 	std::size_t GetByteSize() const { return m_ByteSize; }
 	std::size_t GetNumElements() const { return m_NumElements; }
 	std::size_t GetElementSize() const { return m_ElementSize; }
@@ -36,6 +46,8 @@ private:
 
 private:
 	BufferDesc m_BufferDesc = {};
+	DescriptorAllocation m_DescriptorAllocation = {};
+
 	ComPtr<ID3D12Resource> m_d3d12Resource;
 
 	void* m_CPUPtr = nullptr;

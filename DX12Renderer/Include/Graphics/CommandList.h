@@ -25,6 +25,9 @@ public:
 	void SetVertexBuffers(uint32_t slot, uint32_t numViews, const Buffer& vertexBuffer);
 	void SetIndexBuffer(const Buffer& indexBuffer);
 	void SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ID3D12DescriptorHeap* heap);
+
+	void SetConstantBufferView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Buffer& buffer,
+		D3D12_RESOURCE_STATES stateAfter, const D3D12_CONSTANT_BUFFER_VIEW_DESC* cbvDesc = nullptr);
 	void SetShaderResourceView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Texture& texture,
 		D3D12_RESOURCE_STATES stateAfter, const D3D12_SHADER_RESOURCE_VIEW_DESC* srvDesc = nullptr);
 	

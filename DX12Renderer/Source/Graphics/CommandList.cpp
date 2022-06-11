@@ -114,6 +114,15 @@ void CommandList::SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ID3D12Descr
 	}
 }
 
+void CommandList::SetConstantBufferView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Buffer& buffer,
+	D3D12_RESOURCE_STATES stateAfter, const D3D12_CONSTANT_BUFFER_VIEW_DESC* cbvDesc)
+{
+	//auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(buffer.GetD3D12Resource().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, stateAfter, 0);
+	//m_d3d12CommandList->ResourceBarrier(1, &barrier);
+
+	m_DynamicDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->StageDescriptors(rootParameterIndex, descriptorOffset, 1, buffer.GetDescriptorHandle());
+}
+
 void CommandList::SetShaderResourceView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Texture& texture,
 	D3D12_RESOURCE_STATES stateAfter, const D3D12_SHADER_RESOURCE_VIEW_DESC* srvDesc)
 {

@@ -101,6 +101,11 @@ void Device::CreateDepthStencilView(Texture& texture, const D3D12_DEPTH_STENCIL_
     m_d3d12Device->CreateDepthStencilView(texture.GetD3D12Resource().Get(), &dsvDesc, descriptor);
 }
 
+void Device::CreateConstantBufferView(Buffer& buffer, const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor)
+{
+    m_d3d12Device->CreateConstantBufferView(&cbvDesc, descriptor);
+}
+
 void Device::CreateShaderResourceView(Texture& texture, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor)
 {
     m_d3d12Device->CreateShaderResourceView(texture.GetD3D12Resource().Get(), &srvDesc, descriptor);

@@ -72,7 +72,7 @@
     <ClCompile Include="Source\Util\Random.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Scene.cpp">
+    <ClCompile Include="Source\Scene\Scene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\InputHandler.cpp">
@@ -120,13 +120,16 @@
     <ClCompile Include="Source\Util\Profiler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\SceneObject.cpp">
+    <ClCompile Include="Source\Scene\SceneObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\ResourceManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Transform.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Scene\Light.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -188,7 +191,7 @@
     <ClInclude Include="Include\Graphics\ParticleSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Scene.h">
+    <ClInclude Include="Include\Scene\Scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\InputHandler.h">
@@ -233,13 +236,16 @@
     <ClInclude Include="Include\Graphics\RootSignature.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\SceneObject.h">
+    <ClInclude Include="Include\Scene\SceneObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\ResourceManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Transform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Scene\Light.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

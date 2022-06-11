@@ -43,7 +43,8 @@ void Renderer::Initialize(uint32_t width, uint32_t height)
     for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
         m_DescriptorHeaps[i] = std::make_shared<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
 
-    m_ModelInstanceBuffer = std::make_unique<Buffer>(BufferDesc(D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), 1000, sizeof(ModelInstanceData));
+    m_ModelInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_RenderSettings.MaxModelInstances, sizeof(ModelInstanceData));
+    m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, D3D12_RESOURCE_STATE_GENERIC_READ), m_RenderSettings.MaxPointLights, sizeof(Pointlight));
 }
 
 void Renderer::Finalize()
@@ -83,28 +84,41 @@ void Renderer::Render()
     commandList->SetScissorRects(1, &m_ScissorRect);
     commandList->SetRenderTargets(1, &rtv, &dsv);
 
+    m_RenderStatistics.PointLightCount += m_Pointlights.size();
+
     for (auto& modelDrawData : m_ModelDrawData)
     {
         commandList->SetPipelineState(*modelDrawData.Model->GetPipelineState());
 
         glm::mat4 viewProjection = m_SceneData.Camera.GetViewProjection();
         commandList->SetRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
+        uint32_t numPointlights = m_Pointlights.size();
+        commandList->SetRoot32BitConstants(1, sizeof(uint32_t) / 4, &numPointlights, 0);
 
-        commandList->SetVertexBuffers(0, 1, *modelDrawData.Model->GetBuffer(0).get());
-        commandList->SetVertexBuffers(1, 1, *modelDrawData.Model->GetBuffer(1).get());
+        commandList->SetVertexBuffers(0, 1, *modelDrawData.Model->GetBuffer(Model::InputType::INPUT_POSITION).get());
+        commandList->SetVertexBuffers(1, 1, *modelDrawData.Model->GetBuffer(Model::InputType::INPUT_TEX_COORD).get());
+        commandList->SetVertexBuffers(2, 1, *modelDrawData.Model->GetBuffer(Model::InputType::INPUT_NORMAL).get());
         m_ModelInstanceBuffer->SetBufferDataStaging(&modelDrawData.ModelInstanceData[0], modelDrawData.ModelInstanceData.size() * sizeof(ModelInstanceData));
-        commandList->SetVertexBuffers(2, 1, *m_ModelInstanceBuffer.get());
-        commandList->SetIndexBuffer(*modelDrawData.Model->GetBuffer(2).get());
-        commandList->SetShaderResourceView(1, 0, *modelDrawData.Model->GetTexture(0).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        commandList->SetVertexBuffers(3, 1, *m_ModelInstanceBuffer.get());
+        commandList->SetIndexBuffer(*modelDrawData.Model->GetBuffer(Model::InputType::INPUT_INDEX).get());
 
-        commandList->DrawIndexed(modelDrawData.Model->GetBuffer(2)->GetNumElements(), modelDrawData.ModelInstanceData.size());
+        m_PointlightBuffer->SetBufferDataStaging(&m_Pointlights[0], m_Pointlights.size() * sizeof(Pointlight));
+        commandList->SetConstantBufferView(2, 0, *m_PointlightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+        commandList->SetShaderResourceView(2, 1, *modelDrawData.Model->GetTexture(Model::TextureType::TEX_ALBEDO).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        commandList->SetShaderResourceView(2, 2, *modelDrawData.Model->GetTexture(Model::TextureType::TEX_NORMAL).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        CD3DX12_RESOURCE_BARRIER textureBarrier = CD3DX12_RESOURCE_BARRIER::Transition(modelDrawData.Model->GetTexture(0)->GetD3D12Resource().Get(),
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON);
-        commandList->ResourceBarrier(1, &textureBarrier);
+        commandList->DrawIndexed(modelDrawData.Model->GetBuffer(Model::InputType::INPUT_INDEX)->GetNumElements(), modelDrawData.ModelInstanceData.size());
+
+        CD3DX12_RESOURCE_BARRIER shaderResourceBarrier[2] = {
+            CD3DX12_RESOURCE_BARRIER::Transition(modelDrawData.Model->GetTexture(Model::TextureType::TEX_ALBEDO)->GetD3D12Resource().Get(),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON),
+            CD3DX12_RESOURCE_BARRIER::Transition(modelDrawData.Model->GetTexture(Model::TextureType::TEX_NORMAL)->GetD3D12Resource().Get(),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON)
+        };
+        commandList->ResourceBarrier(2, shaderResourceBarrier);
 
         m_RenderStatistics.DrawCallCount++;
-        m_RenderStatistics.TriangleCount += (modelDrawData.Model->GetBuffer(2)->GetNumElements() / 3) * modelDrawData.ModelInstanceData.size();
+        m_RenderStatistics.TriangleCount += (modelDrawData.Model->GetBuffer(Model::InputType::INPUT_INDEX)->GetNumElements() / 3) * modelDrawData.ModelInstanceData.size();
         m_RenderStatistics.ObjectCount += modelDrawData.ModelInstanceData.size();
     }
 
@@ -120,6 +134,9 @@ void Renderer::ImGuiRender()
     ImGui::Text("Draw calls: %u", m_RenderStatistics.DrawCallCount);
     ImGui::Text("Triangle count: %u", m_RenderStatistics.TriangleCount);
     ImGui::Text("Object count: %u", m_RenderStatistics.ObjectCount);
+    ImGui::Text("Point light count: %u", m_RenderStatistics.PointLightCount);
+    ImGui::Text("Max model instances: %u", m_RenderSettings.MaxModelInstances);
+    ImGui::Text("Max point lights: %u", m_RenderSettings.MaxPointLights);
 
     ImGui::End();
 }
@@ -132,6 +149,7 @@ void Renderer::EndFrame()
     m_CommandQueueCopy->ResetCommandLists();
 
     m_ModelDrawData.clear();
+    m_Pointlights.clear();
 
     m_RenderStatistics.Reset();
 }
@@ -151,6 +169,11 @@ void Renderer::Submit(const std::shared_ptr<Model>& model, const glm::mat4& tran
         auto& modelDrawData = m_ModelDrawData.emplace_back(model);
         modelDrawData.ModelInstanceData.emplace_back(transform, glm::vec4(1.0f));
     }
+}
+
+void Renderer::Submit(const Pointlight& pointlight)
+{
+    m_Pointlights.push_back(pointlight);
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)

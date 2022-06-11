@@ -3,7 +3,7 @@
 #include "Window.h"
 #include "Graphics/Renderer.h"
 #include "GUI.h"
-#include "Scene.h"
+#include "Scene/Scene.h"
 #include "InputHandler.h"
 #include "ResourceManager.h"
 

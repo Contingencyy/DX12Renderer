@@ -13,6 +13,9 @@ Model::Model(const tinygltf::Model& glTFModel, const std::string& name)
 {
 	CreatePipelineState();
 
+	m_Buffers.resize(static_cast<std::size_t>(InputType::NUM_INPUT_TYPES));
+	m_Textures.resize(static_cast<std::size_t>(TextureType::NUM_TEXTURE_TYPES));
+
 	CreateBuffers(glTFModel);
 	CreateTextures(glTFModel);
 }
@@ -29,11 +32,11 @@ void Model::CreatePipelineState()
 void Model::CreateBuffers(const tinygltf::Model& glTFModel)
 {
 	// Load vertex attributes from glTF model
-	std::string attributeNames[] = { "POSITION", "TEXCOORD_0" };
+	std::string attributeNames[] = { "POSITION", "TEXCOORD_0", "NORMAL"};
 
-	for (const std::string& attributeName : attributeNames)
+	for (uint32_t i = 0; i < InputType::NUM_INPUT_TYPES - 1; ++i)
 	{
-		auto iter = glTFModel.meshes[0].primitives[0].attributes.find(attributeName);
+		auto iter = glTFModel.meshes[0].primitives[0].attributes.find(attributeNames[i]);
 		if (iter != glTFModel.meshes[0].primitives[0].attributes.end())
 		{
 			uint32_t attributeIndex = iter->second;
@@ -42,11 +45,11 @@ void Model::CreateBuffers(const tinygltf::Model& glTFModel)
 			auto& buffer = glTFModel.buffers[bufferView.buffer];
 
 			const unsigned char* dataPtr = &buffer.data[0] + bufferView.byteOffset;
-			m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(), accessor.count, accessor.ByteStride(bufferView), dataPtr));
+			m_Buffers[i] = std::make_shared<Buffer>(BufferDesc(), accessor.count, accessor.ByteStride(bufferView), dataPtr);
 		}
 		else
 		{
-			ASSERT(false, "glTF model mesh does not contain attribute " + attributeName);
+			ASSERT(false, "glTF model mesh does not contain attribute " + attributeNames[i]);
 		}
 	}
 
@@ -57,16 +60,21 @@ void Model::CreateBuffers(const tinygltf::Model& glTFModel)
 	auto& buffer = glTFModel.buffers[bufferView.buffer];
 
 	const unsigned char* dataPtr = &glTFModel.buffers[0].data[0] + bufferView.byteOffset;
-
-	m_Buffers.push_back(std::make_shared<Buffer>(BufferDesc(), accessor.count, accessor.ByteStride(bufferView), dataPtr));
+	m_Buffers[InputType::INPUT_INDEX] = std::make_shared<Buffer>(BufferDesc(), accessor.count, accessor.ByteStride(bufferView), dataPtr);
 }
 
 void Model::CreateTextures(const tinygltf::Model& glTFModel)
 {
 	auto& material = glTFModel.materials[0];
 	uint32_t albedoTextureIndex = material.pbrMetallicRoughness.baseColorTexture.index;
-	uint32_t imageIndex = glTFModel.textures[albedoTextureIndex].source;
+	uint32_t albedoImageIndex = glTFModel.textures[albedoTextureIndex].source;
 
-	m_Textures.push_back(std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE,
-		glTFModel.images[imageIndex].width, glTFModel.images[imageIndex].height), &glTFModel.images[imageIndex].image[0]));
+	m_Textures[TextureType::TEX_ALBEDO] = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE,
+		glTFModel.images[albedoImageIndex].width, glTFModel.images[albedoImageIndex].height), &glTFModel.images[albedoImageIndex].image[0]);
+
+	uint32_t normalTextureIndex = material.normalTexture.index;
+	uint32_t normalImageIndex = glTFModel.textures[normalTextureIndex].source;
+
+	m_Textures[TextureType::TEX_NORMAL] = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE,
+		glTFModel.images[normalImageIndex].width, glTFModel.images[normalImageIndex].height), &glTFModel.images[normalImageIndex].image[0]);
 }

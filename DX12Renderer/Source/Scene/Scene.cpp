@@ -1,8 +1,9 @@
 #include "Pch.h"
-#include "Scene.h"
+#include "Scene/Scene.h"
 #include "Application.h"
 #include "Graphics/Renderer.h"
-#include "SceneObject.h"
+#include "Scene/SceneObject.h"
+#include "Scene/Light.h"
 #include "ResourceManager.h"
 
 #include <imgui/imgui.h>
@@ -35,6 +36,10 @@ Scene::Scene()
 			m_SceneObjects.push_back(std::make_unique<SceneObject>(Application::Get().GetResourceManager()->GetModel("DamagedHelmet"), position, rotation, glm::vec3(1.0f)));
 		}
 	}
+
+	m_Pointlights.emplace_back(Pointlight(glm::vec3(-2.5f, 0.0f, -2.5f), 1000.0f, glm::vec3(0.0f, 0.1f, 0.01f), glm::vec4(0.8f, 0.0f, 0.0f, 1.0f), glm::vec4(0.3f, 0.3f, 0.3f, 1.0f)));
+	m_Pointlights.emplace_back(Pointlight(glm::vec3(0.0f, 0.0f, -2.5f), 1000.0f, glm::vec3(0.0f, 0.1f, 0.01f), glm::vec4(0.0f, 0.8f, 0.0f, 1.0f), glm::vec4(0.3f, 0.3f, 0.3f, 1.0f)));
+	m_Pointlights.emplace_back(Pointlight(glm::vec3(2.5f, 0.0f, -2.5f), 1000.0f, glm::vec3(0.0f, 0.1f, 0.01f), glm::vec4(0.0f, 0.0f, 0.8f, 1.0f), glm::vec4(0.3f, 0.3f, 0.3f, 1.0f)));
 }
 
 Scene::~Scene()
@@ -68,9 +73,10 @@ void Scene::Render()
 		float radius = std::max(std::max(scale.x, scale.y), scale.z);
 		if (m_ActiveCamera.IsSphereInViewFrustum(position, radius))
 			sceneObject->Render();
-		//if (m_ActiveCamera.IsPointInViewFrustum({ sceneObject->GetTransform()[3].x, sceneObject->GetTransform()[3].y, sceneObject->GetTransform()[3].z }))
-		//	sceneObject->Render();
 	}
+
+	for (auto& pointlight : m_Pointlights)
+		Application::Get().GetRenderer()->Submit(pointlight);
 
 	//m_ParticleSystem.Render();
 }

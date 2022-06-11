@@ -3,6 +3,7 @@
 #include "Graphics/Texture.h"
 #include "Graphics/DescriptorAllocation.h"
 #include "Camera.h"
+#include "Scene/Light.h"
 
 class Device;
 class CommandQueue;
@@ -22,6 +23,8 @@ public:
 		} Resolution;
 
 		bool VSync = true;
+		uint32_t MaxModelInstances = 1000;
+		uint32_t MaxPointLights = 100;
 	};
 
 	struct RenderStatistics
@@ -31,11 +34,13 @@ public:
 			DrawCallCount = 0;
 			TriangleCount = 0;
 			ObjectCount = 0;
+			PointLightCount = 0;
 		}
 
 		uint32_t DrawCallCount = 0;
 		uint32_t TriangleCount = 0;
 		uint32_t ObjectCount = 0;
+		uint32_t PointLightCount = 0;
 	};
 
 public:
@@ -51,6 +56,7 @@ public:
 	void EndFrame();
 
 	void Submit(const std::shared_ptr<Model>& model, const glm::mat4& transform);
+	void Submit(const Pointlight& pointlight);
 	void Resize(uint32_t width, uint32_t height);
 
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
@@ -109,6 +115,9 @@ private:
 
 	std::vector<ModelDrawData> m_ModelDrawData;
 	std::unique_ptr<Buffer> m_ModelInstanceBuffer;
+
+	std::unique_ptr<Buffer> m_PointlightBuffer;
+	std::vector<Pointlight> m_Pointlights;
 
 	struct SceneData
 	{

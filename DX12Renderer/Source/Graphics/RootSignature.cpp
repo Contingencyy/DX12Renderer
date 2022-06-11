@@ -21,12 +21,14 @@ void RootSignature::Create()
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
-	CD3DX12_DESCRIPTOR_RANGE1 descRanges[1] = {};
-	descRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+	CD3DX12_DESCRIPTOR_RANGE1 descRanges[2] = {};
+	descRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 2);
+	descRanges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0);
 
-	CD3DX12_ROOT_PARAMETER1 rootParameters[2] = {};
+	CD3DX12_ROOT_PARAMETER1 rootParameters[3] = {};
 	rootParameters[0].InitAsConstants(16, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-	rootParameters[1].InitAsDescriptorTable(1, descRanges, D3D12_SHADER_VISIBILITY_PIXEL);
+	rootParameters[1].InitAsConstants(1, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+	rootParameters[2].InitAsDescriptorTable(2, descRanges, D3D12_SHADER_VISIBILITY_PIXEL);
 
 	CD3DX12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
 	staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
