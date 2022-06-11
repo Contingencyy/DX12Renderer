@@ -64,8 +64,10 @@ public:
 	std::shared_ptr<CommandQueue> GetCommandQueueDirect() const { return m_CommandQueueDirect; }
 	std::shared_ptr<Device> GetDevice() const { return m_Device; }
 
-	RenderSettings GetRenderSettings() const { return m_RenderSettings; }
-	RenderStatistics GetRenderStatistics() const { return m_RenderStatistics; }
+	RenderSettings& GetRenderSettings() { return m_RenderSettings; }
+	const RenderSettings& GetRenderSettings() const { return m_RenderSettings; }
+	RenderStatistics& GetRenderStatistics() { return m_RenderStatistics; }
+	const RenderStatistics& GetRenderStatistics() const { return m_RenderStatistics; }
 
 private:
 	void Flush();

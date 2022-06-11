@@ -3,7 +3,7 @@
 #include "InputHandler.h"
 
 Camera::Camera(const glm::vec3& pos, float fov, float width, float height, float near, float far)
-	: m_Position(pos), m_FOV(fov)
+	: m_FOV(fov)
 {
 	m_AspectRatio = width / height;
 
@@ -13,9 +13,10 @@ Camera::Camera(const glm::vec3& pos, float fov, float width, float height, float
 
 	UpdateViewFrustumBounds();
 
-	m_ViewMatrix = glm::inverse(glm::translate(glm::identity<glm::mat4>(), m_Position));
-	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), width, height, m_ViewFrustum.Near, m_ViewFrustum.Far);
+	m_Transform.Translate(pos);
 
+	m_ViewMatrix = glm::inverse(m_Transform.GetTransformMatrix());
+	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), width, height, m_ViewFrustum.Near, m_ViewFrustum.Far);
 	m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 
 	MakeViewFrustumPlanes();
@@ -36,9 +37,9 @@ void Camera::Update(float deltaTime)
 	if (m_Velocity.x != 0.0f || m_Velocity.y != 0.0f || m_Velocity.z != 0.0f)
 	{
 		m_Velocity = glm::normalize(m_Velocity);
-		m_Position += m_Velocity * m_Speed * deltaTime;
+		m_Transform.Translate(m_Velocity * m_Speed * deltaTime);
 
-		m_ViewMatrix = glm::inverse(glm::translate(glm::identity<glm::mat4>(), m_Position));
+		m_ViewMatrix = glm::inverse(m_Transform.GetTransformMatrix());
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 
 		MakeViewFrustumPlanes();
@@ -95,30 +96,35 @@ void Camera::UpdateViewFrustumBounds()
 
 void Camera::MakeViewFrustumPlanes()
 {
-	glm::vec3 nearCenter = m_Position + Forward() * m_ViewFrustum.Near;
-	glm::vec3 farCenter = m_Position + Forward() * m_ViewFrustum.Far;
+	glm::vec3 cameraPosition = m_Transform.GetPosition();
+	glm::vec3 cameraRight = m_Transform.Right();
+	glm::vec3 cameraUp = m_Transform.Up();
+	glm::vec3 cameraForward = m_Transform.Forward();
 
-	m_ViewFrustum.Planes[4] = { nearCenter, Forward() };
-	m_ViewFrustum.Planes[5] = { farCenter, -Forward() };
+	glm::vec3 nearCenter = cameraPosition + cameraForward * m_ViewFrustum.Near;
+	glm::vec3 farCenter = cameraPosition + cameraForward * m_ViewFrustum.Far;
+
+	m_ViewFrustum.Planes[4] = { nearCenter, cameraForward };
+	m_ViewFrustum.Planes[5] = { farCenter, -cameraForward };
 
 	glm::vec3 aux = glm::vec3(0.0f);
 	glm::vec3 normal = glm::vec3(0.0f);
 
-	aux = glm::normalize((nearCenter + Up() * m_ViewFrustum.NearHeight) - m_Position);
-	normal = glm::cross(Right(), aux);
-	m_ViewFrustum.Planes[0] = { nearCenter + Up() * m_ViewFrustum.NearHeight, normal };
+	aux = glm::normalize((nearCenter + cameraUp * m_ViewFrustum.NearHeight) - cameraPosition);
+	normal = glm::cross(cameraRight, aux);
+	m_ViewFrustum.Planes[0] = { nearCenter + cameraUp * m_ViewFrustum.NearHeight, normal };
 
-	aux = glm::normalize((nearCenter - Up() * m_ViewFrustum.NearHeight) - m_Position);
-	normal = glm::cross(aux, Right());
-	m_ViewFrustum.Planes[1] = { nearCenter - Up() * m_ViewFrustum.NearHeight, normal };
+	aux = glm::normalize((nearCenter - cameraUp * m_ViewFrustum.NearHeight) - cameraPosition);
+	normal = glm::cross(aux, cameraRight);
+	m_ViewFrustum.Planes[1] = { nearCenter - cameraUp * m_ViewFrustum.NearHeight, normal };
 
-	aux = glm::normalize((nearCenter - Right() * m_ViewFrustum.NearWidth) - m_Position);
-	normal = glm::cross(Up(), aux);
-	m_ViewFrustum.Planes[2] = { nearCenter - Right() * m_ViewFrustum.NearWidth, normal };
+	aux = glm::normalize((nearCenter - cameraRight * m_ViewFrustum.NearWidth) - cameraPosition);
+	normal = glm::cross(cameraUp, aux);
+	m_ViewFrustum.Planes[2] = { nearCenter - cameraRight * m_ViewFrustum.NearWidth, normal };
 
-	aux = glm::normalize((nearCenter + Right() * m_ViewFrustum.NearWidth) - m_Position);
-	normal = glm::cross(aux, Up());
-	m_ViewFrustum.Planes[3] = { nearCenter + Right() * m_ViewFrustum.NearWidth, normal };
+	aux = glm::normalize((nearCenter + cameraRight * m_ViewFrustum.NearWidth) - cameraPosition);
+	normal = glm::cross(aux, cameraUp);
+	m_ViewFrustum.Planes[3] = { nearCenter + cameraRight * m_ViewFrustum.NearWidth, normal };
 }
 
 glm::vec3 Camera::Forward() const

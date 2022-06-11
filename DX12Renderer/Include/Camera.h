@@ -1,4 +1,5 @@
 #pragma once
+#include "Transform.h"
 
 class Camera
 {
@@ -24,11 +25,12 @@ private:
 	glm::vec3 Up() const;
 
 private:
+	Transform m_Transform;
+
 	glm::mat4 m_ViewMatrix = glm::identity<glm::mat4>();
 	glm::mat4 m_ProjectionMatrix = glm::identity<glm::mat4>();
 	glm::mat4 m_ViewProjectionMatrix = glm::identity<glm::mat4>();
 
-	glm::vec3 m_Position = glm::vec3(0.0f);
 	glm::vec3 m_Velocity = glm::vec3(0.0f);
 
 	float m_Speed = 5.0f;

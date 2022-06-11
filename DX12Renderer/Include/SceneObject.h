@@ -1,4 +1,5 @@
 #pragma once
+#include "Transform.h"
 
 class Model;
 
@@ -11,17 +12,10 @@ public:
 	void Update(float deltaTime);
 	void Render();
 
-	const glm::mat4& GetTransform() const { return m_Transform; }
-	const glm::vec3& GetPosition() const { return m_Position; }
-	const glm::vec3& GetRotation() const { return m_Rotation; }
-	const glm::vec3& GetScale() const { return m_Scale; }
+	const Transform& GetTransform() const { return m_Transform; }
 
 private:
+	Transform m_Transform;
 	std::shared_ptr<Model> m_Model;
-
-	glm::mat4 m_Transform = glm::identity<glm::mat4>();
-	glm::vec3 m_Position = glm::vec3(0.0f);
-	glm::vec3 m_Rotation = glm::vec3(0.0f);
-	glm::vec3 m_Scale = glm::vec3(1.0f);
 
 };

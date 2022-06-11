@@ -231,6 +231,7 @@
     <ClCompile Include="Source\ResourceManager.cpp" />
     <ClCompile Include="Source\Scene.cpp" />
     <ClCompile Include="Source\SceneObject.cpp" />
+    <ClCompile Include="Source\Transform.cpp" />
     <ClCompile Include="Source\Util\Logger.cpp" />
     <ClCompile Include="Source\Util\Profiler.cpp" />
     <ClCompile Include="Source\Util\Random.cpp" />
@@ -265,6 +266,7 @@
     <ClInclude Include="Include\ResourceManager.h" />
     <ClInclude Include="Include\Scene.h" />
     <ClInclude Include="Include\SceneObject.h" />
+    <ClInclude Include="Include\Transform.h" />
     <ClInclude Include="Include\Util\Logger.h" />
     <ClInclude Include="Include\Util\MathHelper.h" />
     <ClInclude Include="Include\Pch.h" />

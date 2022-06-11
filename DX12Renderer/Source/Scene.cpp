@@ -62,8 +62,8 @@ void Scene::Render()
 {
 	for (auto& sceneObject : m_SceneObjects)
 	{
-		const glm::vec3& position = sceneObject->GetPosition();
-		const glm::vec3& scale = sceneObject->GetScale();
+		const glm::vec3& position = sceneObject->GetTransform().GetPosition();
+		const glm::vec3& scale = sceneObject->GetTransform().GetScale();
 
 		float radius = std::max(std::max(scale.x, scale.y), scale.z);
 		if (m_ActiveCamera.IsSphereInViewFrustum(position, radius))
