@@ -56,6 +56,8 @@ SwapChain::~SwapChain()
 
 void SwapChain::SwapBuffers()
 {
+    SCOPED_TIMER("SwapChain::SwapBuffers");
+
     ResolveBackBuffer();
 
     Renderer::RenderSettings renderSettings = Application::Get().GetRenderer()->GetRenderSettings();

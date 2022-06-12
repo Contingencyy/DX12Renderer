@@ -65,6 +65,8 @@ void Scene::Update(float deltaTime)
 
 void Scene::Render()
 {
+	SCOPED_TIMER("Scene::Render");
+
 	for (auto& sceneObject : m_SceneObjects)
 	{
 		const glm::vec3& position = sceneObject->GetTransform().GetPosition();

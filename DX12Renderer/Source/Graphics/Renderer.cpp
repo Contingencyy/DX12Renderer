@@ -56,6 +56,8 @@ void Renderer::Finalize()
 
 void Renderer::BeginFrame(const Camera& camera)
 {
+    SCOPED_TIMER("Renderer::BeginFrame");
+
     m_SceneData.Camera = camera;
 
     auto commandList = m_CommandQueueDirect->GetCommandList();
@@ -75,6 +77,8 @@ void Renderer::BeginFrame(const Camera& camera)
 
 void Renderer::Render()
 {
+    SCOPED_TIMER("Renderer::Render");
+
     auto commandList = m_CommandQueueDirect->GetCommandList();
     auto colorTarget = m_SwapChain->GetColorTarget();
     auto depthBuffer = m_SwapChain->GetDepthBuffer();
@@ -99,7 +103,7 @@ void Renderer::Render()
     commandList->SetConstantBufferView(2, 0, *m_PointlightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
     m_RenderStatistics.PointLightCount += m_Pointlights.size();
 
-    for (auto& modelDrawData : m_ModelDrawData)
+    for (auto& [modelName, modelDrawData] : m_ModelDrawData)
     {
         // Set mesh vertex buffers and index buffer
         commandList->SetVertexBuffers(0, 1, *modelDrawData.Model->GetBuffer(Model::InputType::INPUT_POSITION).get());
@@ -153,6 +157,8 @@ void Renderer::ImGuiRender()
 
 void Renderer::EndFrame()
 {
+    SCOPED_TIMER("Renderer::EndFrame");
+
     m_SwapChain->SwapBuffers();
 
     m_CommandQueueDirect->ResetCommandLists();
@@ -166,18 +172,15 @@ void Renderer::EndFrame()
 
 void Renderer::Submit(const std::shared_ptr<Model>& model, const glm::mat4& transform)
 {
-    auto iter = std::find_if(m_ModelDrawData.begin(), m_ModelDrawData.end(), [&](const ModelDrawData& modelDrawData) {
-        return model->GetName() == modelDrawData.Model->GetName();
-    });
-
+    auto iter = m_ModelDrawData.find(model->GetName().c_str());
     if (iter != m_ModelDrawData.end())
     {
-        iter->ModelInstanceData.emplace_back(transform, glm::vec4(1.0f));
+        iter->second.ModelInstanceData.emplace_back(transform, glm::vec4(1.0f));
     }
     else
     {
-        auto& modelDrawData = m_ModelDrawData.emplace_back(model);
-        modelDrawData.ModelInstanceData.emplace_back(transform, glm::vec4(1.0f));
+        m_ModelDrawData.emplace(std::pair<const char*, ModelDrawData>(model->GetName().c_str(), ModelDrawData(model)));
+        m_ModelDrawData.at(model->GetName().c_str()).ModelInstanceData.emplace_back(transform, glm::vec4(1.0f));
     }
 }
 

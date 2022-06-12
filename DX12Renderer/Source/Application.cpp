@@ -77,7 +77,7 @@ void Application::Run()
 
 	while (!m_Window->ShouldClose())
 	{
-		SCOPED_TIMER("Application::Run");
+		SCOPED_TIMER("Frametime");
 
 		current = std::chrono::high_resolution_clock::now();
 		deltaTime = current - last;
@@ -118,12 +118,15 @@ void Application::PollEvents()
 
 void Application::Update(float deltaTime)
 {
+	SCOPED_TIMER("Application::Update");
 	m_GUI->Update(deltaTime);
 	m_Scene->Update(deltaTime);
 }
 
 void Application::Render()
 {
+	SCOPED_TIMER("Application::Render");
+
 	m_Renderer->BeginFrame(m_Scene->GetActiveCamera());
 	m_GUI->BeginFrame();
 
@@ -138,23 +141,24 @@ void Application::Render()
 		ImGui::Begin("Profiler");
 
 		auto& timerResults = Profiler::Get().GetTimerResults();
-		auto appTimer = std::find_if(timerResults.begin(), timerResults.end(), [](const TimerResult& timerResult) {
-			return timerResult.Name == "Application::Run";
-		});
+		auto frameTimeIter = timerResults.find("Frametime");
 
-		if (appTimer != timerResults.end())
+		if (frameTimeIter != timerResults.end())
 		{
-			ImGui::Text("Frametime: %.3f ms", appTimer->Duration);
-			ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / (appTimer->Duration)));
+			ImGui::Text("Frametime: %.3f ms", frameTimeIter->second.Duration);
+			ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / (frameTimeIter->second.Duration)));
 		}
 
 		for (auto& timerResult : timerResults)
 		{
+			if (timerResult.first == "Frametime")
+				continue;
+
 			char buf[50];
-			strcpy_s(buf, timerResult.Name);
+			strcpy_s(buf, timerResult.second.Name);
 			strcat_s(buf, ": %.3fms");
 
-			ImGui::Text(buf, timerResult.Duration);
+			ImGui::Text(buf, timerResult.second.Duration);
 		}
 
 		ImGui::End();

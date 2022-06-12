@@ -116,7 +116,7 @@ private:
 		std::vector<ModelInstanceData> ModelInstanceData;
 	};
 
-	std::vector<ModelDrawData> m_ModelDrawData;
+	std::unordered_map<const char*, ModelDrawData> m_ModelDrawData;
 	std::unique_ptr<Buffer> m_ModelInstanceBuffer;
 
 	std::unique_ptr<Buffer> m_PointlightBuffer;

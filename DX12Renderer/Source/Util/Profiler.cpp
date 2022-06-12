@@ -9,7 +9,10 @@ Profiler& Profiler::Get()
 
 void Profiler::AddTimerResult(const TimerResult& result)
 {
-	m_TimerResults.push_back(result);
+	if (m_TimerResults.find(result.Name) != m_TimerResults.end())
+		m_TimerResults.at(result.Name).Duration += result.Duration;
+	else
+		m_TimerResults[result.Name] = result;
 }
 
 void Profiler::Reset()

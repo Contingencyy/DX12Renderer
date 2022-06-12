@@ -15,10 +15,10 @@ public:
 	void AddTimerResult(const TimerResult& result);
 	void Reset();
 
-	const std::vector<TimerResult>& GetTimerResults() const { return m_TimerResults; }
+	const std::unordered_map<const char*, TimerResult>& GetTimerResults() const { return m_TimerResults; }
 
 private:
-	std::vector<TimerResult> m_TimerResults;
+	std::unordered_map<const char*, TimerResult> m_TimerResults;
 
 };
 
