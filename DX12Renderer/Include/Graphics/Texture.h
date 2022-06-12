@@ -1,15 +1,27 @@
 #pragma once
 #include "Graphics/DescriptorAllocation.h"
 
+enum class TextureUsage
+{
+	TEXTURE_USAGE_SHADER_RESOURCE,
+	TEXTURE_USAGE_RENDER_TARGET,
+	TEXTURE_USAGE_DEPTH
+};
+
+enum class TextureFormat
+{
+	TEXTURE_FORMAT_RGBA8_UNORM,
+	TEXTURE_FORMAT_DEPTH32
+};
+
 struct TextureDesc
 {
 	TextureDesc() = default;
-	TextureDesc(DXGI_FORMAT format, D3D12_RESOURCE_STATES initialState, D3D12_RESOURCE_FLAGS flags, uint32_t width, uint32_t height)
-		: Format(format), InitialState(initialState), Flags(flags), Width(width), Height(height) {}
+	TextureDesc(TextureUsage usage, TextureFormat format, uint32_t width, uint32_t height)
+		: Usage(usage), Format(format), Width(width), Height(height) {}
 
-	DXGI_FORMAT Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	D3D12_RESOURCE_STATES InitialState = D3D12_RESOURCE_STATE_COMMON;
-	D3D12_RESOURCE_FLAGS Flags = D3D12_RESOURCE_FLAG_NONE;
+	TextureUsage Usage = TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE;
+	TextureFormat Format = TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM;
 
 	uint32_t Width = 1280;
 	uint32_t Height = 720;

@@ -12,19 +12,20 @@ enum class BufferUsage
 struct BufferDesc
 {
 	BufferDesc() = default;
-	BufferDesc(BufferUsage usage, D3D12_RESOURCE_STATES initialState)
-		: Usage(usage), InitialState(initialState) {}
+	BufferDesc(BufferUsage usage, std::size_t numElements, std::size_t elementSize)
+		: Usage(usage), NumElements(numElements), ElementSize(elementSize) {}
 
 	BufferUsage Usage = BufferUsage::BUFFER_USAGE_VERTEX;
-	D3D12_RESOURCE_STATES InitialState = D3D12_RESOURCE_STATE_COMMON;
+
+	std::size_t NumElements = 0;
+	std::size_t ElementSize = 0;
 };
 
 class Buffer
 {
 public:
-	Buffer(const BufferDesc& bufferdesc, std::size_t numElements, std::size_t elementSize, const void* data);
-	Buffer(const BufferDesc& bufferDesc, std::size_t numElements, std::size_t elementSize);
-	Buffer(const BufferDesc& bufferDesc, std::size_t alignedSize);
+	Buffer(const BufferDesc& bufferdesc, const void* data);
+	Buffer(const BufferDesc& bufferDesc);
 	~Buffer();
 
 	// This should not be called every frame, since it allocates another heap/buffer for upload in this function
@@ -35,8 +36,6 @@ public:
 	BufferDesc GetBufferDesc() const { return m_BufferDesc; }
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle();
 	std::size_t GetByteSize() const { return m_ByteSize; }
-	std::size_t GetNumElements() const { return m_NumElements; }
-	std::size_t GetElementSize() const { return m_ElementSize; }
 
 	ComPtr<ID3D12Resource> GetD3D12Resource() const { return m_d3d12Resource; }
 	void SetD3D12Resource(ComPtr<ID3D12Resource> resource) { m_d3d12Resource = resource; }
@@ -47,13 +46,9 @@ private:
 private:
 	BufferDesc m_BufferDesc = {};
 	DescriptorAllocation m_DescriptorAllocation = {};
+	std::size_t m_ByteSize = 0;
 
 	ComPtr<ID3D12Resource> m_d3d12Resource;
-
 	void* m_CPUPtr = nullptr;
-
-	std::size_t m_NumElements = 0;
-	std::size_t m_ElementSize = 0;
-	std::size_t m_ByteSize = 0;
 
 };

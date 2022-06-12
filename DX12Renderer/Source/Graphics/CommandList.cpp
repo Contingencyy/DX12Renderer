@@ -79,7 +79,7 @@ void CommandList::SetVertexBuffers(uint32_t slot, uint32_t numViews, const Buffe
 	D3D12_VERTEX_BUFFER_VIEW vbView = {};
 	vbView.BufferLocation = vertexBuffer.GetD3D12Resource()->GetGPUVirtualAddress();
 	vbView.SizeInBytes = vertexBuffer.GetByteSize();
-	vbView.StrideInBytes = vertexBuffer.GetElementSize();
+	vbView.StrideInBytes = vertexBuffer.GetBufferDesc().ElementSize;
 
 	m_d3d12CommandList->IASetVertexBuffers(slot, numViews, &vbView);
 }
@@ -89,7 +89,7 @@ void CommandList::SetIndexBuffer(const Buffer& indexBuffer)
 	D3D12_INDEX_BUFFER_VIEW ibView = {};
 	ibView.BufferLocation = indexBuffer.GetD3D12Resource()->GetGPUVirtualAddress();
 	ibView.SizeInBytes = indexBuffer.GetByteSize();
-	ibView.Format = indexBuffer.GetElementSize() == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+	ibView.Format = indexBuffer.GetBufferDesc().ElementSize == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
 	m_d3d12CommandList->IASetIndexBuffer(&ibView);
 }

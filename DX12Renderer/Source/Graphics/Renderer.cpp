@@ -41,10 +41,12 @@ void Renderer::Initialize(uint32_t width, uint32_t height)
     m_SwapChain = std::make_shared<SwapChain>(Application::Get().GetWindow()->GetHandle(), width, height);
 
     for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-        m_DescriptorHeaps[i] = std::make_shared<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+        m_DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+    
+    m_PipelineState = std::make_unique<PipelineState>(L"Resources/Shaders/Default_VS.hlsl", L"Resources/Shaders/Default_PS.hlsl");
 
-    m_ModelInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), m_RenderSettings.MaxModelInstances, sizeof(ModelInstanceData));
-    m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, D3D12_RESOURCE_STATE_GENERIC_READ), m_RenderSettings.MaxPointLights, sizeof(Pointlight));
+    m_ModelInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, m_RenderSettings.MaxModelInstances, sizeof(ModelInstanceData)));
+    m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, m_RenderSettings.MaxPointLights, sizeof(Pointlight)));
 }
 
 void Renderer::Finalize()
@@ -80,35 +82,43 @@ void Renderer::Render()
     auto rtv = colorTarget->GetDescriptorHandle();
     auto dsv = depthBuffer->GetDescriptorHandle();
 
+    // Set viewports, scissor rects and render targets
     commandList->SetViewports(1, &m_Viewport);
     commandList->SetScissorRects(1, &m_ScissorRect);
     commandList->SetRenderTargets(1, &rtv, &dsv);
 
+    // Set pipeline state, root signature, and root constants
+    commandList->SetPipelineState(*m_PipelineState.get());
+    glm::mat4 viewProjection = m_SceneData.Camera.GetViewProjection();
+    commandList->SetRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
+    uint32_t numPointlights = m_Pointlights.size();
+    commandList->SetRoot32BitConstants(1, sizeof(uint32_t) / 4, &numPointlights, 0);
+
+    // Set constant buffer data for point lights
+    m_PointlightBuffer->SetBufferDataStaging(&m_Pointlights[0], m_Pointlights.size() * sizeof(Pointlight));
+    commandList->SetConstantBufferView(2, 0, *m_PointlightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
     m_RenderStatistics.PointLightCount += m_Pointlights.size();
 
     for (auto& modelDrawData : m_ModelDrawData)
     {
-        commandList->SetPipelineState(*modelDrawData.Model->GetPipelineState());
-
-        glm::mat4 viewProjection = m_SceneData.Camera.GetViewProjection();
-        commandList->SetRoot32BitConstants(0, sizeof(glm::mat4) / 4, &viewProjection, 0);
-        uint32_t numPointlights = m_Pointlights.size();
-        commandList->SetRoot32BitConstants(1, sizeof(uint32_t) / 4, &numPointlights, 0);
-
+        // Set mesh vertex buffers and index buffer
         commandList->SetVertexBuffers(0, 1, *modelDrawData.Model->GetBuffer(Model::InputType::INPUT_POSITION).get());
         commandList->SetVertexBuffers(1, 1, *modelDrawData.Model->GetBuffer(Model::InputType::INPUT_TEX_COORD).get());
         commandList->SetVertexBuffers(2, 1, *modelDrawData.Model->GetBuffer(Model::InputType::INPUT_NORMAL).get());
-        m_ModelInstanceBuffer->SetBufferDataStaging(&modelDrawData.ModelInstanceData[0], modelDrawData.ModelInstanceData.size() * sizeof(ModelInstanceData));
-        commandList->SetVertexBuffers(3, 1, *m_ModelInstanceBuffer.get());
         commandList->SetIndexBuffer(*modelDrawData.Model->GetBuffer(Model::InputType::INPUT_INDEX).get());
 
-        m_PointlightBuffer->SetBufferDataStaging(&m_Pointlights[0], m_Pointlights.size() * sizeof(Pointlight));
-        commandList->SetConstantBufferView(2, 0, *m_PointlightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+        // Set instance buffer data for current mesh
+        m_ModelInstanceBuffer->SetBufferDataStaging(&modelDrawData.ModelInstanceData[0], modelDrawData.ModelInstanceData.size() * sizeof(ModelInstanceData));
+        commandList->SetVertexBuffers(3, 1, *m_ModelInstanceBuffer.get());
+
+        // Set shader resource views for albedo and normal textures
         commandList->SetShaderResourceView(2, 1, *modelDrawData.Model->GetTexture(Model::TextureType::TEX_ALBEDO).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         commandList->SetShaderResourceView(2, 2, *modelDrawData.Model->GetTexture(Model::TextureType::TEX_NORMAL).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        commandList->DrawIndexed(modelDrawData.Model->GetBuffer(Model::InputType::INPUT_INDEX)->GetNumElements(), modelDrawData.ModelInstanceData.size());
+        // Draw instanced/indexed model
+        commandList->DrawIndexed(modelDrawData.Model->GetBuffer(Model::InputType::INPUT_INDEX)->GetBufferDesc().NumElements, modelDrawData.ModelInstanceData.size());
 
+        // Transition albedo and normal textures back to common state from pixel shader resource state set in the SetShaderResourceView function
         CD3DX12_RESOURCE_BARRIER shaderResourceBarrier[2] = {
             CD3DX12_RESOURCE_BARRIER::Transition(modelDrawData.Model->GetTexture(Model::TextureType::TEX_ALBEDO)->GetD3D12Resource().Get(),
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON),
@@ -118,7 +128,7 @@ void Renderer::Render()
         commandList->ResourceBarrier(2, shaderResourceBarrier);
 
         m_RenderStatistics.DrawCallCount++;
-        m_RenderStatistics.TriangleCount += (modelDrawData.Model->GetBuffer(Model::InputType::INPUT_INDEX)->GetNumElements() / 3) * modelDrawData.ModelInstanceData.size();
+        m_RenderStatistics.TriangleCount += (modelDrawData.Model->GetBuffer(Model::InputType::INPUT_INDEX)->GetBufferDesc().NumElements / 3) * modelDrawData.ModelInstanceData.size();
         m_RenderStatistics.ObjectCount += modelDrawData.ModelInstanceData.size();
     }
 

@@ -119,8 +119,8 @@ void SwapChain::CreateBackBufferTextures()
 
         D3D12_RESOURCE_DESC backBufferDesc = backBuffer->GetDesc();
 
-        m_BackBuffers[i] = std::make_unique<Texture>(TextureDesc(backBufferDesc.Format, D3D12_RESOURCE_STATE_PRESENT,
-            D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, backBufferDesc.Width, backBufferDesc.Height));
+        m_BackBuffers[i] = std::make_unique<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET,
+            TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM, backBufferDesc.Width, backBufferDesc.Height));
         m_BackBuffers[i]->SetD3D12Resource(backBuffer);
     }
 }
@@ -132,15 +132,15 @@ void SwapChain::CreateRenderTargetTextures()
     {
         D3D12_RESOURCE_DESC backBufferDesc = m_BackBuffers[i]->GetD3D12Resource()->GetDesc();
 
-        m_ColorTargetTextures[i] = std::make_unique<Texture>(TextureDesc(backBufferDesc.Format, D3D12_RESOURCE_STATE_RENDER_TARGET,
-            D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, backBufferDesc.Width, backBufferDesc.Height));
+        m_ColorTargetTextures[i] = std::make_unique<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET,
+            TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM, backBufferDesc.Width, backBufferDesc.Height));
     }
 }
 
 void SwapChain::CreateDepthBufferTexture(uint32_t width, uint32_t height)
 {
-    m_DepthBuffer = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_D32_FLOAT, D3D12_RESOURCE_STATE_DEPTH_WRITE,
-        D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, width, height));
+    m_DepthBuffer = std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH,
+        TextureFormat::TEXTURE_FORMAT_DEPTH32, width, height));
 }
 
 void SwapChain::ResizeBackBuffers(uint32_t width, uint32_t height)

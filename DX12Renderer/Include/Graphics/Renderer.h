@@ -10,6 +10,7 @@ class CommandQueue;
 class SwapChain;
 class DescriptorHeap;
 class Model;
+class PipelineState;
 
 class Renderer
 {
@@ -85,7 +86,9 @@ private:
 	std::shared_ptr<CommandQueue> m_CommandQueueDirect;
 	std::shared_ptr<CommandQueue> m_CommandQueueCopy;
 	std::shared_ptr<SwapChain> m_SwapChain;
-	std::shared_ptr<DescriptorHeap> m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+
+	std::unique_ptr<DescriptorHeap> m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+	std::unique_ptr<PipelineState> m_PipelineState;
 
 	D3D12_VIEWPORT m_Viewport = D3D12_VIEWPORT();
 	D3D12_RECT m_ScissorRect = D3D12_RECT();

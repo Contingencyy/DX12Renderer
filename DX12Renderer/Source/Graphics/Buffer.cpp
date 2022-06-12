@@ -4,22 +4,16 @@
 #include "Graphics/Device.h"
 #include "Graphics/Buffer.h"
 
-Buffer::Buffer(const BufferDesc& bufferDesc, std::size_t numElements, std::size_t elementSize, const void* data)
-	: m_BufferDesc(bufferDesc), m_NumElements(numElements), m_ElementSize(elementSize)
+Buffer::Buffer(const BufferDesc& bufferDesc, const void* data)
+	: m_BufferDesc(bufferDesc)
 {
 	Create();
 
 	SetBufferData(data);
 }
 
-Buffer::Buffer(const BufferDesc& bufferDesc, std::size_t numElements, std::size_t elementSize)
-	: m_BufferDesc(bufferDesc), m_NumElements(numElements), m_ElementSize(elementSize)
-{
-	Create();
-}
-
-Buffer::Buffer(const BufferDesc& bufferDesc, std::size_t alignedSize)
-	: m_BufferDesc(bufferDesc), m_NumElements(1), m_ElementSize(alignedSize), m_ByteSize(alignedSize)
+Buffer::Buffer(const BufferDesc& bufferDesc)
+	: m_BufferDesc(bufferDesc)
 {
 	Create();
 }
@@ -34,9 +28,9 @@ void Buffer::SetBufferData(const void* data, uint32_t numElements)
 {
 	if (m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_CONSTANT && m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
-		uint32_t byteSize = numElements == 0 ? m_ByteSize : numElements * m_ElementSize;
+		uint32_t byteSize = numElements == 0 ? m_ByteSize : numElements * m_BufferDesc.ElementSize;
 
-		Buffer uploadBuffer(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ), byteSize);
+		Buffer uploadBuffer(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, byteSize));
 		Application::Get().GetRenderer()->CopyBuffer(uploadBuffer, *this, data);
 	}
 	else
@@ -78,25 +72,27 @@ void Buffer::Create()
 {
 	auto device = Application::Get().GetRenderer()->GetDevice();
 	D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
+	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
 
 	switch (m_BufferDesc.Usage)
 	{
 	case BufferUsage::BUFFER_USAGE_VERTEX:
 	case BufferUsage::BUFFER_USAGE_INDEX:
-		m_ByteSize = MathHelper::AlignUp(m_NumElements * m_ElementSize, m_ElementSize);
-		heapType = D3D12_HEAP_TYPE_DEFAULT;
+		m_ByteSize = MathHelper::AlignUp(m_BufferDesc.NumElements * m_BufferDesc.ElementSize, m_BufferDesc.ElementSize);
 		break;
 	case BufferUsage::BUFFER_USAGE_CONSTANT:
-		m_ByteSize = MathHelper::AlignUp(m_NumElements * m_ElementSize, 256);
+		m_ByteSize = MathHelper::AlignUp(m_BufferDesc.NumElements * m_BufferDesc.ElementSize, 256);
 		heapType = D3D12_HEAP_TYPE_UPLOAD;
+		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
 		break;
 	case BufferUsage::BUFFER_USAGE_UPLOAD:
-		m_ByteSize = MathHelper::AlignUp(m_NumElements * m_ElementSize, m_ElementSize);
+		m_ByteSize = MathHelper::AlignUp(m_BufferDesc.NumElements * m_BufferDesc.ElementSize, m_BufferDesc.ElementSize);
 		heapType = D3D12_HEAP_TYPE_UPLOAD;
+		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
 		break;
 	}
 
-	device->CreateBuffer(*this, heapType, m_BufferDesc.InitialState, m_ByteSize);
+	device->CreateBuffer(*this, heapType, initialState, m_ByteSize);
 	if (m_BufferDesc.Usage == BufferUsage::BUFFER_USAGE_CONSTANT || m_BufferDesc.Usage == BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
 		m_d3d12Resource->Map(0, nullptr, &m_CPUPtr);

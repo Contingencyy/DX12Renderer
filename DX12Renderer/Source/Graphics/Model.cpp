@@ -6,13 +6,10 @@
 #include "Application.h"
 #include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
-#include "Graphics/PipelineState.h"
 
 Model::Model(const tinygltf::Model& glTFModel, const std::string& name)
 	: m_Name(name)
 {
-	CreatePipelineState();
-
 	m_Buffers.resize(static_cast<std::size_t>(InputType::NUM_INPUT_TYPES));
 	m_Textures.resize(static_cast<std::size_t>(TextureType::NUM_TEXTURE_TYPES));
 
@@ -22,11 +19,6 @@ Model::Model(const tinygltf::Model& glTFModel, const std::string& name)
 
 Model::~Model()
 {
-}
-
-void Model::CreatePipelineState()
-{
-	m_PipelineState = std::make_unique<PipelineState>(L"Resources/Shaders/Default_VS.hlsl", L"Resources/Shaders/Default_PS.hlsl");
 }
 
 void Model::CreateBuffers(const tinygltf::Model& glTFModel)
@@ -45,7 +37,7 @@ void Model::CreateBuffers(const tinygltf::Model& glTFModel)
 			auto& buffer = glTFModel.buffers[bufferView.buffer];
 
 			const unsigned char* dataPtr = &buffer.data[0] + bufferView.byteOffset;
-			m_Buffers[i] = std::make_shared<Buffer>(BufferDesc(), accessor.count, accessor.ByteStride(bufferView), dataPtr);
+			m_Buffers[i] = std::make_shared<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, accessor.count, accessor.ByteStride(bufferView)), dataPtr);
 		}
 		else
 		{
@@ -60,7 +52,7 @@ void Model::CreateBuffers(const tinygltf::Model& glTFModel)
 	auto& buffer = glTFModel.buffers[bufferView.buffer];
 
 	const unsigned char* dataPtr = &glTFModel.buffers[0].data[0] + bufferView.byteOffset;
-	m_Buffers[InputType::INPUT_INDEX] = std::make_shared<Buffer>(BufferDesc(), accessor.count, accessor.ByteStride(bufferView), dataPtr);
+	m_Buffers[InputType::INPUT_INDEX] = std::make_shared<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, accessor.count, accessor.ByteStride(bufferView)), dataPtr);
 }
 
 void Model::CreateTextures(const tinygltf::Model& glTFModel)
@@ -69,12 +61,12 @@ void Model::CreateTextures(const tinygltf::Model& glTFModel)
 	uint32_t albedoTextureIndex = material.pbrMetallicRoughness.baseColorTexture.index;
 	uint32_t albedoImageIndex = glTFModel.textures[albedoTextureIndex].source;
 
-	m_Textures[TextureType::TEX_ALBEDO] = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE,
+	m_Textures[TextureType::TEX_ALBEDO] = std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
 		glTFModel.images[albedoImageIndex].width, glTFModel.images[albedoImageIndex].height), &glTFModel.images[albedoImageIndex].image[0]);
 
 	uint32_t normalTextureIndex = material.normalTexture.index;
 	uint32_t normalImageIndex = glTFModel.textures[normalTextureIndex].source;
 
-	m_Textures[TextureType::TEX_NORMAL] = std::make_shared<Texture>(TextureDesc(DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE,
+	m_Textures[TextureType::TEX_NORMAL] = std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
 		glTFModel.images[normalImageIndex].width, glTFModel.images[normalImageIndex].height), &glTFModel.images[normalImageIndex].image[0]);
 }

@@ -3,8 +3,6 @@
 
 class Buffer;
 class Texture;
-class PipelineState;
-class RootSignature;
 
 class Model
 {
@@ -30,22 +28,15 @@ public:
 	~Model();
 
 	const std::string& GetName() const { return m_Name; }
-
-	PipelineState* GetPipelineState() const { return m_PipelineState.get(); }
-
 	std::shared_ptr<Buffer> GetBuffer(InputType type) const { return m_Buffers[type]; }
 	std::shared_ptr<Texture> GetTexture(TextureType type) const { return m_Textures[type]; }
 
 private:
-	void CreatePipelineState();
-
 	void CreateBuffers(const tinygltf::Model& glTFModel);
 	void CreateTextures(const tinygltf::Model& glTFModel);
 
 private:
 	std::string m_Name = "";
-
-	std::unique_ptr<PipelineState> m_PipelineState;
 
 	std::vector<std::shared_ptr<Buffer>> m_Buffers;
 	std::vector<std::shared_ptr<Texture>> m_Textures;
