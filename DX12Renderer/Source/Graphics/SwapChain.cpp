@@ -46,19 +46,43 @@ SwapChain::SwapChain(HWND hWnd, uint32_t width, uint32_t height)
     m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
 
     CreateBackBufferTextures();
-    CreateRenderTargetTextures();
-    CreateDepthBufferTexture(width, height);
 }
 
 SwapChain::~SwapChain()
 {
 }
 
+void SwapChain::ResolveToBackBuffer(const Texture& texture)
+{
+    auto commandQueue = Application::Get().GetRenderer()->GetCommandQueueDirect();
+    auto commandList = commandQueue->GetCommandList();
+
+    auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
+
+    CD3DX12_RESOURCE_BARRIER copyBarriers[] = {
+        CD3DX12_RESOURCE_BARRIER::Transition(backBuffer->GetD3D12Resource().Get(),
+        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST),
+        CD3DX12_RESOURCE_BARRIER::Transition(texture.GetD3D12Resource().Get(),
+        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE)
+    };
+    commandList->ResourceBarrier(2, copyBarriers);
+
+    commandList->ResolveTexture(texture, *backBuffer);
+
+    CD3DX12_RESOURCE_BARRIER renderBarriers[] = {
+        CD3DX12_RESOURCE_BARRIER::Transition(backBuffer->GetD3D12Resource().Get(),
+        D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT),
+        CD3DX12_RESOURCE_BARRIER::Transition(texture.GetD3D12Resource().Get(),
+        D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET)
+    };
+    commandList->ResourceBarrier(2, renderBarriers);
+
+    commandQueue->ExecuteCommandList(commandList);
+}
+
 void SwapChain::SwapBuffers()
 {
     SCOPED_TIMER("SwapChain::SwapBuffers");
-
-    ResolveBackBuffer();
 
     Renderer::RenderSettings renderSettings = Application::Get().GetRenderer()->GetRenderSettings();
 
@@ -77,39 +101,6 @@ void SwapChain::Resize(uint32_t width, uint32_t height)
 {
     ResizeBackBuffers(width, height);
     CreateBackBufferTextures();
-
-    for (uint32_t i = 0; i < s_BackBufferCount; ++i)
-        m_ColorTargetTextures[i]->Resize(width, height);
-    m_DepthBuffer->Resize(width, height);
-}
-
-void SwapChain::ResolveBackBuffer()
-{
-    auto commandQueue = Application::Get().GetRenderer()->GetCommandQueueDirect();
-    auto commandList = commandQueue->GetCommandList();
-
-    auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
-    auto& renderTargetTexture = m_ColorTargetTextures[m_CurrentBackBufferIndex];
-
-    CD3DX12_RESOURCE_BARRIER copyBarriers[] = {
-        CD3DX12_RESOURCE_BARRIER::Transition(backBuffer->GetD3D12Resource().Get(),
-        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST),
-        CD3DX12_RESOURCE_BARRIER::Transition(renderTargetTexture->GetD3D12Resource().Get(),
-        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE)
-    };
-    commandList->ResourceBarrier(2, copyBarriers);
-    
-    commandList->ResolveTexture(*renderTargetTexture, *backBuffer);
-
-    CD3DX12_RESOURCE_BARRIER renderBarriers[] = {
-        CD3DX12_RESOURCE_BARRIER::Transition(backBuffer->GetD3D12Resource().Get(),
-        D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT),
-        CD3DX12_RESOURCE_BARRIER::Transition(renderTargetTexture->GetD3D12Resource().Get(),
-        D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET)
-    };
-    commandList->ResourceBarrier(2, renderBarriers);
-
-    commandQueue->ExecuteCommandList(commandList);
 }
 
 void SwapChain::CreateBackBufferTextures()
@@ -125,24 +116,6 @@ void SwapChain::CreateBackBufferTextures()
             TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM, backBufferDesc.Width, backBufferDesc.Height));
         m_BackBuffers[i]->SetD3D12Resource(backBuffer);
     }
-}
-
-void SwapChain::CreateRenderTargetTextures()
-{
-
-    for (uint32_t i = 0; i < s_BackBufferCount; ++i)
-    {
-        D3D12_RESOURCE_DESC backBufferDesc = m_BackBuffers[i]->GetD3D12Resource()->GetDesc();
-
-        m_ColorTargetTextures[i] = std::make_unique<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET,
-            TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM, backBufferDesc.Width, backBufferDesc.Height));
-    }
-}
-
-void SwapChain::CreateDepthBufferTexture(uint32_t width, uint32_t height)
-{
-    m_DepthBuffer = std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH,
-        TextureFormat::TEXTURE_FORMAT_DEPTH32, width, height));
 }
 
 void SwapChain::ResizeBackBuffers(uint32_t width, uint32_t height)

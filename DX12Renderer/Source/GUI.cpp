@@ -77,11 +77,13 @@ void GUI::EndFrame()
 	auto renderer = Application::Get().GetRenderer();
 	auto& commandQueue = renderer->m_CommandQueueDirect;
 	auto commandList = commandQueue->GetCommandList();
-	auto colorTarget = renderer->GetSwapChain()->GetColorTarget();
-	auto depthBuffer = renderer->GetSwapChain()->GetDepthBuffer();
+	auto& pipelineState = renderer->GetPipelineState();
 
-	auto rtv = colorTarget->GetDescriptorHandle();
-	auto dsv = depthBuffer->GetDescriptorHandle();
+	auto& colorTarget = pipelineState.GetColorAttachment();
+	auto& depthBuffer = pipelineState.GetDepthStencilAttachment();
+
+	auto rtv = colorTarget.GetDescriptorHandle();
+	auto dsv = depthBuffer.GetDescriptorHandle();
 
 	commandList->SetRenderTargets(1, &rtv, &dsv);
 	ID3D12DescriptorHeap* descriptorHeap = m_d3d12DescriptorHeap.Get();

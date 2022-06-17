@@ -11,6 +11,7 @@ enum class TextureUsage
 enum class TextureFormat
 {
 	TEXTURE_FORMAT_RGBA8_UNORM,
+	TEXTURE_FORMAT_RGB10A2_UNORM,
 	TEXTURE_FORMAT_DEPTH32
 };
 

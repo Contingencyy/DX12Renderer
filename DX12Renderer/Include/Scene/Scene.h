@@ -22,10 +22,10 @@ private:
 	std::vector<std::unique_ptr<SceneObject>> m_SceneObjects;
 	std::vector<Pointlight> m_Pointlights;
 
-	ParticleSystem m_ParticleSystem;
+	/*ParticleSystem m_ParticleSystem;
 	ParticleProps m_ParticleProps;
 
 	float m_TimeUntilParticleEmit = 100.0f;
-	float m_ParticleEmitAccumulator = 0.0f;
+	float m_ParticleEmitAccumulator = 0.0f;*/
 
 };

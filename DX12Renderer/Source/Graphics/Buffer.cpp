@@ -24,31 +24,17 @@ Buffer::~Buffer()
 		m_d3d12Resource->Unmap(0, nullptr);
 }
 
-void Buffer::SetBufferData(const void* data, uint32_t numElements)
+void Buffer::SetBufferData(const void* data, std::size_t byteSize)
 {
+	std::size_t dataByteSize = byteSize == 0 ? m_ByteSize : byteSize;
 	if (m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_CONSTANT && m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
-		uint32_t byteSize = numElements == 0 ? m_ByteSize : numElements * m_BufferDesc.ElementSize;
-
-		Buffer uploadBuffer(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, byteSize));
+		Buffer uploadBuffer(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, dataByteSize));
 		Application::Get().GetRenderer()->CopyBuffer(uploadBuffer, *this, data);
 	}
 	else
 	{
-		LOG_ERR("Should not call this SetBufferData function for upload heaps");
-	}
-}
-
-void Buffer::SetBufferDataStaging(const void* data, std::size_t alignedSize)
-{
-	if (m_BufferDesc.Usage == BufferUsage::BUFFER_USAGE_CONSTANT || m_BufferDesc.Usage == BufferUsage::BUFFER_USAGE_UPLOAD)
-	{
-		std::size_t byteSize = alignedSize == 0 ? m_ByteSize : alignedSize;
-		memcpy(m_CPUPtr, data, alignedSize);
-	}
-	else
-	{
-		LOG_ERR("Should not call this SetBufferData function for non-upload heaps");
+		memcpy(m_CPUPtr, data, dataByteSize);
 	}
 }
 

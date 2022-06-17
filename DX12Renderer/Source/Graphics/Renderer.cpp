@@ -43,7 +43,14 @@ void Renderer::Initialize(uint32_t width, uint32_t height)
     for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
         m_DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
     
-    m_PipelineState = std::make_unique<PipelineState>(L"Resources/Shaders/Default_VS.hlsl", L"Resources/Shaders/Default_PS.hlsl");
+    PipelineStateDesc pipelineStateDesc = {};
+    pipelineStateDesc.VertexShaderPath = L"Resources/Shaders/Default_VS.hlsl";
+    pipelineStateDesc.PixelShaderPath = L"Resources/Shaders/Default_PS.hlsl";
+    pipelineStateDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+        m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+    pipelineStateDesc.DepthStencilAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+        m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+    m_PipelineState = std::make_unique<PipelineState>(pipelineStateDesc);
 
     m_ModelInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, m_RenderSettings.MaxModelInstances, sizeof(ModelInstanceData)));
     m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, m_RenderSettings.MaxPointLights, sizeof(Pointlight)));
@@ -61,11 +68,11 @@ void Renderer::BeginFrame(const Camera& camera)
     m_SceneData.Camera = camera;
 
     auto commandList = m_CommandQueueDirect->GetCommandList();
-    auto colorTarget = m_SwapChain->GetColorTarget();
-    auto depthBuffer = m_SwapChain->GetDepthBuffer();
+    auto& colorTarget = m_PipelineState->GetColorAttachment();
+    auto& depthBuffer = m_PipelineState->GetDepthStencilAttachment();
 
-    auto rtv = colorTarget->GetDescriptorHandle();
-    auto dsv = depthBuffer->GetDescriptorHandle();
+    auto rtv = colorTarget.GetDescriptorHandle();
+    auto dsv = depthBuffer.GetDescriptorHandle();
 
     // Clear render target and depth stencil view
     float clearColor[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
@@ -80,11 +87,11 @@ void Renderer::Render()
     SCOPED_TIMER("Renderer::Render");
 
     auto commandList = m_CommandQueueDirect->GetCommandList();
-    auto colorTarget = m_SwapChain->GetColorTarget();
-    auto depthBuffer = m_SwapChain->GetDepthBuffer();
+    auto& colorTarget = m_PipelineState->GetColorAttachment();
+    auto& depthBuffer = m_PipelineState->GetDepthStencilAttachment();
 
-    auto rtv = colorTarget->GetDescriptorHandle();
-    auto dsv = depthBuffer->GetDescriptorHandle();
+    auto rtv = colorTarget.GetDescriptorHandle();
+    auto dsv = depthBuffer.GetDescriptorHandle();
 
     // Set viewports, scissor rects and render targets
     commandList->SetViewports(1, &m_Viewport);
@@ -99,7 +106,7 @@ void Renderer::Render()
     commandList->SetRoot32BitConstants(1, sizeof(uint32_t) / 4, &numPointlights, 0);
 
     // Set constant buffer data for point lights
-    m_PointlightBuffer->SetBufferDataStaging(&m_Pointlights[0], m_Pointlights.size() * sizeof(Pointlight));
+    m_PointlightBuffer->SetBufferData(&m_Pointlights[0], m_Pointlights.size() * sizeof(Pointlight));
     commandList->SetConstantBufferView(2, 0, *m_PointlightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
     m_RenderStatistics.PointLightCount += m_Pointlights.size();
 
@@ -112,7 +119,7 @@ void Renderer::Render()
         commandList->SetIndexBuffer(*modelDrawData.Model->GetBuffer(Model::InputType::INPUT_INDEX).get());
 
         // Set instance buffer data for current mesh
-        m_ModelInstanceBuffer->SetBufferDataStaging(&modelDrawData.ModelInstanceData[0], modelDrawData.ModelInstanceData.size() * sizeof(ModelInstanceData));
+        m_ModelInstanceBuffer->SetBufferData(&modelDrawData.ModelInstanceData[0], modelDrawData.ModelInstanceData.size() * sizeof(ModelInstanceData));
         commandList->SetVertexBuffers(3, 1, *m_ModelInstanceBuffer.get());
 
         // Set shader resource views for albedo and normal textures
@@ -159,6 +166,7 @@ void Renderer::EndFrame()
 {
     SCOPED_TIMER("Renderer::EndFrame");
 
+    m_SwapChain->ResolveToBackBuffer(m_PipelineState->GetColorAttachment());
     m_SwapChain->SwapBuffers();
 
     m_CommandQueueDirect->ResetCommandLists();
@@ -182,11 +190,14 @@ void Renderer::Submit(const std::shared_ptr<Model>& model, const glm::mat4& tran
         m_ModelDrawData.emplace(std::pair<const char*, ModelDrawData>(model->GetName().c_str(), ModelDrawData(model)));
         m_ModelDrawData.at(model->GetName().c_str()).ModelInstanceData.emplace_back(transform, glm::vec4(1.0f));
     }
+
+    ASSERT((m_ModelDrawData.size() <= m_RenderSettings.MaxModelInstances), "Exceeded the maximum amount of model instances");
 }
 
 void Renderer::Submit(const Pointlight& pointlight)
 {
     m_Pointlights.push_back(pointlight);
+    ASSERT((m_Pointlights.size() <= m_RenderSettings.MaxPointLights), "Exceeded the maximum amount of point lights");
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)
@@ -203,6 +214,8 @@ void Renderer::Resize(uint32_t width, uint32_t height)
 
         m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->Reset();
         m_SwapChain->Resize(m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+        m_PipelineState->GetColorAttachment().Resize(m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+        m_PipelineState->GetDepthStencilAttachment().Resize(m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
     }
 }
 

@@ -26,6 +26,7 @@ Scene::Scene()
 
 	glm::vec3 position = glm::vec3(0.0f);
 	glm::vec3 rotation = glm::vec3(90.0f, 0.0f, 180.0f);
+
 	for (float y = -9.5f; y <= 9.5f; y += 1.0f)
 	{
 		for (float x = -9.5f; x <= 9.5f; x += 1.0f)

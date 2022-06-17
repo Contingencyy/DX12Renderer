@@ -198,7 +198,7 @@ void CommandList::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, 
 	}
 }
 
-void CommandList::ResolveTexture(Texture& srcTexture, Texture& destTexture)
+void CommandList::ResolveTexture(const Texture& srcTexture, const Texture& destTexture)
 {
 	m_d3d12CommandList->CopyResource(destTexture.GetD3D12Resource().Get(), srcTexture.GetD3D12Resource().Get());
 

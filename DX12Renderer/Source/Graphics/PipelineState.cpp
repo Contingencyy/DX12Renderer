@@ -6,21 +6,21 @@
 #include "Graphics/RootSignature.h"
 #include "Graphics/Shader.h"
 
-PipelineState::PipelineState(const std::wstring& vertexShaderPath, const std::wstring& pixelShaderPath)
+PipelineState::PipelineState(const PipelineStateDesc& pipelineStateDesc)
+	: m_PipelineStateDesc(pipelineStateDesc)
 {
 	m_RootSignature = std::make_unique<RootSignature>();
-
-	Create(vertexShaderPath, pixelShaderPath);
+	Create();
 }
 
 PipelineState::~PipelineState()
 {
 }
 
-void PipelineState::Create(const std::wstring& vertexShaderPath, const std::wstring& pixelShaderPath)
+void PipelineState::Create()
 {
-	Shader vertexShader(vertexShaderPath, "main", "vs_5_1");
-	Shader pixelShader(pixelShaderPath, "main", "ps_5_1");
+	Shader vertexShader(m_PipelineStateDesc.VertexShaderPath, "main", "vs_5_1");
+	Shader pixelShader(m_PipelineStateDesc.PixelShaderPath, "main", "ps_5_1");
 
 	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -71,4 +71,7 @@ void PipelineState::Create(const std::wstring& vertexShaderPath, const std::wstr
 	Application::Get().GetRenderer()->GetDevice()->CreatePipelineState(psoDesc, m_d3d12PipelineState);
 
 	m_d3d12PrimitiveToplogy = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	
+	m_ColorAttachment = std::make_unique<Texture>(m_PipelineStateDesc.ColorAttachmentDesc);
+	m_DepthStencilAttachment = std::make_unique<Texture>(m_PipelineStateDesc.DepthStencilAttachmentDesc);
 }
