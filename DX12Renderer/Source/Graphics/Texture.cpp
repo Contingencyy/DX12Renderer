@@ -8,13 +8,16 @@ DXGI_FORMAT DXGIFormatFromTextureFormat(TextureFormat format)
 {
 	switch (format)
 	{
-		case TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM:
-			return DXGI_FORMAT_R8G8B8A8_UNORM;
-		case TextureFormat::TEXTURE_FORMAT_RGB10A2_UNORM:
-			return DXGI_FORMAT_R10G10B10A2_UNORM;
-		case TextureFormat::TEXTURE_FORMAT_DEPTH32:
-			return DXGI_FORMAT_D32_FLOAT;
+	case TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM:
+		return DXGI_FORMAT_R8G8B8A8_UNORM;
+	case TextureFormat::TEXTURE_FORMAT_RGB10A2_UNORM:
+		return DXGI_FORMAT_R10G10B10A2_UNORM;
+	case TextureFormat::TEXTURE_FORMAT_DEPTH32:
+		return DXGI_FORMAT_D32_FLOAT;
 	}
+
+	LOG_ERR("Format is not supported");
+	return DXGI_FORMAT_R8G8B8A8_UNORM;
 }
 
 Texture::Texture(const TextureDesc& textureDesc, const void* data)

@@ -19,8 +19,11 @@ PipelineState::~PipelineState()
 
 void PipelineState::Create()
 {
-	Shader vertexShader(m_PipelineStateDesc.VertexShaderPath, "main", "vs_5_1");
-	Shader pixelShader(m_PipelineStateDesc.PixelShaderPath, "main", "ps_5_1");
+	m_VertexShader = std::make_unique<Shader>(m_PipelineStateDesc.VertexShaderPath, "main", "vs_5_1");
+	m_PixelShader = std::make_unique<Shader>(m_PipelineStateDesc.PixelShaderPath, "main", "ps_5_1");
+
+	m_ColorAttachment = std::make_unique<Texture>(m_PipelineStateDesc.ColorAttachmentDesc);
+	m_DepthStencilAttachment = std::make_unique<Texture>(m_PipelineStateDesc.DepthStencilAttachmentDesc);
 
 	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -52,26 +55,23 @@ void PipelineState::Create()
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
-	psoDesc.VS = vertexShader.GetShaderByteCode();
-	psoDesc.PS = pixelShader.GetShaderByteCode();
+	psoDesc.VS = m_VertexShader->GetShaderByteCode();
+	psoDesc.PS = m_PixelShader->GetShaderByteCode();
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	psoDesc.BlendState = blendDesc;
 	psoDesc.DepthStencilState.DepthEnable = TRUE;
-	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	psoDesc.DSVFormat = DXGIFormatFromTextureFormat(m_DepthStencilAttachment->GetTextureDesc().Format);
 	psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 	psoDesc.DepthStencilState.StencilEnable = FALSE;
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	psoDesc.RTVFormats[0] = DXGIFormatFromTextureFormat(m_ColorAttachment->GetTextureDesc().Format);
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.pRootSignature = m_RootSignature->GetD3D12RootSignature().Get();
 
 	Application::Get().GetRenderer()->GetDevice()->CreatePipelineState(psoDesc, m_d3d12PipelineState);
 
 	m_d3d12PrimitiveToplogy = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	
-	m_ColorAttachment = std::make_unique<Texture>(m_PipelineStateDesc.ColorAttachmentDesc);
-	m_DepthStencilAttachment = std::make_unique<Texture>(m_PipelineStateDesc.DepthStencilAttachmentDesc);
 }

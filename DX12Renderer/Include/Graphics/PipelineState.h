@@ -34,9 +34,12 @@ private:
 
 private:
 	PipelineStateDesc m_PipelineStateDesc;
+
 	ComPtr<ID3D12PipelineState> m_d3d12PipelineState;
 	D3D12_PRIMITIVE_TOPOLOGY m_d3d12PrimitiveToplogy;
 
+	std::unique_ptr<Shader> m_VertexShader;
+	std::unique_ptr<Shader> m_PixelShader;
 	std::unique_ptr<RootSignature> m_RootSignature;
 
 	std::unique_ptr<Texture> m_ColorAttachment;
