@@ -4,31 +4,22 @@
 #include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
 
-RootSignature::RootSignature()
+RootSignature::RootSignature(const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
 {
-	Create();
+	Create(descriptorRanges, rootParameters);
 }
 
 RootSignature::~RootSignature()
 {
 }
 
-void RootSignature::Create()
+void RootSignature::Create(const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
 {
 	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
-
-	CD3DX12_DESCRIPTOR_RANGE1 descRanges[2] = {};
-	descRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 2);
-	descRanges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0);
-
-	CD3DX12_ROOT_PARAMETER1 rootParameters[3] = {};
-	rootParameters[0].InitAsConstants(16, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-	rootParameters[1].InitAsConstants(1, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
-	rootParameters[2].InitAsDescriptorTable(2, descRanges, D3D12_SHADER_VISIBILITY_PIXEL);
 
 	CD3DX12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
 	staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
@@ -46,7 +37,7 @@ void RootSignature::Create()
 	staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC versionedRootSignatureDesc = {};
-	versionedRootSignatureDesc.Init_1_1(_countof(rootParameters), &rootParameters[0], _countof(staticSamplers), &staticSamplers[0], rootSignatureFlags);
+	versionedRootSignatureDesc.Init_1_1(rootParameters.size(), &rootParameters[0], _countof(staticSamplers), &staticSamplers[0], rootSignatureFlags);
 
 	Application::Get().GetRenderer()->GetDevice()->CreateRootSignature(versionedRootSignatureDesc, m_d3d12RootSignature);
 	

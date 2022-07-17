@@ -38,9 +38,9 @@ Scene::Scene()
 		}
 	}
 
-	m_Pointlights.emplace_back(Pointlight(glm::vec3(-2.5f, 0.0f, -2.5f), 1000.0f, glm::vec3(0.0f, 0.1f, 0.01f), glm::vec4(0.8f, 0.0f, 0.0f, 1.0f), glm::vec4(0.3f, 0.3f, 0.3f, 1.0f)));
-	m_Pointlights.emplace_back(Pointlight(glm::vec3(0.0f, 0.0f, -2.5f), 1000.0f, glm::vec3(0.0f, 0.1f, 0.01f), glm::vec4(0.0f, 0.8f, 0.0f, 1.0f), glm::vec4(0.3f, 0.3f, 0.3f, 1.0f)));
-	m_Pointlights.emplace_back(Pointlight(glm::vec3(2.5f, 0.0f, -2.5f), 1000.0f, glm::vec3(0.0f, 0.1f, 0.01f), glm::vec4(0.0f, 0.0f, 0.8f, 1.0f), glm::vec4(0.3f, 0.3f, 0.3f, 1.0f)));
+	m_Pointlights.emplace_back(Pointlight(glm::vec3(-2.5f, 0.0f, -2.5f), 500.0f, glm::vec3(0.0f, 0.1f, 0.01f), glm::vec4(0.5f, 0.0f, 0.0f, 1.0f), glm::vec4(0.1f, 0.05f, 0.05f, 1.0f)));
+	m_Pointlights.emplace_back(Pointlight(glm::vec3(0.0f, 0.0f, -2.5f), 500.0f, glm::vec3(0.0f, 0.1f, 0.01f), glm::vec4(0.0f, 0.5f, 0.0f, 1.0f), glm::vec4(0.05f, 0.1f, 0.05f, 1.0f)));
+	m_Pointlights.emplace_back(Pointlight(glm::vec3(2.5f, 0.0f, -2.5f), 500.0f, glm::vec3(0.0f, 0.1f, 0.01f), glm::vec4(0.0f, 0.0f, 0.5f, 1.0f), glm::vec4(0.05f, 0.05f, 0.1f, 1.0f)));
 }
 
 Scene::~Scene()

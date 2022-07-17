@@ -40,13 +40,14 @@ float4 main(PixelShaderInput IN) : SV_TARGET
 {
 	float4 diffuseColor = IN.Color * tex2D.Sample(samp2D, IN.TexCoord);
 	float4 textureNormal = norm2D.Sample(samp2D, IN.TexCoord);
+	float4 finalColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
 
 	for (uint i = 0; i < LightInfoCB.NumPointlights; ++i)
 	{
-		diffuseColor += float4(PointLightAttenuation(float3(IN.WorldPosition.xyz), normalize(IN.Normal * textureNormal.xyz), diffuseColor.xyz, PointlightCB.pointlights[i]), diffuseColor.a);
+		finalColor += float4(PointLightAttenuation(float3(IN.WorldPosition.xyz), normalize(IN.Normal * textureNormal.xyz), diffuseColor.xyz, PointlightCB.pointlights[i]), diffuseColor.a);
 	}
 
-	return diffuseColor;
+	return finalColor;
 }
 
 float3 PointLightAttenuation(float3 fragPos, float3 fragNormal, float3 diffuseColor, Pointlight pointlight)

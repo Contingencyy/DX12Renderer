@@ -13,7 +13,7 @@ struct DescriptorTableRange
 class RootSignature
 {
 public:
-	RootSignature();
+	RootSignature(const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters);
 	~RootSignature();
 
 	const std::vector<DescriptorTableRange>& GetDescriptorTableRanges() const { return m_DescriptorTableRanges; }
@@ -22,7 +22,7 @@ public:
 	ComPtr<ID3D12RootSignature> GetD3D12RootSignature() const { return m_d3d12RootSignature; }
 
 private:
-	void Create();
+	void Create(const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters);
 	void ParseDescriptorTableRanges(const D3D12_ROOT_SIGNATURE_DESC1& rootSignatureDesc);
 
 private:

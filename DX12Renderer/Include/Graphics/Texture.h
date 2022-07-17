@@ -11,7 +11,7 @@ enum class TextureUsage
 enum class TextureFormat
 {
 	TEXTURE_FORMAT_RGBA8_UNORM,
-	TEXTURE_FORMAT_RGB10A2_UNORM,
+	TEXTURE_FORMAT_RGBA16_UNORM,
 	TEXTURE_FORMAT_DEPTH32
 };
 
@@ -28,7 +28,7 @@ struct TextureDesc
 	uint32_t Height = 720;
 };
 
-DXGI_FORMAT DXGIFormatFromTextureFormat(TextureFormat format);
+DXGI_FORMAT TextureFormatToDXGI(TextureFormat format);
 
 class Texture
 {
@@ -39,6 +39,7 @@ public:
 
 	void Resize(uint32_t width, uint32_t height);
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle();
+	D3D12_CPU_DESCRIPTOR_HANDLE GetSRVDescriptorHandle();
 
 	TextureDesc GetTextureDesc() const { return m_TextureDesc; }
 	std::size_t GetByteSize() const { return m_ByteSize; }
@@ -55,6 +56,7 @@ private:
 	ComPtr<ID3D12Resource> m_d3d12Resource;
 
 	DescriptorAllocation m_DescriptorAllocation = {};
+	DescriptorAllocation m_SRVDescriptorAllocation = {};
 	std::size_t m_ByteSize = 0;
 
 };

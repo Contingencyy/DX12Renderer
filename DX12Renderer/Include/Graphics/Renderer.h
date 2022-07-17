@@ -71,7 +71,7 @@ public:
 	std::shared_ptr<CommandQueue> GetCommandQueueDirect() const { return m_CommandQueueDirect; }
 	std::shared_ptr<Device> GetDevice() const { return m_Device; }
 
-	PipelineState& GetPipelineState() { return *m_PipelineState.get(); }
+	PipelineState& GetPipelineState() { return *m_PipelineState[PipelineStateType::TONE_MAPPING].get(); }
 
 	RenderSettings& GetRenderSettings() { return m_RenderSettings; }
 	const RenderSettings& GetRenderSettings() const { return m_RenderSettings; }
@@ -84,13 +84,20 @@ private:
 private:
 	friend class GUI;
 
+	enum PipelineStateType : uint32_t
+	{
+		DEFAULT,
+		TONE_MAPPING,
+		NUM_PIPELINE_STATE_TYPES = (TONE_MAPPING + 1)
+	};
+
 	std::shared_ptr<Device> m_Device;
 	std::shared_ptr<CommandQueue> m_CommandQueueDirect;
 	std::shared_ptr<CommandQueue> m_CommandQueueCopy;
 	std::shared_ptr<SwapChain> m_SwapChain;
 
 	std::unique_ptr<DescriptorHeap> m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
-	std::unique_ptr<PipelineState> m_PipelineState;
+	std::unique_ptr<PipelineState> m_PipelineState[PipelineStateType::NUM_PIPELINE_STATE_TYPES];
 
 	D3D12_VIEWPORT m_Viewport = D3D12_VIEWPORT();
 	D3D12_RECT m_ScissorRect = D3D12_RECT();
@@ -123,6 +130,9 @@ private:
 
 	std::unique_ptr<Buffer> m_PointlightBuffer;
 	std::vector<Pointlight> m_Pointlights;
+	
+	std::unique_ptr<Buffer> m_ToneMapVertexBuffer;
+	std::unique_ptr<Buffer> m_ToneMapIndexBuffer;
 
 	struct SceneData
 	{

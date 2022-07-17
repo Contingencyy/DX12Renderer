@@ -43,7 +43,7 @@ inline void Logger::SetSeverityConsoleColor(Severity severity)
 	switch (severity)
 	{
 	case Severity::INFO:
-		SetConsoleTextAttribute(hConsole, 2);
+		SetConsoleTextAttribute(hConsole, 7);
 		break;
 	case Severity::WARN:
 		SetConsoleTextAttribute(hConsole, 6);

@@ -6,35 +6,25 @@
 #include "Graphics/RootSignature.h"
 #include "Graphics/Shader.h"
 
-PipelineState::PipelineState(const PipelineStateDesc& pipelineStateDesc)
+PipelineState::PipelineState(const PipelineStateDesc& pipelineStateDesc, const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout,
+	const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
 	: m_PipelineStateDesc(pipelineStateDesc)
 {
-	m_RootSignature = std::make_unique<RootSignature>();
-	Create();
+	m_RootSignature = std::make_unique<RootSignature>(descriptorRanges, rootParameters);
+	Create(inputLayout);
 }
 
 PipelineState::~PipelineState()
 {
 }
 
-void PipelineState::Create()
+void PipelineState::Create(const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout)
 {
 	m_VertexShader = std::make_unique<Shader>(m_PipelineStateDesc.VertexShaderPath, "main", "vs_5_1");
 	m_PixelShader = std::make_unique<Shader>(m_PipelineStateDesc.PixelShaderPath, "main", "ps_5_1");
 
 	m_ColorAttachment = std::make_unique<Texture>(m_PipelineStateDesc.ColorAttachmentDesc);
 	m_DepthStencilAttachment = std::make_unique<Texture>(m_PipelineStateDesc.DepthStencilAttachmentDesc);
-
-	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 1, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 2, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-		{ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-		{ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-		{ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 }
-	};
 
 	D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
 	rtBlendDesc.BlendEnable = TRUE;
@@ -54,20 +44,20 @@ void PipelineState::Create()
 	blendDesc.RenderTarget[0] = rtBlendDesc;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-	psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
+	psoDesc.InputLayout = { &inputLayout[0], static_cast<uint32_t>(inputLayout.size()) };
 	psoDesc.VS = m_VertexShader->GetShaderByteCode();
 	psoDesc.PS = m_PixelShader->GetShaderByteCode();
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	psoDesc.BlendState = blendDesc;
-	psoDesc.DepthStencilState.DepthEnable = TRUE;
-	psoDesc.DSVFormat = DXGIFormatFromTextureFormat(m_DepthStencilAttachment->GetTextureDesc().Format);
+	psoDesc.DepthStencilState.DepthEnable = m_PipelineStateDesc.DepthTest ? TRUE : FALSE;
+	psoDesc.DSVFormat = TextureFormatToDXGI(m_DepthStencilAttachment->GetTextureDesc().Format);
 	psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 	psoDesc.DepthStencilState.StencilEnable = FALSE;
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = DXGIFormatFromTextureFormat(m_ColorAttachment->GetTextureDesc().Format);
+	psoDesc.RTVFormats[0] = TextureFormatToDXGI(m_ColorAttachment->GetTextureDesc().Format);
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.pRootSignature = m_RootSignature->GetD3D12RootSignature().Get();
 

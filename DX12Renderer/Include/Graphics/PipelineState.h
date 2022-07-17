@@ -6,17 +6,24 @@ class Shader;
 
 struct PipelineStateDesc
 {
-	std::wstring VertexShaderPath;
-	std::wstring PixelShaderPath;
+	PipelineStateDesc() = default;
+	PipelineStateDesc(const std::wstring& vsPath, const std::wstring& psPath, const TextureDesc& colorAttachDesc, const TextureDesc& depthAttachDesc, bool depthTest)
+		: VertexShaderPath(vsPath), PixelShaderPath(psPath), ColorAttachmentDesc(colorAttachDesc), DepthStencilAttachmentDesc(depthAttachDesc), DepthTest(depthTest) {}
 
-	TextureDesc ColorAttachmentDesc;
-	TextureDesc DepthStencilAttachmentDesc;
+	std::wstring VertexShaderPath = L"Resources/Shaders/Default_VS.hlsl";
+	std::wstring PixelShaderPath = L"Resources/Shaders/Default_PS.hlsl";
+
+	TextureDesc ColorAttachmentDesc = TextureDesc();
+	TextureDesc DepthStencilAttachmentDesc = TextureDesc();
+
+	bool DepthTest = true;
 };
 
 class PipelineState
 {
 public:
-	PipelineState(const PipelineStateDesc& pipelineStateDesc);
+	PipelineState(const PipelineStateDesc& pipelineStateDesc, const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout,
+		const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters);
 	~PipelineState();
 
 	RootSignature* GetRootSignature() const { return m_RootSignature.get(); }
@@ -30,7 +37,7 @@ public:
 	const Texture& GetDepthStencilAttachment() const { return *m_DepthStencilAttachment.get(); }
 	
 private:
-	void Create();
+	void Create(const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout);
 
 private:
 	PipelineStateDesc m_PipelineStateDesc;

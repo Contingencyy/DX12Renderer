@@ -252,7 +252,7 @@
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Default_VS.hlsl" />
     <FxCompile Include="Resources\Shaders\Default_PS.hlsl" />
-    <FxCompile Include="Resources\Shaders\FlatColor_PS.hlsl" />
-    <FxCompile Include="Resources\Shaders\FlatColor_VS.hlsl" />
+    <FxCompile Include="Resources\Shaders\ToneMapping_PS.hlsl" />
+    <FxCompile Include="Resources\Shaders\ToneMapping_VS.hlsl" />
   </ItemGroup>
 </Project>
