@@ -1,8 +1,8 @@
 #include "Pch.h"
-#include "ResourceManager.h"
-#include "ResourceLoader.h"
+#include "Resource/ResourceManager.h"
+#include "Resource/ResourceLoader.h"
+#include "Resource/Model.h"
 #include "Graphics/Texture.h"
-#include "Graphics/Model.h"
 
 ResourceManager::ResourceManager()
 {

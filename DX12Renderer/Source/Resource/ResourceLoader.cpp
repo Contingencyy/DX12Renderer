@@ -1,5 +1,5 @@
 #include "Pch.h"
-#include "ResourceLoader.h"
+#include "Resource/ResourceLoader.h"
 
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_USE_CPP14

@@ -3,7 +3,7 @@
 #include "Graphics/Texture.h"
 #include "Graphics/DescriptorAllocation.h"
 #include "Camera.h"
-#include "Scene/Light.h"
+#include "Scene/LightObject.h"
 
 class Device;
 class CommandQueue;
@@ -57,7 +57,7 @@ public:
 	void EndFrame();
 
 	void Submit(const std::shared_ptr<Model>& model, const glm::mat4& transform);
-	void Submit(const Pointlight& pointlight);
+	void Submit(const PointlightData& pointlightData);
 	void Resize(uint32_t width, uint32_t height);
 
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
@@ -129,7 +129,7 @@ private:
 	std::unique_ptr<Buffer> m_ModelInstanceBuffer;
 
 	std::unique_ptr<Buffer> m_PointlightBuffer;
-	std::vector<Pointlight> m_Pointlights;
+	std::vector<PointlightData> m_Pointlights;
 	
 	std::unique_ptr<Buffer> m_ToneMapVertexBuffer;
 	std::unique_ptr<Buffer> m_ToneMapIndexBuffer;

@@ -84,10 +84,7 @@
     <ClCompile Include="Source\Graphics\Shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\ResourceLoader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Graphics\Model.cpp">
+    <ClCompile Include="Source\Resource\ResourceLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\SwapChain.cpp">
@@ -123,13 +120,19 @@
     <ClCompile Include="Source\Scene\SceneObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\ResourceManager.cpp">
+    <ClCompile Include="Source\Resource\ResourceManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Transform.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Scene\Light.cpp">
+    <ClCompile Include="Source\Scene\LightObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Resource\Model.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Scene\ModelObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -206,13 +209,13 @@
     <ClInclude Include="Include\Graphics\Shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\ResourceLoader.h">
+    <ClInclude Include="Include\Resource\ResourceLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Util\StringHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\Model.h">
+    <ClInclude Include="Include\Resource\Model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\SwapChain.h">
@@ -239,13 +242,16 @@
     <ClInclude Include="Include\Scene\SceneObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\ResourceManager.h">
+    <ClInclude Include="Include\Resource\ResourceManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Transform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Scene\Light.h">
+    <ClInclude Include="Include\Scene\LightObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Scene\ModelObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

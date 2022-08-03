@@ -5,7 +5,7 @@
 #include "GUI.h"
 #include "Scene/Scene.h"
 #include "InputHandler.h"
-#include "ResourceManager.h"
+#include "Resource/ResourceManager.h"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_win32.h>

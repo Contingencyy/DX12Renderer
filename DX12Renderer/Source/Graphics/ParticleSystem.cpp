@@ -4,7 +4,7 @@
 #include "Graphics/Texture.h"
 #include "Application.h"
 #include "Graphics/Renderer.h"
-#include "ResourceLoader.h"
+#include "Resource/ResourceLoader.h"
 
 ParticleSystem::ParticleSystem()
 {

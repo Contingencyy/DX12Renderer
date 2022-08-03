@@ -1,6 +1,6 @@
 #include "Pch.h"
 #include "Graphics/Shader.h"
-#include "ResourceLoader.h"
+#include "Resource/ResourceLoader.h"
 
 Shader::Shader(const std::wstring& filepath, const std::string& entryPoint, const std::string& target)
 {

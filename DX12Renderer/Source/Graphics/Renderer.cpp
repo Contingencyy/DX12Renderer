@@ -9,7 +9,7 @@
 #include "Graphics/DescriptorHeap.h"
 #include "Graphics/Buffer.h"
 #include "Graphics/Shader.h"
-#include "Graphics/Model.h"
+#include "Resource/Model.h"
 #include "Graphics/PipelineState.h"
 #include "Graphics/RootSignature.h"
 
@@ -100,7 +100,7 @@ void Renderer::Initialize(uint32_t width, uint32_t height)
     m_PipelineState[PipelineStateType::TONE_MAPPING] = std::make_unique<PipelineState>(toneMappingPipelineDesc, toneMappingInputLayout, toneMappingDescriptorRanges, toneMappingRootParameters);
 
     m_ModelInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, m_RenderSettings.MaxModelInstances, sizeof(ModelInstanceData)));
-    m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, m_RenderSettings.MaxPointLights, sizeof(Pointlight)));
+    m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, m_RenderSettings.MaxPointLights, sizeof(PointlightData)));
 
     // Tone mapping vertices, positions are in normalized device coordinates
     std::vector<float> toneMappingVertices = {
@@ -178,7 +178,7 @@ void Renderer::Render()
     // Set constant buffer data for point lights
     if (m_Pointlights.size() > 0)
     {
-        m_PointlightBuffer->SetBufferData(&m_Pointlights[0], m_Pointlights.size() * sizeof(Pointlight));
+        m_PointlightBuffer->SetBufferData(&m_Pointlights[0], m_Pointlights.size() * sizeof(PointlightData));
     }
 
     commandList->SetConstantBufferView(2, 0, *m_PointlightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -307,9 +307,9 @@ void Renderer::Submit(const std::shared_ptr<Model>& model, const glm::mat4& tran
     ASSERT((m_ModelDrawData.size() <= m_RenderSettings.MaxModelInstances), "Exceeded the maximum amount of model instances");
 }
 
-void Renderer::Submit(const Pointlight& pointlight)
+void Renderer::Submit(const PointlightData& pointlightData)
 {
-    m_Pointlights.push_back(pointlight);
+    m_Pointlights.push_back(pointlightData);
     ASSERT((m_Pointlights.size() <= m_RenderSettings.MaxPointLights), "Exceeded the maximum amount of point lights");
 }
 
