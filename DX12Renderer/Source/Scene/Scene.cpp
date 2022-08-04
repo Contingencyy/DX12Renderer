@@ -16,6 +16,7 @@ Scene::Scene()
 	Renderer::RenderSettings renderSettings = Application::Get().GetRenderer()->GetRenderSettings();
 	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f), 60.0f, static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
 
+	
 	glm::vec3 position = glm::vec3(0.0f);
 	glm::vec3 rotation = glm::vec3(90.0f, 0.0f, 180.0f);
 
@@ -31,6 +32,7 @@ Scene::Scene()
 		}
 	}
 
+	// Pointlights
 	PointlightData pointlightData(500.0f, glm::vec3(0.0f, 0.1f, 0.01f), glm::vec4(0.5f, 0.0f, 0.0f, 1.0f), glm::vec4(0.1f, 0.05f, 0.05f, 1.0f));
 	m_SceneObjects.push_back(std::make_unique<PointlightObject>(pointlightData, "Pointlight", glm::vec3(-2.5f, 0.0f, -2.5f), glm::vec3(0.0f), glm::vec3(1.0f)));
 
@@ -75,6 +77,7 @@ void Scene::ImGuiRender()
 	std::string objectName = "";
 	uint32_t idx = 0;
 
+	ImGui::SetNextWindowSizeConstraints(ImVec2(75, 75), ImVec2(200, 400));
 	ImGui::Begin("Scene");
 
 	for (uint32_t i = 0; i < m_SceneObjects.size(); ++i)

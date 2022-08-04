@@ -48,7 +48,7 @@ public:
 	Renderer();
 	~Renderer();
 
-	void Initialize(uint32_t width, uint32_t height);
+	void Initialize(HWND hWnd, uint32_t width, uint32_t height);
 	void Finalize();
 
 	void BeginFrame(const Camera& camera);
@@ -138,9 +138,12 @@ private:
 	{
 		SceneData() = default;
 
-		Camera Camera;
+		glm::mat4 ViewProjection = glm::identity<glm::mat4>();
+		glm::vec3 Ambient = glm::vec3(0.0f);
+		uint32_t NumPointlights = 0;
 	};
 
 	SceneData m_SceneData;
+	std::unique_ptr<Buffer> m_SceneDataConstantBuffer;
 
 };

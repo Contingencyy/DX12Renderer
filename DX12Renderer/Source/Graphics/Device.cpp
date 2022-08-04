@@ -50,7 +50,14 @@ void Device::CreateRootSignature(const CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC& ro
 {
     ComPtr<ID3DBlob> serializedRootSig;
     ComPtr<ID3DBlob> errorBlob;
-    DX_CALL(D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &serializedRootSig, &errorBlob));
+
+    HRESULT hr = D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &serializedRootSig, &errorBlob);
+
+    if (!SUCCEEDED(hr) || errorBlob)
+    {
+        LOG_ERR(static_cast<const char*>(errorBlob->GetBufferPointer()));
+        errorBlob->Release();
+    }
 
     DX_CALL(m_d3d12Device->CreateRootSignature(0, serializedRootSig->GetBufferPointer(),
         serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));

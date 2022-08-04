@@ -52,15 +52,15 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 	m_Window = std::make_unique<Window>();
 	m_Window->Initialize(windowProps);
 	m_Window->Show();
-	LOG_INFO("Initialized Window");
+	LOG_INFO("[Window] Initialized Window");
 
 	m_Renderer = std::make_unique<Renderer>();
-	m_Renderer->Initialize(m_Window->GetWidth(), m_Window->GetHeight());
-	LOG_INFO("Initialized Renderer");
+	m_Renderer->Initialize(m_Window->GetHandle(), m_Window->GetWidth(), m_Window->GetHeight());
+	LOG_INFO("[Renderer] Initialized Renderer");
 
 	m_GUI = std::make_unique<GUI>();
 	m_GUI->Initialize(m_Window->GetHandle());
-	LOG_INFO("Initialized GUI");
+	LOG_INFO("[GUI] Initialized GUI");
 
 	m_ResourceManager = std::make_unique<ResourceManager>();
 	m_ResourceManager->LoadTexture("Resources/Textures/kermit.jpg", "Kermit");

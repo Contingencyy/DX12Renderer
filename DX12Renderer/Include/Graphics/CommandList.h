@@ -26,10 +26,12 @@ public:
 	void SetIndexBuffer(const Buffer& indexBuffer);
 	void SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ID3D12DescriptorHeap* heap);
 
+	void SetRootConstantBufferView(uint32_t rootParameterIndex, Buffer& buffer, D3D12_RESOURCE_STATES stateAfter);
 	void SetConstantBufferView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Buffer& buffer,
-		D3D12_RESOURCE_STATES stateAfter, const D3D12_CONSTANT_BUFFER_VIEW_DESC* cbvDesc = nullptr);
+		D3D12_RESOURCE_STATES stateAfter);
+	void SetRootShaderResourceView(uint32_t rootParameterIndex, Texture& texture, D3D12_RESOURCE_STATES stateAfter);
 	void SetShaderResourceView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Texture& texture,
-		D3D12_RESOURCE_STATES stateAfter, const D3D12_SHADER_RESOURCE_VIEW_DESC* srvDesc = nullptr);
+		D3D12_RESOURCE_STATES stateAfter);
 	
 	void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex = 0, uint32_t startInstance = 0);
 	void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0);

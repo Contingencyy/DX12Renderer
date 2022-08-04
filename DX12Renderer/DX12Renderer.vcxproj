@@ -212,6 +212,7 @@
     <ClCompile Include="Source\Graphics\DescriptorHeap.cpp" />
     <ClCompile Include="Source\Graphics\Device.cpp" />
     <ClCompile Include="Source\Graphics\DynamicDescriptorHeap.cpp" />
+    <ClCompile Include="Source\Graphics\Mesh.cpp" />
     <ClCompile Include="Source\Resource\Model.cpp" />
     <ClCompile Include="Source\Graphics\ParticleSystem.cpp" />
     <ClCompile Include="Source\Graphics\PipelineState.cpp" />
@@ -255,6 +256,7 @@
     <ClInclude Include="Include\Graphics\DescriptorHeap.h" />
     <ClInclude Include="Include\Graphics\Device.h" />
     <ClInclude Include="Include\Graphics\DynamicDescriptorHeap.h" />
+    <ClInclude Include="Include\Graphics\Mesh.h" />
     <ClInclude Include="Include\Resource\Model.h" />
     <ClInclude Include="Include\Graphics\ParticleSystem.h" />
     <ClInclude Include="Include\Graphics\PipelineState.h" />

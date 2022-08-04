@@ -22,12 +22,16 @@ void ResourceManager::LoadTexture(const std::string& filepath, const std::string
 	m_Textures.insert(std::pair<std::string, std::shared_ptr<Texture>>(name, std::make_shared<Texture>(textureDesc)));
 
 	delete imageInfo.Data;
+
+	LOG_INFO("[ResourceManager] Loaded texture: " + filepath);
 }
 
 void ResourceManager::LoadModel(const std::string& filepath, const std::string& name)
 {
 	const tinygltf::Model& glTFModel = ResourceLoader::LoadModel(filepath);
 	m_Models.insert(std::pair<std::string, std::shared_ptr<Model>>(name, std::make_shared<Model>(glTFModel, name)));
+
+	LOG_INFO("[ResourceManager] Loaded model: " + filepath);
 }
 
 std::shared_ptr<Texture> ResourceManager::GetTexture(const std::string& name)
