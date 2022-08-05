@@ -17,8 +17,11 @@ A 3D rendering project written in C++, using DirectX 12 as the graphics API.
 ##### Point lights (ambient and diffuse)
 ![PointLightsAmbientDiffuse](https://user-images.githubusercontent.com/34250026/173195505-a01fbea1-0427-4e13-910f-60f886b4678b.png)
 
-##### Tone mapping ()
+##### Tone mapping
 ![Tonemapping](https://user-images.githubusercontent.com/34250026/182204514-52543369-4537-464a-8929-8b68596bbd3a.png)
+
+##### Sponza
+![Sponza](https://user-images.githubusercontent.com/34250026/183105282-eaff9527-6f17-493a-87e5-de4c0a26716a.png)
 
 ## Building
 The project currently provides the Visual Studio 2019 solution file. CMake is currently not supported. You will need to have installed the latest Windows 10 SDK.
