@@ -56,7 +56,7 @@ void Camera::Update(float deltaTime)
 		float rotationStrength = glm::length(mouseRelPos);
 		mouseRelPos = glm::normalize(mouseRelPos);
 
-		if (rotationStrength > 0.0f)
+		if (rotationStrength > m_RotationDeadZone)
 		{
 			float rotationStrengthSqrt = sqrt(rotationStrength);
 

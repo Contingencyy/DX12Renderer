@@ -33,6 +33,7 @@ private:
 
 	float m_Speed = 25.0f;
 	float m_RotationSpeed = 10.0f;
+	float m_RotationDeadZone = 10.0f;
 	float m_FOV = 60.0f;
 	float m_AspectRatio = 16.0f / 9.0f;
 
