@@ -32,7 +32,6 @@ Camera::~Camera()
 void Camera::Update(float deltaTime)
 {
 	bool translated = false;
-
 	glm::vec3 velocity = glm::vec3(0.0f);
 
 	velocity += InputHandler::GetInputAxis1D(KeyCode::W, KeyCode::S) * Forward();
@@ -48,30 +47,27 @@ void Camera::Update(float deltaTime)
 	}
 
 	bool rotated = false;
-
 	glm::vec3 rotation = glm::vec3(0.0f);
 
 	if (InputHandler::IsKeyPressed(KeyCode::RIGHT_MOUSE))
 	{
-		glm::vec2 mouseRelPos = glm::vec2(Application::Get().GetWindow()->GetWidth() / 2, Application::Get().GetWindow()->GetHeight() / 2)
-			- InputHandler::GetMousePositionAbs();
-		float mouseRelPosStrength = glm::length(mouseRelPos);
+		glm::vec2 mouseRelPos = InputHandler::GetMousePositionAbs() -
+			glm::vec2(Application::Get().GetWindow()->GetWidth() / 2, Application::Get().GetWindow()->GetHeight() / 2);
+		float rotationStrength = glm::length(mouseRelPos);
 		mouseRelPos = glm::normalize(mouseRelPos);
 
-		rotation.z = InputHandler::GetInputAxis1D(KeyCode::Q, KeyCode::E);
-
-		if (mouseRelPosStrength > 0.0f)
+		if (rotationStrength > 0.0f)
 		{
-			rotation.x = -sin(mouseRelPos.y);
-			rotation.y = -sin(mouseRelPos.x) * cos(mouseRelPos.y);
+			float rotationStrengthSqrt = sqrt(rotationStrength);
 
-			rotation *= m_RotationSpeed * sqrt(mouseRelPosStrength) * deltaTime;
+			rotation += WorldUp * mouseRelPos.x;
+			rotation += WorldRight * mouseRelPos.y;
+			rotation += WorldForward * InputHandler::GetInputAxis1D(KeyCode::Q, KeyCode::E);
+
+			rotation *= m_RotationSpeed * rotationStrengthSqrt * deltaTime;
 			m_Transform.Rotate(rotation);
 
 			rotated = true;
-
-			glm::vec3 rotation = m_Transform.GetRotation();
-			printf("%f, %f\n", rotation.x, rotation.y);
 		}
 	}
 	
