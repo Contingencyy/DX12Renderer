@@ -31,9 +31,8 @@ private:
 	glm::mat4 m_ProjectionMatrix = glm::identity<glm::mat4>();
 	glm::mat4 m_ViewProjectionMatrix = glm::identity<glm::mat4>();
 
-	glm::vec3 m_Velocity = glm::vec3(0.0f);
-
-	float m_Speed = 5.0f;
+	float m_Speed = 25.0f;
+	float m_RotationSpeed = 10.0f;
 	float m_FOV = 60.0f;
 	float m_AspectRatio = 16.0f / 9.0f;
 

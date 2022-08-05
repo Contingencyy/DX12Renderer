@@ -19,7 +19,7 @@ class PointlightObject : public SceneObject
 {
 public:
 	PointlightObject(const PointlightData& pointlightData, const std::string& name,
-		const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale);
+		const glm::vec3& translation = glm::vec3(0.0f), const glm::vec3& rotation = glm::vec3(0.0f), const glm::vec3& scale = glm::vec3(1.0f));
 	~PointlightObject();
 
 	virtual void Update(float deltaTime);

@@ -65,6 +65,7 @@ void DynamicDescriptorHeap::StageDescriptors(uint32_t rootParameterIndex, uint32
 		destDescriptor[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(srcDescriptor, i, m_DescriptorHandleIncrementSize);
 
 	m_NumDescriptorsToCommit += numDescriptors;
+	ASSERT((m_NumDescriptorsToCommit <= m_NumDescriptors), "Descriptor heap is too small to stage descriptors for the currently bound root signature");
 }
 
 void DynamicDescriptorHeap::CommitStagedDescriptors(CommandList& commandList)
@@ -101,6 +102,8 @@ void DynamicDescriptorHeap::CommitStagedDescriptors(CommandList& commandList)
 
 void DynamicDescriptorHeap::Reset()
 {
+	m_NumDescriptorsToCommit = 0;
+
 	m_CurrentCPUDescriptorHandle = (m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 	m_CurrentGPUDescriptorHandle = (m_d3d12DescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 

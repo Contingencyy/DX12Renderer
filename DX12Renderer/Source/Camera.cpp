@@ -2,6 +2,9 @@
 #include "Camera.h"
 #include "InputHandler.h"
 
+#include "Application.h"
+#include "Window.h"
+
 Camera::Camera(const glm::vec3& pos, float fov, float width, float height, float near, float far)
 	: m_FOV(fov)
 {
@@ -28,17 +31,52 @@ Camera::~Camera()
 
 void Camera::Update(float deltaTime)
 {
-	m_Velocity = glm::vec3(0.0f);
+	bool translated = false;
 
-	m_Velocity += InputHandler::GetInputAxis1D(KeyCode::W, KeyCode::S) * Forward();
-	m_Velocity += InputHandler::GetInputAxis1D(KeyCode::D, KeyCode::A) * Right();
-	m_Velocity += InputHandler::GetInputAxis1D(KeyCode::Q, KeyCode::E) * Up();
+	glm::vec3 velocity = glm::vec3(0.0f);
 
-	if (m_Velocity.x != 0.0f || m_Velocity.y != 0.0f || m_Velocity.z != 0.0f)
+	velocity += InputHandler::GetInputAxis1D(KeyCode::W, KeyCode::S) * Forward();
+	velocity += InputHandler::GetInputAxis1D(KeyCode::D, KeyCode::A) * Right();
+	velocity += InputHandler::GetInputAxis1D(KeyCode::SHIFT, KeyCode::CTRL) * Up();
+
+	if (velocity.x != 0.0f || velocity.y != 0.0f || velocity.z != 0.0f)
 	{
-		m_Velocity = glm::normalize(m_Velocity);
-		m_Transform.Translate(m_Velocity * m_Speed * deltaTime);
+		velocity = glm::normalize(velocity);
+		m_Transform.Translate(velocity * m_Speed * deltaTime);
 
+		translated = true;
+	}
+
+	bool rotated = false;
+
+	glm::vec3 rotation = glm::vec3(0.0f);
+
+	if (InputHandler::IsKeyPressed(KeyCode::RIGHT_MOUSE))
+	{
+		glm::vec2 mouseRelPos = glm::vec2(Application::Get().GetWindow()->GetWidth() / 2, Application::Get().GetWindow()->GetHeight() / 2)
+			- InputHandler::GetMousePositionAbs();
+		float mouseRelPosStrength = glm::length(mouseRelPos);
+		mouseRelPos = glm::normalize(mouseRelPos);
+
+		rotation.z = InputHandler::GetInputAxis1D(KeyCode::Q, KeyCode::E);
+
+		if (mouseRelPosStrength > 0.0f)
+		{
+			rotation.x = -sin(mouseRelPos.y);
+			rotation.y = -sin(mouseRelPos.x) * cos(mouseRelPos.y);
+
+			rotation *= m_RotationSpeed * sqrt(mouseRelPosStrength) * deltaTime;
+			m_Transform.Rotate(rotation);
+
+			rotated = true;
+
+			glm::vec3 rotation = m_Transform.GetRotation();
+			printf("%f, %f\n", rotation.x, rotation.y);
+		}
+	}
+	
+	if (translated || rotated)
+	{
 		m_ViewMatrix = glm::inverse(m_Transform.GetTransformMatrix());
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 

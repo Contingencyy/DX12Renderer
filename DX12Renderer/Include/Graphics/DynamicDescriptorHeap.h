@@ -5,7 +5,7 @@
 class DynamicDescriptorHeap
 {
 public:
-	DynamicDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors = 256);
+	DynamicDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors = 512);
 	~DynamicDescriptorHeap();
 
 	void ParseRootSignature(const RootSignature& rootSignature);

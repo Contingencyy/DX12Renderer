@@ -171,7 +171,7 @@ void Renderer::Render()
     // Set pipeline state, root signature, and scene data constant buffer
     commandList->SetPipelineState(*m_PipelineState[PipelineStateType::DEFAULT].get());
 
-    m_SceneData.Ambient = glm::vec3(1.0f);
+    m_SceneData.Ambient = glm::vec3(0.1f);
     m_SceneData.NumPointlights = m_Pointlights.size();
 
     m_SceneDataConstantBuffer->SetBufferData(&m_SceneData);
@@ -188,38 +188,44 @@ void Renderer::Render()
 
     for (auto& [modelName, modelDrawData] : m_ModelDrawData)
     {
-        auto mesh = modelDrawData.Model->GetMesh();
-        auto indexBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_INDEX);
+        const auto& meshes = modelDrawData.Model->GetMeshes();
 
-        // Set mesh vertex buffers and index buffer
-        commandList->SetVertexBuffers(0, 1, *mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_POSITION).get());
-        commandList->SetVertexBuffers(1, 1, *mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_TEX_COORD).get());
-        commandList->SetVertexBuffers(2, 1, *mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_NORMAL).get());
-        commandList->SetIndexBuffer(*indexBuffer.get());
+        //for (auto& mesh : meshes)
+        for (uint32_t i = 0; i < meshes.size(); ++i)
+        {
+            const auto& mesh = meshes[i];
+            auto indexBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_INDEX);
 
-        // Set instance buffer data for current mesh
-        m_ModelInstanceBuffer->SetBufferData(&modelDrawData.ModelInstanceData[0], modelDrawData.ModelInstanceData.size() * sizeof(ModelInstanceData));
-        commandList->SetVertexBuffers(3, 1, *m_ModelInstanceBuffer.get());
+            // Set mesh vertex buffers and index buffer
+            commandList->SetVertexBuffers(0, 1, *mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_POSITION).get());
+            commandList->SetVertexBuffers(1, 1, *mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_TEX_COORD).get());
+            commandList->SetVertexBuffers(2, 1, *mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_NORMAL).get());
+            commandList->SetIndexBuffer(*indexBuffer.get());
 
-        // Set shader resource views for albedo and normal textures
-        commandList->SetShaderResourceView(1, 1, *modelDrawData.Model->GetTexture(TextureType::TEX_ALBEDO).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        commandList->SetShaderResourceView(1, 2, *modelDrawData.Model->GetTexture(TextureType::TEX_NORMAL).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            // Set instance buffer data for current mesh
+            m_ModelInstanceBuffer->SetBufferData(&modelDrawData.ModelInstanceData[0], modelDrawData.ModelInstanceData.size() * sizeof(ModelInstanceData));
+            commandList->SetVertexBuffers(3, 1, *m_ModelInstanceBuffer.get());
 
-        // Draw instanced/indexed model
-        commandList->DrawIndexed((*indexBuffer).GetBufferDesc().NumElements, modelDrawData.ModelInstanceData.size());
+            // Set shader resource views for albedo and normal textures
+            commandList->SetShaderResourceView(1, 1, *mesh->GetTexture(MeshTextureType::TEX_ALBEDO).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            commandList->SetShaderResourceView(1, 2, *mesh->GetTexture(MeshTextureType::TEX_NORMAL).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        // Transition albedo and normal textures back to common state from pixel shader resource state set in the SetShaderResourceView function
-        CD3DX12_RESOURCE_BARRIER shaderResourceBarrier[2] = {
-            CD3DX12_RESOURCE_BARRIER::Transition(modelDrawData.Model->GetTexture(TextureType::TEX_ALBEDO)->GetD3D12Resource().Get(),
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON),
-            CD3DX12_RESOURCE_BARRIER::Transition(modelDrawData.Model->GetTexture(TextureType::TEX_NORMAL)->GetD3D12Resource().Get(),
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON)
-        };
-        commandList->ResourceBarrier(2, shaderResourceBarrier);
+            // Draw instanced/indexed model
+            commandList->DrawIndexed((*indexBuffer).GetBufferDesc().NumElements, modelDrawData.ModelInstanceData.size());
 
-        m_RenderStatistics.DrawCallCount++;
-        m_RenderStatistics.TriangleCount += ((*indexBuffer).GetBufferDesc().NumElements / 3) * modelDrawData.ModelInstanceData.size();
-        m_RenderStatistics.ObjectCount += modelDrawData.ModelInstanceData.size();
+            // Transition albedo and normal textures back to common state from pixel shader resource state set in the SetShaderResourceView function
+            CD3DX12_RESOURCE_BARRIER shaderResourceBarrier[2] = {
+                CD3DX12_RESOURCE_BARRIER::Transition(mesh->GetTexture(MeshTextureType::TEX_ALBEDO)->GetD3D12Resource().Get(),
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON),
+                CD3DX12_RESOURCE_BARRIER::Transition(mesh->GetTexture(MeshTextureType::TEX_NORMAL)->GetD3D12Resource().Get(),
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON)
+            };
+            commandList->ResourceBarrier(2, shaderResourceBarrier);
+
+            m_RenderStatistics.DrawCallCount++;
+            m_RenderStatistics.TriangleCount += ((*indexBuffer).GetBufferDesc().NumElements / 3) * modelDrawData.ModelInstanceData.size();
+            m_RenderStatistics.ObjectCount += modelDrawData.ModelInstanceData.size();
+        }
     }
 
     m_CommandQueueDirect->ExecuteCommandList(commandList);

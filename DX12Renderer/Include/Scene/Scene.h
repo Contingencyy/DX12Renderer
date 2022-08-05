@@ -21,4 +21,6 @@ private:
 
 	std::vector<std::unique_ptr<SceneObject>> m_SceneObjects;
 
+	bool m_FrustumCulling = true;
+
 };

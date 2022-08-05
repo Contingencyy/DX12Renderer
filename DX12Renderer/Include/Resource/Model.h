@@ -4,13 +4,6 @@
 class Mesh;
 class Texture;
 
-enum TextureType : uint32_t
-{
-	TEX_ALBEDO,
-	TEX_NORMAL,
-	NUM_TEXTURE_TYPES
-};
-
 class Model
 {
 public:
@@ -18,16 +11,14 @@ public:
 	~Model();
 
 	const std::string& GetName() const { return m_Name; }
-	std::shared_ptr<Mesh> GetMesh() const { return m_Mesh; }
-	std::shared_ptr<Texture> GetTexture(TextureType type) const { return m_Textures[type]; }
+	const std::vector<std::shared_ptr<Mesh>> GetMeshes() const { return m_Meshes; }
 
 private:
-	void CreateTextures(const tinygltf::Model& glTFModel);
+	void CreateMeshes(const tinygltf::Model& glTFModel);
 
 private:
 	std::string m_Name = "";
 
-	std::shared_ptr<Mesh> m_Mesh;
-	std::vector<std::shared_ptr<Texture>> m_Textures;
+	std::vector<std::shared_ptr<Mesh>> m_Meshes;
 
 };
