@@ -9,7 +9,7 @@ class Device;
 class CommandQueue;
 class SwapChain;
 class DescriptorHeap;
-class Model;
+class Mesh;
 class PipelineState;
 
 class Renderer
@@ -24,7 +24,7 @@ public:
 		} Resolution;
 
 		bool VSync = true;
-		uint32_t MaxModelInstances = 1000;
+		uint32_t MaxModelInstances = 100;
 		uint32_t MaxPointLights = 100;
 	};
 
@@ -34,13 +34,13 @@ public:
 		{
 			DrawCallCount = 0;
 			TriangleCount = 0;
-			ObjectCount = 0;
+			MeshCount = 0;
 			PointLightCount = 0;
 		}
 
 		uint32_t DrawCallCount = 0;
 		uint32_t TriangleCount = 0;
-		uint32_t ObjectCount = 0;
+		uint32_t MeshCount = 0;
 		uint32_t PointLightCount = 0;
 	};
 
@@ -56,7 +56,7 @@ public:
 	void ImGuiRender();
 	void EndFrame();
 
-	void Submit(const std::shared_ptr<Model>& model, const glm::mat4& transform);
+	void Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform);
 	void Submit(const PointlightData& pointlightData);
 	void Resize(uint32_t width, uint32_t height);
 
@@ -105,31 +105,31 @@ private:
 	RenderSettings m_RenderSettings;
 	RenderStatistics m_RenderStatistics;
 
-	struct ModelInstanceData
+	struct MeshInstanceData
 	{
-		ModelInstanceData(const glm::mat4& transform, const glm::vec4& color)
+		MeshInstanceData(const glm::mat4& transform, const glm::vec4& color)
 			: Transform(transform), Color(color) {}
 
 		glm::mat4 Transform = glm::identity<glm::mat4>();
 		glm::vec4 Color = glm::vec4(1.0f);
 	};
 	
-	struct ModelDrawData
+	struct MeshDrawData
 	{
-		ModelDrawData(const std::shared_ptr<Model>& model)
-			: Model(model)
+		MeshDrawData(const std::shared_ptr<Mesh>& mesh)
+			: Mesh(mesh)
 		{
 		}
 
-		std::shared_ptr<Model> Model;
-		std::vector<ModelInstanceData> ModelInstanceData;
+		std::shared_ptr<Mesh> Mesh;
+		std::vector<MeshInstanceData> MeshInstanceData;
 	};
 
-	std::unordered_map<const char*, ModelDrawData> m_ModelDrawData;
-	std::unique_ptr<Buffer> m_ModelInstanceBuffer;
+	std::unordered_map<std::size_t, MeshDrawData> m_MeshDrawData;
+	std::unique_ptr<Buffer> m_MeshInstanceBuffer;
 
+	std::vector<PointlightData> m_PointlightDrawData;
 	std::unique_ptr<Buffer> m_PointlightBuffer;
-	std::vector<PointlightData> m_Pointlights;
 	
 	std::unique_ptr<Buffer> m_ToneMapVertexBuffer;
 	std::unique_ptr<Buffer> m_ToneMapIndexBuffer;

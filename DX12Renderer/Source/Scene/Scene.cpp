@@ -3,9 +3,10 @@
 #include "Application.h"
 #include "Graphics/Renderer.h"
 #include "Scene/SceneObject.h"
-#include "Scene/ModelObject.h"
+#include "Scene/MeshObject.h"
 #include "Scene/LightObject.h"
 #include "Resource/ResourceManager.h"
+#include "Resource/Model.h"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_win32.h>
@@ -26,7 +27,7 @@ Scene::Scene()
 	//		position.x = x * 2.0f;
 	//		position.y = y * 2.0f;
 
-	//		m_SceneObjects.push_back(std::make_unique<ModelObject>(Application::Get().GetResourceManager()->GetModel("DamagedHelmet"),
+	//		m_SceneObjects.push_back(std::make_unique<MeshObject>(Application::Get().GetResourceManager()->GetModel("DamagedHelmet"),
 	//			"DamagedHelmet", position, rotation));
 	//	}
 	//}
@@ -43,7 +44,7 @@ Scene::Scene()
 	pointlightData.Ambient = glm::vec4(0.05f, 0.05f, 0.1f, 1.0f);
 	m_SceneObjects.push_back(std::make_unique<PointlightObject>(pointlightData, "Pointlight", glm::vec3(25.0f, 25.0f, 0.0f)));
 
-	m_SceneObjects.push_back(std::make_unique<ModelObject>(Application::Get().GetResourceManager()->GetModel("SponzaOld"),
+	m_SceneObjects.push_back(std::make_unique<MeshObject>(Application::Get().GetResourceManager()->GetModel("SponzaOld")->GetMeshes(),
 		"SponzaOld", glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(0.1f)));
 }
 

@@ -97,7 +97,7 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 
     m_PipelineState[PipelineStateType::TONE_MAPPING] = std::make_unique<PipelineState>(toneMappingPipelineDesc, toneMappingInputLayout, toneMappingDescriptorRanges, toneMappingRootParameters);
 
-    m_ModelInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, m_RenderSettings.MaxModelInstances, sizeof(ModelInstanceData)));
+    m_MeshInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, m_RenderSettings.MaxModelInstances, sizeof(MeshInstanceData)));
     m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, m_RenderSettings.MaxPointLights, sizeof(PointlightData)));
 
     // Tone mapping vertices, positions are in normalized device coordinates
@@ -172,7 +172,7 @@ void Renderer::Render()
     commandList->SetPipelineState(*m_PipelineState[PipelineStateType::DEFAULT].get());
 
     m_SceneData.Ambient = glm::vec3(0.1f);
-    m_SceneData.NumPointlights = m_Pointlights.size();
+    m_SceneData.NumPointlights = m_PointlightDrawData.size();
 
     m_SceneDataConstantBuffer->SetBufferData(&m_SceneData);
     commandList->SetRootConstantBufferView(0, *m_SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
@@ -180,52 +180,49 @@ void Renderer::Render()
     // Set constant buffer data for point lights
     if (m_SceneData.NumPointlights > 0)
     {
-        m_PointlightBuffer->SetBufferData(&m_Pointlights[0], m_Pointlights.size() * sizeof(PointlightData));
+        m_PointlightBuffer->SetBufferData(&m_PointlightDrawData[0], m_PointlightDrawData.size() * sizeof(PointlightData));
     }
 
     commandList->SetConstantBufferView(1, 0, *m_PointlightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
-    m_RenderStatistics.PointLightCount += m_Pointlights.size();
+    m_RenderStatistics.PointLightCount += m_PointlightDrawData.size();
 
-    for (auto& [modelName, modelDrawData] : m_ModelDrawData)
+    for (auto& [meshHash, meshDrawData] : m_MeshDrawData)
     {
-        const auto& meshes = modelDrawData.Model->GetMeshes();
+        auto& mesh = meshDrawData.Mesh;
+        auto& meshInstanceData = meshDrawData.MeshInstanceData;
 
-        //for (auto& mesh : meshes)
-        for (uint32_t i = 0; i < meshes.size(); ++i)
-        {
-            const auto& mesh = meshes[i];
-            auto indexBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_INDEX);
+        auto vertexPositionsBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_POSITION);
+        auto vertexTexCoordBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_TEX_COORD);
+        auto vertexNormalBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_NORMAL);
+        auto indexBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_INDEX);
 
-            // Set mesh vertex buffers and index buffer
-            commandList->SetVertexBuffers(0, 1, *mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_POSITION).get());
-            commandList->SetVertexBuffers(1, 1, *mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_TEX_COORD).get());
-            commandList->SetVertexBuffers(2, 1, *mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_NORMAL).get());
-            commandList->SetIndexBuffer(*indexBuffer.get());
+        commandList->SetVertexBuffers(0, 1, *vertexPositionsBuffer);
+        commandList->SetVertexBuffers(1, 1, *vertexTexCoordBuffer);
+        commandList->SetVertexBuffers(2, 1, *vertexNormalBuffer);
+        commandList->SetIndexBuffer(*indexBuffer);
 
-            // Set instance buffer data for current mesh
-            m_ModelInstanceBuffer->SetBufferData(&modelDrawData.ModelInstanceData[0], modelDrawData.ModelInstanceData.size() * sizeof(ModelInstanceData));
-            commandList->SetVertexBuffers(3, 1, *m_ModelInstanceBuffer.get());
+        m_MeshInstanceBuffer->SetBufferData(&meshInstanceData[0], meshInstanceData.size() * sizeof(MeshInstanceData));
+        commandList->SetVertexBuffers(3, 1, *m_MeshInstanceBuffer);
 
-            // Set shader resource views for albedo and normal textures
-            commandList->SetShaderResourceView(1, 1, *mesh->GetTexture(MeshTextureType::TEX_ALBEDO).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            commandList->SetShaderResourceView(1, 2, *mesh->GetTexture(MeshTextureType::TEX_NORMAL).get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        auto baseColorTexture = mesh->GetTexture(MeshTextureType::TEX_BASE_COLOR);
+        auto normalTexture = mesh->GetTexture(MeshTextureType::TEX_NORMAL);
 
-            // Draw instanced/indexed model
-            commandList->DrawIndexed((*indexBuffer).GetBufferDesc().NumElements, modelDrawData.ModelInstanceData.size());
+        commandList->SetShaderResourceView(1, 1, *baseColorTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        commandList->SetShaderResourceView(1, 2, *normalTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-            // Transition albedo and normal textures back to common state from pixel shader resource state set in the SetShaderResourceView function
-            CD3DX12_RESOURCE_BARRIER shaderResourceBarrier[2] = {
-                CD3DX12_RESOURCE_BARRIER::Transition(mesh->GetTexture(MeshTextureType::TEX_ALBEDO)->GetD3D12Resource().Get(),
-                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON),
-                CD3DX12_RESOURCE_BARRIER::Transition(mesh->GetTexture(MeshTextureType::TEX_NORMAL)->GetD3D12Resource().Get(),
-                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON)
-            };
-            commandList->ResourceBarrier(2, shaderResourceBarrier);
+        commandList->DrawIndexed(indexBuffer->GetBufferDesc().NumElements, meshInstanceData.size());
 
-            m_RenderStatistics.DrawCallCount++;
-            m_RenderStatistics.TriangleCount += ((*indexBuffer).GetBufferDesc().NumElements / 3) * modelDrawData.ModelInstanceData.size();
-            m_RenderStatistics.ObjectCount += modelDrawData.ModelInstanceData.size();
-        }
+        CD3DX12_RESOURCE_BARRIER shaderResourceBarrier[2] = {
+            CD3DX12_RESOURCE_BARRIER::Transition(baseColorTexture->GetD3D12Resource().Get(),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON),
+            CD3DX12_RESOURCE_BARRIER::Transition(normalTexture->GetD3D12Resource().Get(),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON)
+        };
+        commandList->ResourceBarrier(2, shaderResourceBarrier);
+
+        m_RenderStatistics.DrawCallCount++;
+        m_RenderStatistics.TriangleCount += (indexBuffer->GetBufferDesc().NumElements / 3) * meshInstanceData.size();
+        m_RenderStatistics.MeshCount += meshInstanceData.size();
     }
 
     m_CommandQueueDirect->ExecuteCommandList(commandList);
@@ -278,7 +275,7 @@ void Renderer::ImGuiRender()
     ImGui::Text("VSync: %s", m_RenderSettings.VSync ? "On" : "Off");
     ImGui::Text("Draw calls: %u", m_RenderStatistics.DrawCallCount);
     ImGui::Text("Triangle count: %u", m_RenderStatistics.TriangleCount);
-    ImGui::Text("Object count: %u", m_RenderStatistics.ObjectCount);
+    ImGui::Text("Mesh count: %u", m_RenderStatistics.MeshCount);
     ImGui::Text("Point light count: %u", m_RenderStatistics.PointLightCount);
     ImGui::Text("Max model instances: %u", m_RenderSettings.MaxModelInstances);
     ImGui::Text("Max point lights: %u", m_RenderSettings.MaxPointLights);
@@ -296,32 +293,30 @@ void Renderer::EndFrame()
     m_CommandQueueDirect->ResetCommandLists();
     m_CommandQueueCopy->ResetCommandLists();
 
-    m_ModelDrawData.clear();
-    m_Pointlights.clear();
+    m_MeshDrawData.clear();
+    m_PointlightDrawData.clear();
 
     m_RenderStatistics.Reset();
 }
 
-void Renderer::Submit(const std::shared_ptr<Model>& model, const glm::mat4& transform)
+void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform)
 {
-    auto iter = m_ModelDrawData.find(model->GetName().c_str());
-    if (iter != m_ModelDrawData.end())
+    auto iter = m_MeshDrawData.find(mesh->GetHash());
+    if (iter != m_MeshDrawData.end())
     {
-        iter->second.ModelInstanceData.emplace_back(transform, glm::vec4(1.0f));
+        iter->second.MeshInstanceData.push_back(MeshInstanceData(transform, glm::vec4(1.0f)));
     }
     else
     {
-        m_ModelDrawData.emplace(std::pair<const char*, ModelDrawData>(model->GetName().c_str(), ModelDrawData(model)));
-        m_ModelDrawData.at(model->GetName().c_str()).ModelInstanceData.emplace_back(transform, glm::vec4(1.0f));
+        m_MeshDrawData.emplace(std::pair<std::size_t, MeshDrawData>(mesh->GetHash(), mesh));
+        m_MeshDrawData.at(mesh->GetHash()).MeshInstanceData.push_back(MeshInstanceData(transform, glm::vec4(1.0f)));
     }
-
-    ASSERT((m_ModelDrawData.size() <= m_RenderSettings.MaxModelInstances), "Exceeded the maximum amount of model instances");
 }
 
 void Renderer::Submit(const PointlightData& pointlightData)
 {
-    m_Pointlights.push_back(pointlightData);
-    ASSERT((m_Pointlights.size() <= m_RenderSettings.MaxPointLights), "Exceeded the maximum amount of point lights");
+    m_PointlightDrawData.push_back(pointlightData);
+    ASSERT((m_PointlightDrawData.size() <= m_RenderSettings.MaxPointLights), "Exceeded the maximum amount of point lights");
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)

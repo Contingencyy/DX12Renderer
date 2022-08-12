@@ -15,7 +15,7 @@ enum MeshBufferAttributeType : uint32_t
 
 enum MeshTextureType : uint32_t
 {
-	TEX_ALBEDO,
+	TEX_BASE_COLOR,
 	TEX_NORMAL,
 	NUM_TEXTURE_TYPES
 };
@@ -23,18 +23,24 @@ enum MeshTextureType : uint32_t
 class Mesh
 {
 public:
-	Mesh(const tinygltf::Model& glTFModel, uint32_t meshID);
+	Mesh(const tinygltf::Model& glTFModel, const tinygltf::Primitive& glTFPrimitive, const std::string& name, std::size_t hash);
 	~Mesh();
 
 	std::shared_ptr<Buffer> GetBuffer(MeshBufferAttributeType type) const;
 	std::shared_ptr<Texture> GetTexture(MeshTextureType type) const;
 
+	const std::string& GetName() const;
+	std::size_t GetHash() const;
+
 private:
-	void CreateBuffers(const tinygltf::Model& glTFModel, uint32_t meshID);
+	void CreateBuffers(const tinygltf::Model& glTFModel, const tinygltf::Primitive& glTFPrimitive);
 	void CreateTextures(const tinygltf::Model& glTFModel, uint32_t matID);
 
 private:
 	std::shared_ptr<Buffer> m_MeshBuffers[MeshBufferAttributeType::NUM_ATTRIBUTE_TYPES];
 	std::shared_ptr<Texture> m_Textures[MeshTextureType::NUM_TEXTURE_TYPES];
+
+	std::string m_Name;
+	std::size_t m_Hash;
 
 };

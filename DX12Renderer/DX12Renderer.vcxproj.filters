@@ -132,7 +132,7 @@
     <ClCompile Include="Source\Resource\Model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Scene\ModelObject.cpp">
+    <ClCompile Include="Source\Scene\MeshObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\Mesh.cpp">
@@ -254,7 +254,7 @@
     <ClInclude Include="Include\Scene\LightObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Scene\ModelObject.h">
+    <ClInclude Include="Include\Scene\MeshObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\Mesh.h">

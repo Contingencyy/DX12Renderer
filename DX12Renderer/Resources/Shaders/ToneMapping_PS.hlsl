@@ -61,7 +61,7 @@ float3 UnchartedTwoToneMapping(float3 color)
 	color = ((color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F)) - E / F;
 	float white = ((W * (A * W + C * B) + D * E) / (W * (A * W + B) + D * F)) - E / F;
 	color /= white;
-	color = pow(color, (1.0f / GAMMA));
+	color = pow(abs(color), (1.0f / GAMMA));
 	return color;
 }
 
