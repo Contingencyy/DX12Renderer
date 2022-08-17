@@ -7,8 +7,8 @@
 #include "Graphics/Shader.h"
 
 PipelineState::PipelineState(const PipelineStateDesc& pipelineStateDesc, const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout,
-	const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
-	: m_PipelineStateDesc(pipelineStateDesc)
+	const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters, bool lineTopology)
+	: m_PipelineStateDesc(pipelineStateDesc), m_LineTopology(lineTopology)
 {
 	m_RootSignature = std::make_unique<RootSignature>(descriptorRanges, rootParameters);
 	Create(inputLayout);
@@ -55,7 +55,7 @@ void PipelineState::Create(const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLay
 	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 	psoDesc.DepthStencilState.StencilEnable = FALSE;
 	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.PrimitiveTopologyType = m_LineTopology ? D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE : D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psoDesc.NumRenderTargets = 1;
 	psoDesc.RTVFormats[0] = TextureFormatToDXGI(m_ColorAttachment->GetTextureDesc().Format);
 	psoDesc.SampleDesc.Count = 1;
@@ -63,5 +63,5 @@ void PipelineState::Create(const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLay
 
 	Application::Get().GetRenderer()->GetDevice()->CreatePipelineState(psoDesc, m_d3d12PipelineState);
 
-	m_d3d12PrimitiveToplogy = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	m_d3d12PrimitiveToplogy = m_LineTopology ? D3D10_PRIMITIVE_TOPOLOGY_LINELIST : D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 }

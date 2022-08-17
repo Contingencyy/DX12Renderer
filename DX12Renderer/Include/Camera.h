@@ -5,24 +5,22 @@ class Camera
 {
 public:
 	Camera() = default;
-	Camera(const glm::vec3& pos, float fov, float width, float height, float near = 0.1f, float far = 1000.0f);
+	Camera(const glm::vec3& pos, float fov, float width, float height, float near = 0.1f, float far = 10000.0f);
 	~Camera();
 
 	void Update(float deltaTime);
+	void ImGuiRender();
 	void ResizeProjection(float width, float height);
 
-	bool IsPointInViewFrustum(const glm::vec3& point);
-	bool IsSphereInViewFrustum(const glm::vec3& point, float radius);
+	bool IsPointInViewFrustum(const glm::vec3& point) const;
+	bool IsSphereInViewFrustum(const glm::vec3& point, float radius) const;
 
 	glm::mat4 GetViewProjection() const { return m_ViewProjectionMatrix; };
+	bool IsFrustumCullingEnabled() const { return m_EnableFrustumCulling; }
 
 private:
 	void UpdateViewFrustumBounds();
 	void MakeViewFrustumPlanes();
-
-	glm::vec3 Forward() const;
-	glm::vec3 Right() const;
-	glm::vec3 Up() const;
 
 private:
 	Transform m_Transform;
@@ -31,11 +29,13 @@ private:
 	glm::mat4 m_ProjectionMatrix = glm::identity<glm::mat4>();
 	glm::mat4 m_ViewProjectionMatrix = glm::identity<glm::mat4>();
 
-	float m_Speed = 25.0f;
+	float m_Speed = 250.0f;
 	float m_RotationSpeed = 10.0f;
 	float m_RotationDeadZone = 10.0f;
 	float m_FOV = 60.0f;
 	float m_AspectRatio = 16.0f / 9.0f;
+
+	bool m_EnableFrustumCulling = true;
 
 	struct ViewFrustum
 	{

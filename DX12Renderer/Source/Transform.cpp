@@ -50,15 +50,15 @@ void Transform::Scale(const glm::vec3& scale)
 
 glm::vec3 Transform::Right()
 {
-	return m_QuatRotation * WorldRight;
+	return glm::vec3(m_TransformMatrix[0][0], m_TransformMatrix[1][0], m_TransformMatrix[2][0]);
 }
 
 glm::vec3 Transform::Up()
 {
-	return m_QuatRotation * WorldUp;
+	return glm::vec3(m_TransformMatrix[0][1], m_TransformMatrix[1][1], m_TransformMatrix[2][1]);
 }
 
 glm::vec3 Transform::Forward()
 {
-	return m_QuatRotation * WorldForward;
+	return glm::vec3(m_TransformMatrix[0][2], m_TransformMatrix[1][2], m_TransformMatrix[2][2]);
 }

@@ -23,7 +23,7 @@ class PipelineState
 {
 public:
 	PipelineState(const PipelineStateDesc& pipelineStateDesc, const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout,
-		const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters);
+		const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters, bool lineTopology = false);
 	~PipelineState();
 
 	RootSignature* GetRootSignature() const { return m_RootSignature.get(); }
@@ -51,5 +51,8 @@ private:
 
 	std::unique_ptr<Texture> m_ColorAttachment;
 	std::unique_ptr<Texture> m_DepthStencilAttachment;
+
+	// TEMP
+	bool m_LineTopology = false;
 
 };

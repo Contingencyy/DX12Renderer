@@ -1,5 +1,6 @@
 #pragma once
 #include "Transform.h"
+#include "Camera.h"
 
 class Model;
 
@@ -11,13 +12,16 @@ public:
 	~SceneObject();
 
 	virtual void Update(float deltaTime) = 0;
-	virtual void Render() = 0;
+	virtual void Render(const Camera& camera) = 0;
 
 	const Transform& GetTransform() const { return m_Transform; }
 	const std::string& GetName() const { return m_Name; }
+	bool IsFrustumCullable() const { return m_FrustumCullable; }
 
 protected:
 	Transform m_Transform;
 	std::string m_Name;
+
+	bool m_FrustumCullable = true;
 
 };

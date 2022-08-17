@@ -45,7 +45,7 @@ Scene::Scene()
 	m_SceneObjects.push_back(std::make_unique<PointlightObject>(pointlightData, "Pointlight", glm::vec3(25.0f, 25.0f, 0.0f)));
 
 	m_SceneObjects.push_back(std::make_unique<MeshObject>(Application::Get().GetResourceManager()->GetModel("SponzaOld")->GetMeshes(),
-		"SponzaOld", glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(0.1f)));
+		"SponzaOld", glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f)));
 }
 
 Scene::~Scene()
@@ -66,19 +66,7 @@ void Scene::Render()
 
 	for (auto& sceneObject : m_SceneObjects)
 	{
-		if (m_FrustumCulling)
-		{
-			const glm::vec3& position = sceneObject->GetTransform().GetPosition();
-			const glm::vec3& scale = sceneObject->GetTransform().GetScale();
-
-			float radius = std::max(std::max(scale.x, scale.y), scale.z);
-			if (m_ActiveCamera.IsSphereInViewFrustum(position, radius))
-				sceneObject->Render();
-		}
-		else
-		{
-			sceneObject->Render();
-		}
+		sceneObject->Render(m_ActiveCamera);
 	}
 }
 
@@ -90,7 +78,7 @@ void Scene::ImGuiRender()
 	ImGui::SetNextWindowSizeConstraints(ImVec2(75, 75), ImVec2(200, 400));
 	ImGui::Begin("Scene");
 
-	ImGui::Checkbox("Frustum culling", &m_FrustumCulling);
+	m_ActiveCamera.ImGuiRender();
 
 	for (uint32_t i = 0; i < m_SceneObjects.size(); ++i)
 	{

@@ -5,6 +5,10 @@
 #include "Application.h"
 #include "Window.h"
 
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_win32.h>
+#include <imgui/imgui_impl_dx12.h>
+
 Camera::Camera(const glm::vec3& pos, float fov, float width, float height, float near, float far)
 	: m_FOV(fov)
 {
@@ -34,9 +38,9 @@ void Camera::Update(float deltaTime)
 	bool translated = false;
 	glm::vec3 velocity = glm::vec3(0.0f);
 
-	velocity += InputHandler::GetInputAxis1D(KeyCode::W, KeyCode::S) * Forward();
-	velocity += InputHandler::GetInputAxis1D(KeyCode::D, KeyCode::A) * Right();
-	velocity += InputHandler::GetInputAxis1D(KeyCode::SHIFT, KeyCode::CTRL) * Up();
+	velocity += InputHandler::GetInputAxis1D(KeyCode::W, KeyCode::S) * WorldForward;
+	velocity += InputHandler::GetInputAxis1D(KeyCode::D, KeyCode::A) * WorldRight;
+	velocity += InputHandler::GetInputAxis1D(KeyCode::SHIFT, KeyCode::CTRL) * WorldUp;
 
 	if (velocity.x != 0.0f || velocity.y != 0.0f || velocity.z != 0.0f)
 	{
@@ -67,6 +71,9 @@ void Camera::Update(float deltaTime)
 			rotation *= m_RotationSpeed * rotationStrengthSqrt * deltaTime;
 			m_Transform.Rotate(rotation);
 
+			glm::vec3 currentRotation = m_Transform.GetRotation();
+			printf("%f, %f, %f\n", currentRotation.x, currentRotation.y, currentRotation.z);
+
 			rotated = true;
 		}
 	}
@@ -80,6 +87,11 @@ void Camera::Update(float deltaTime)
 	}
 }
 
+void Camera::ImGuiRender()
+{
+	ImGui::Checkbox("Frustum culling", &m_EnableFrustumCulling);
+}
+
 void Camera::ResizeProjection(float width, float height)
 {
 	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), width, height, m_ViewFrustum.Near, m_ViewFrustum.Far);
@@ -91,7 +103,7 @@ void Camera::ResizeProjection(float width, float height)
 	MakeViewFrustumPlanes();
 }
 
-bool Camera::IsPointInViewFrustum(const glm::vec3& point)
+bool Camera::IsPointInViewFrustum(const glm::vec3& point) const
 {
 	float distance = 0.0f;
 	for (uint32_t i = 0; i < 6; ++i)
@@ -104,7 +116,7 @@ bool Camera::IsPointInViewFrustum(const glm::vec3& point)
 	return true; // Point lies inside of view frustum
 }
 
-bool Camera::IsSphereInViewFrustum(const glm::vec3& point, float radius)
+bool Camera::IsSphereInViewFrustum(const glm::vec3& point, float radius) const
 {
 	bool result = true;
 	float distance = 0.0f;
@@ -159,22 +171,4 @@ void Camera::MakeViewFrustumPlanes()
 	aux = glm::normalize((nearCenter + cameraRight * m_ViewFrustum.NearWidth) - cameraPosition);
 	normal = glm::cross(aux, cameraUp);
 	m_ViewFrustum.Planes[3] = { nearCenter + cameraRight * m_ViewFrustum.NearWidth, normal };
-}
-
-glm::vec3 Camera::Forward() const
-{
-	glm::vec4 forward = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
-	return glm::vec3(forward);
-}
-
-glm::vec3 Camera::Right() const
-{
-	glm::vec4 right = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
-	return glm::vec3(right);
-}
-
-glm::vec3 Camera::Up() const
-{
-	glm::vec4 up = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
-	return glm::vec3(up);
 }

@@ -54,6 +54,19 @@ void Mesh::CreateBuffers(const tinygltf::Model& glTFModel, const tinygltf::Primi
 			ASSERT((bufferView.byteOffset < buffer.data.size()), "Buffer view byte offset exceeded buffer total size");
 
 			m_MeshBuffers[idx] = std::make_shared<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, accessor.count, accessor.ByteStride(bufferView)), dataPtr);
+
+			if (attributeName == "POSITION")
+			{
+				double xRadius = (accessor.maxValues[0] - accessor.minValues[0]) / 2;
+				double yRadius = (accessor.maxValues[1] - accessor.minValues[1]) / 2;
+				double zRadius = (accessor.maxValues[2] - accessor.minValues[2]) / 2;
+
+				m_BoundingSphere.Position.x = static_cast<float>(accessor.maxValues[0] - xRadius);
+				m_BoundingSphere.Position.y = static_cast<float>(accessor.maxValues[1] - yRadius);
+				m_BoundingSphere.Position.z = static_cast<float>(accessor.maxValues[2] - zRadius);
+
+				m_BoundingSphere.Radius = static_cast<float>(std::max(std::max(xRadius, yRadius), zRadius));
+			}
 		}
 		else
 		{

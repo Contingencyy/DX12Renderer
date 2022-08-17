@@ -42,6 +42,7 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
     for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
         m_DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
 
+    // Default pipeline
     PipelineStateDesc defaultPipelineDesc = {};
     defaultPipelineDesc.VertexShaderPath = L"Resources/Shaders/Default_VS.hlsl";
     defaultPipelineDesc.PixelShaderPath = L"Resources/Shaders/Default_PS.hlsl";
@@ -73,6 +74,28 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 
     m_PipelineState[PipelineStateType::DEFAULT] = std::make_unique<PipelineState>(defaultPipelineDesc, defaultInputLayout, descriptorRanges, rootParameters);
 
+    // Debug line pipeline
+    PipelineStateDesc debugLinePipelineDesc = {};
+    debugLinePipelineDesc.VertexShaderPath = L"Resources/Shaders/DebugLine_VS.hlsl";
+    debugLinePipelineDesc.PixelShaderPath = L"Resources/Shaders/DebugLine_PS.hlsl";
+    debugLinePipelineDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+        m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+    debugLinePipelineDesc.DepthStencilAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+        m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+
+    std::vector<D3D12_INPUT_ELEMENT_DESC> debugLineInputLayout = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+    };
+
+    std::vector<CD3DX12_DESCRIPTOR_RANGE1> debugLineDescriptorRanges;
+    std::vector<CD3DX12_ROOT_PARAMETER1> debugLineRootParameters;
+    debugLineRootParameters.resize(1);
+    debugLineRootParameters[0].InitAsConstantBufferView(0, 0);
+
+    m_PipelineState[PipelineStateType::DEBUG_LINE] = std::make_unique<PipelineState>(debugLinePipelineDesc, debugLineInputLayout, debugLineDescriptorRanges, debugLineRootParameters, true);
+
+    // Tone mapping pipeline
     PipelineStateDesc toneMappingPipelineDesc = {};
     toneMappingPipelineDesc.VertexShaderPath = L"Resources/Shaders/ToneMapping_VS.hlsl";
     toneMappingPipelineDesc.PixelShaderPath = L"Resources/Shaders/ToneMapping_PS.hlsl";
@@ -99,6 +122,7 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 
     m_MeshInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, m_RenderSettings.MaxModelInstances, sizeof(MeshInstanceData)));
     m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, m_RenderSettings.MaxPointLights, sizeof(PointlightData)));
+    m_LineBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1000, sizeof(LineDrawData)));
 
     // Tone mapping vertices, positions are in normalized device coordinates
     std::vector<float> toneMappingVertices = {
@@ -228,6 +252,38 @@ void Renderer::Render()
     m_CommandQueueDirect->ExecuteCommandList(commandList);
 
     /*
+        
+        Debug line
+    
+    */
+
+    if (m_LineDrawData.size() > 0)
+    {
+        auto commandList3 = m_CommandQueueDirect->GetCommandList();
+        auto& dlColorTarget = m_PipelineState[PipelineStateType::DEBUG_LINE]->GetColorAttachment();
+        auto& dlDepthBuffer = m_PipelineState[PipelineStateType::DEBUG_LINE]->GetDepthStencilAttachment();
+
+        auto dlRtv = dlColorTarget.GetDescriptorHandle();
+        auto dlDsv = dlDepthBuffer.GetDescriptorHandle();
+
+        // Set viewports, scissor rects and render targets
+        commandList3->SetViewports(1, &m_Viewport);
+        commandList3->SetScissorRects(1, &m_ScissorRect);
+        commandList3->SetRenderTargets(1, &dlRtv, &dlDsv);
+
+        // Set pipeline state and root signature
+        commandList3->SetPipelineState(*m_PipelineState[PipelineStateType::DEBUG_LINE].get());
+        commandList3->SetRootConstantBufferView(0, *m_SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
+
+        m_LineBuffer->SetBufferData(&m_LineDrawData[0]);
+        commandList3->SetVertexBuffers(0, 1, *m_LineBuffer);
+
+        commandList3->Draw(m_LineDrawData.size(), 1);
+
+        m_CommandQueueDirect->ExecuteCommandList(commandList3);
+    }
+
+    /*
     
         Post process: Tone mapping
     
@@ -295,6 +351,7 @@ void Renderer::EndFrame()
 
     m_MeshDrawData.clear();
     m_PointlightDrawData.clear();
+    m_LineDrawData.clear();
 
     m_RenderStatistics.Reset();
 }
@@ -317,6 +374,11 @@ void Renderer::Submit(const PointlightData& pointlightData)
 {
     m_PointlightDrawData.push_back(pointlightData);
     ASSERT((m_PointlightDrawData.size() <= m_RenderSettings.MaxPointLights), "Exceeded the maximum amount of point lights");
+}
+
+void Renderer::Submit(const glm::vec3& lineStart, const glm::vec3& lineEnd, const glm::vec4& color)
+{
+    m_LineDrawData.emplace_back(lineStart, lineEnd, color);
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)

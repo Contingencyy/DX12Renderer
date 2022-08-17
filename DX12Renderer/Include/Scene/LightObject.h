@@ -23,7 +23,7 @@ public:
 	~PointlightObject();
 
 	virtual void Update(float deltaTime);
-	virtual void Render();
+	virtual void Render(const Camera& camera);
 
 private:
 	PointlightData m_PointlightData;

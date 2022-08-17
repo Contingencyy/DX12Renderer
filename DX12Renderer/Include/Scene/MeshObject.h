@@ -11,7 +11,7 @@ public:
 	~MeshObject();
 
 	virtual void Update(float deltaTime);
-	virtual void Render();
+	virtual void Render(const Camera& camera);
 
 private:
 	std::vector<std::shared_ptr<Mesh>> m_Meshes;

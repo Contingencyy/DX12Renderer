@@ -58,6 +58,7 @@ public:
 
 	void Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform);
 	void Submit(const PointlightData& pointlightData);
+	void Submit(const glm::vec3& lineStart, const glm::vec3& lineEnd, const glm::vec4& color);
 	void Resize(uint32_t width, uint32_t height);
 
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
@@ -87,6 +88,7 @@ private:
 	enum PipelineStateType : uint32_t
 	{
 		DEFAULT,
+		DEBUG_LINE,
 		TONE_MAPPING,
 		NUM_PIPELINE_STATE_TYPES = (TONE_MAPPING + 1)
 	};
@@ -130,6 +132,19 @@ private:
 
 	std::vector<PointlightData> m_PointlightDrawData;
 	std::unique_ptr<Buffer> m_PointlightBuffer;
+
+	struct LineDrawData
+	{
+		LineDrawData(const glm::vec3& start, const glm::vec3& end, const glm::vec4& color)
+			: Start(start), End(end), Color(color) {}
+
+		glm::vec3 Start;
+		glm::vec3 End;
+		glm::vec4 Color;
+	};
+
+	std::vector<LineDrawData> m_LineDrawData;
+	std::unique_ptr<Buffer> m_LineBuffer;
 	
 	std::unique_ptr<Buffer> m_ToneMapVertexBuffer;
 	std::unique_ptr<Buffer> m_ToneMapIndexBuffer;
