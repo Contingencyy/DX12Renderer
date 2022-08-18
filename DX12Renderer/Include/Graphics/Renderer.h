@@ -80,11 +80,6 @@ public:
 	const RenderStatistics& GetRenderStatistics() const { return m_RenderStatistics; }
 
 private:
-	void Flush();
-
-private:
-	friend class GUI;
-
 	enum PipelineStateType : uint32_t
 	{
 		DEFAULT,
@@ -92,6 +87,12 @@ private:
 		TONE_MAPPING,
 		NUM_PIPELINE_STATE_TYPES = (TONE_MAPPING + 1)
 	};
+
+private:
+	void Flush();
+
+private:
+	friend class GUI;
 
 	std::shared_ptr<Device> m_Device;
 	std::shared_ptr<CommandQueue> m_CommandQueueDirect;
@@ -133,17 +134,16 @@ private:
 	std::vector<PointlightData> m_PointlightDrawData;
 	std::unique_ptr<Buffer> m_PointlightBuffer;
 
-	struct LineDrawData
+	struct LineVertex
 	{
-		LineDrawData(const glm::vec3& start, const glm::vec3& end, const glm::vec4& color)
-			: Start(start), End(end), Color(color) {}
+		LineVertex(const glm::vec3& position, const glm::vec4& color)
+			: Position(position), Color(color) {}
 
-		glm::vec3 Start;
-		glm::vec3 End;
+		glm::vec3 Position;
 		glm::vec4 Color;
 	};
 
-	std::vector<LineDrawData> m_LineDrawData;
+	std::vector<LineVertex> m_LineVertexData;
 	std::unique_ptr<Buffer> m_LineBuffer;
 	
 	std::unique_ptr<Buffer> m_ToneMapVertexBuffer;

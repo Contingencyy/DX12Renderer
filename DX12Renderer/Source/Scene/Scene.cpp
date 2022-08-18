@@ -78,8 +78,6 @@ void Scene::ImGuiRender()
 	ImGui::SetNextWindowSizeConstraints(ImVec2(75, 75), ImVec2(200, 400));
 	ImGui::Begin("Scene");
 
-	m_ActiveCamera.ImGuiRender();
-
 	for (uint32_t i = 0; i < m_SceneObjects.size(); ++i)
 	{
 		auto& sceneObject = m_SceneObjects[i];

@@ -3,11 +3,8 @@
 #include "InputHandler.h"
 
 #include "Application.h"
+#include "Graphics/Renderer.h"
 #include "Window.h"
-
-#include <imgui/imgui.h>
-#include <imgui/imgui_impl_win32.h>
-#include <imgui/imgui_impl_dx12.h>
 
 Camera::Camera(const glm::vec3& pos, float fov, float width, float height, float near, float far)
 	: m_FOV(fov)
@@ -37,10 +34,11 @@ void Camera::Update(float deltaTime)
 {
 	bool translated = false;
 	glm::vec3 velocity = glm::vec3(0.0f);
+	const Transform& invTransform = m_Transform.GetInverse();
 
-	velocity += InputHandler::GetInputAxis1D(KeyCode::W, KeyCode::S) * WorldForward;
-	velocity += InputHandler::GetInputAxis1D(KeyCode::D, KeyCode::A) * WorldRight;
-	velocity += InputHandler::GetInputAxis1D(KeyCode::SHIFT, KeyCode::CTRL) * WorldUp;
+	velocity += InputHandler::GetInputAxis1D(KeyCode::W, KeyCode::S) * invTransform.Forward();
+	velocity += InputHandler::GetInputAxis1D(KeyCode::D, KeyCode::A) * invTransform.Right();
+	velocity += InputHandler::GetInputAxis1D(KeyCode::SHIFT, KeyCode::CTRL) * invTransform.Up();
 
 	if (velocity.x != 0.0f || velocity.y != 0.0f || velocity.z != 0.0f)
 	{
@@ -51,33 +49,38 @@ void Camera::Update(float deltaTime)
 	}
 
 	bool rotated = false;
-	glm::vec3 rotation = glm::vec3(0.0f);
 
 	if (InputHandler::IsKeyPressed(KeyCode::RIGHT_MOUSE))
 	{
-		glm::vec2 mouseRelPos = InputHandler::GetMousePositionAbs() -
+		glm::vec2 mouseDelta = InputHandler::GetMousePositionAbs() -
 			glm::vec2(Application::Get().GetWindow()->GetWidth() / 2, Application::Get().GetWindow()->GetHeight() / 2);
-		float rotationStrength = glm::length(mouseRelPos);
-		mouseRelPos = glm::normalize(mouseRelPos);
+		float mouseDeltaWeight = glm::length(mouseDelta) - m_RotationDeadZone;
 
-		if (rotationStrength > m_RotationDeadZone)
+		if (mouseDeltaWeight > 0)
 		{
-			float rotationStrengthSqrt = sqrt(rotationStrength);
+			float rotationWeight = sqrt(mouseDeltaWeight);
+			glm::vec2 normalizedMouseDelta = glm::normalize(mouseDelta);
 
-			rotation += WorldUp * mouseRelPos.x;
-			rotation += WorldRight * mouseRelPos.y;
-			rotation += WorldForward * InputHandler::GetInputAxis1D(KeyCode::Q, KeyCode::E);
+			glm::vec3 rotation(0.0f);
+			rotation += WorldUp * normalizedMouseDelta.x;
+			rotation += WorldRight * normalizedMouseDelta.y;
 
-			rotation *= m_RotationSpeed * rotationStrengthSqrt * deltaTime;
+			rotation *= m_RotationSpeed * rotationWeight * deltaTime;
 			m_Transform.Rotate(rotation);
-
-			glm::vec3 currentRotation = m_Transform.GetRotation();
-			printf("%f, %f, %f\n", currentRotation.x, currentRotation.y, currentRotation.z);
-
 			rotated = true;
 		}
 	}
-	
+
+	if (InputHandler::IsKeyPressed(KeyCode::Q) || InputHandler::IsKeyPressed(KeyCode::E))
+	{
+		float rollInputAxis = InputHandler::GetInputAxis1D(KeyCode::Q, KeyCode::E);
+		glm::vec3 rotation(0.0f);
+		rotation.z = rollInputAxis;
+
+		m_Transform.Rotate(rotation);
+		rotated = true;
+	}
+
 	if (translated || rotated)
 	{
 		m_ViewMatrix = glm::inverse(m_Transform.GetTransformMatrix());
@@ -85,11 +88,9 @@ void Camera::Update(float deltaTime)
 
 		MakeViewFrustumPlanes();
 	}
-}
 
-void Camera::ImGuiRender()
-{
-	ImGui::Checkbox("Frustum culling", &m_EnableFrustumCulling);
+	if (m_DebugDrawViewFrustum)
+		DebugDrawViewFrustum();
 }
 
 void Camera::ResizeProjection(float width, float height)
@@ -142,33 +143,92 @@ void Camera::UpdateViewFrustumBounds()
 
 void Camera::MakeViewFrustumPlanes()
 {
-	glm::vec3 cameraPosition = m_Transform.GetPosition();
-	glm::vec3 cameraRight = m_Transform.Right();
-	glm::vec3 cameraUp = m_Transform.Up();
-	glm::vec3 cameraForward = m_Transform.Forward();
+	const glm::vec3& cameraPosition = m_Transform.GetPosition();
+	const Transform& invTransform = m_Transform.GetInverse();
+	const glm::vec3& cameraRight = invTransform.Right();
+	const glm::vec3& cameraUp = invTransform.Up();
+	const glm::vec3& cameraForward = invTransform.Forward();
+	
+	const glm::vec3& nearCenter = cameraPosition + cameraForward * m_ViewFrustum.Near;
+	const glm::vec3& farCenter = cameraPosition + cameraForward * m_ViewFrustum.Far;
 
-	glm::vec3 nearCenter = cameraPosition + cameraForward * m_ViewFrustum.Near;
-	glm::vec3 farCenter = cameraPosition + cameraForward * m_ViewFrustum.Far;
-
+	// Near / far
 	m_ViewFrustum.Planes[4] = { nearCenter, cameraForward };
 	m_ViewFrustum.Planes[5] = { farCenter, -cameraForward };
 
 	glm::vec3 aux = glm::vec3(0.0f);
 	glm::vec3 normal = glm::vec3(0.0f);
 
+	// Top
 	aux = glm::normalize((nearCenter + cameraUp * m_ViewFrustum.NearHeight) - cameraPosition);
 	normal = glm::cross(cameraRight, aux);
 	m_ViewFrustum.Planes[0] = { nearCenter + cameraUp * m_ViewFrustum.NearHeight, normal };
 
+	// Bottom
 	aux = glm::normalize((nearCenter - cameraUp * m_ViewFrustum.NearHeight) - cameraPosition);
 	normal = glm::cross(aux, cameraRight);
 	m_ViewFrustum.Planes[1] = { nearCenter - cameraUp * m_ViewFrustum.NearHeight, normal };
 
+	// Left
 	aux = glm::normalize((nearCenter - cameraRight * m_ViewFrustum.NearWidth) - cameraPosition);
 	normal = glm::cross(cameraUp, aux);
 	m_ViewFrustum.Planes[2] = { nearCenter - cameraRight * m_ViewFrustum.NearWidth, normal };
 
+	// Right
 	aux = glm::normalize((nearCenter + cameraRight * m_ViewFrustum.NearWidth) - cameraPosition);
 	normal = glm::cross(aux, cameraUp);
 	m_ViewFrustum.Planes[3] = { nearCenter + cameraRight * m_ViewFrustum.NearWidth, normal };
+}
+
+void Camera::DebugDrawViewFrustum()
+{
+	auto renderer = Application::Get().GetRenderer();
+	float debugOffset = 0.5f;
+
+	const glm::vec3& cameraPosition = m_Transform.GetPosition();
+	const Transform& invTransform = m_Transform.GetInverse();
+	const glm::vec3& cameraRight = invTransform.Right();
+	const glm::vec3& cameraUp = invTransform.Up();
+	const glm::vec3& cameraForward = invTransform.Forward();
+
+	const ViewFrustum::Plane& nearPlane = m_ViewFrustum.Planes[4];
+	const ViewFrustum::Plane& farPlane = m_ViewFrustum.Planes[5];
+
+	float nearPlaneHalfWidth = m_ViewFrustum.NearWidth / 2;
+	float nearPlaneHalfHeight = m_ViewFrustum.NearHeight / 2;
+
+	glm::vec3 topLeftNearPlane = nearPlane.Point - cameraRight * nearPlaneHalfWidth + cameraUp * nearPlaneHalfHeight + cameraForward * debugOffset;
+	glm::vec3 topRightNearPlane = nearPlane.Point + cameraRight * nearPlaneHalfWidth + cameraUp * nearPlaneHalfHeight + cameraForward * debugOffset;
+	glm::vec3 bottomRightNearPlane = nearPlane.Point + cameraRight * nearPlaneHalfWidth - cameraUp * nearPlaneHalfHeight + cameraForward * debugOffset;
+	glm::vec3 bottomLeftNearPlane = nearPlane.Point - cameraRight * nearPlaneHalfWidth - cameraUp * nearPlaneHalfHeight + cameraForward * debugOffset;
+
+	renderer->Submit(topLeftNearPlane, topRightNearPlane, glm::vec4(0.8f, 0.8f, 0.0f, 1.0f));
+	renderer->Submit(topRightNearPlane, bottomRightNearPlane, glm::vec4(0.8f, 0.8f, 0.0f, 1.0f));
+	renderer->Submit(bottomRightNearPlane, bottomLeftNearPlane, glm::vec4(0.8f, 0.8f, 0.0f, 1.0f));
+	renderer->Submit(bottomLeftNearPlane, topLeftNearPlane, glm::vec4(0.8f, 0.8f, 0.0f, 1.0f));
+
+	float farPlaneHalfWidth = m_ViewFrustum.FarWidth / 2;
+	float farPlaneHalfHeight = m_ViewFrustum.FarHeight / 2;
+
+	glm::vec3 topLeftFarPlane = farPlane.Point - cameraRight * farPlaneHalfWidth + cameraUp * farPlaneHalfHeight + cameraForward * debugOffset;
+	glm::vec3 topRightFarPlane = farPlane.Point + cameraRight * farPlaneHalfWidth + cameraUp * farPlaneHalfHeight + cameraForward * debugOffset;
+	glm::vec3 bottomRightFarPlane = farPlane.Point + cameraRight * farPlaneHalfWidth - cameraUp * farPlaneHalfHeight + cameraForward * debugOffset;
+	glm::vec3 bottomLeftFarPlane = farPlane.Point - cameraRight * farPlaneHalfWidth - cameraUp * farPlaneHalfHeight + cameraForward * debugOffset;
+
+	renderer->Submit(topLeftFarPlane, topRightFarPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+	renderer->Submit(topRightFarPlane, bottomRightFarPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+	renderer->Submit(bottomRightFarPlane, bottomLeftFarPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+	renderer->Submit(bottomLeftFarPlane, topLeftFarPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+
+	renderer->Submit(topLeftNearPlane, topLeftFarPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+	renderer->Submit(bottomLeftFarPlane, bottomLeftNearPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+
+	renderer->Submit(topLeftNearPlane, topLeftFarPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+	renderer->Submit(topRightFarPlane, topRightNearPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+
+	renderer->Submit(topRightNearPlane, topRightFarPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+	renderer->Submit(bottomRightFarPlane, bottomRightNearPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+
+	renderer->Submit(bottomLeftNearPlane, bottomLeftFarPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+	renderer->Submit(bottomRightFarPlane, bottomRightNearPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
 }

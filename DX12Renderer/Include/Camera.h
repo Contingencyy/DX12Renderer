@@ -9,7 +9,6 @@ public:
 	~Camera();
 
 	void Update(float deltaTime);
-	void ImGuiRender();
 	void ResizeProjection(float width, float height);
 
 	bool IsPointInViewFrustum(const glm::vec3& point) const;
@@ -21,6 +20,7 @@ public:
 private:
 	void UpdateViewFrustumBounds();
 	void MakeViewFrustumPlanes();
+	void DebugDrawViewFrustum();
 
 private:
 	Transform m_Transform;
@@ -31,10 +31,11 @@ private:
 
 	float m_Speed = 250.0f;
 	float m_RotationSpeed = 10.0f;
-	float m_RotationDeadZone = 10.0f;
+	float m_RotationDeadZone = 25.0f;
 	float m_FOV = 60.0f;
 	float m_AspectRatio = 16.0f / 9.0f;
 
+	bool m_DebugDrawViewFrustum = false;
 	bool m_EnableFrustumCulling = true;
 
 	struct ViewFrustum

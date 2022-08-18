@@ -246,6 +246,7 @@ void CommandList::Reset()
 	ReleaseTrackedObjects();
 
 	m_RootSignature = nullptr;
+
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
 	{
 		m_DescriptorHeaps[i] = nullptr;

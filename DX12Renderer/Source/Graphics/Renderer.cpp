@@ -122,7 +122,7 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 
     m_MeshInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, m_RenderSettings.MaxModelInstances, sizeof(MeshInstanceData)));
     m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, m_RenderSettings.MaxPointLights, sizeof(PointlightData)));
-    m_LineBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1000, sizeof(LineDrawData)));
+    m_LineBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1000, sizeof(LineVertex)));
 
     // Tone mapping vertices, positions are in normalized device coordinates
     std::vector<float> toneMappingVertices = {
@@ -174,6 +174,20 @@ void Renderer::BeginFrame(const Camera& camera)
 void Renderer::Render()
 {
     SCOPED_TIMER("Renderer::Render");
+
+    /*
+    
+        Render pass (Pseudo code):
+        - Get command list
+        - Bind pipeline
+            - Set render target and depth stencil view from attachments
+            - Set viewport, scissor rect, and render target(s)
+            - Set pipeline state and root signature
+            - Bind all bindings (root constants, root descriptors, descriptor tables, buffers, textures)
+        - Draw call
+        - Execute command list
+    
+    */
 
     /*
     
@@ -252,38 +266,6 @@ void Renderer::Render()
     m_CommandQueueDirect->ExecuteCommandList(commandList);
 
     /*
-        
-        Debug line
-    
-    */
-
-    if (m_LineDrawData.size() > 0)
-    {
-        auto commandList3 = m_CommandQueueDirect->GetCommandList();
-        auto& dlColorTarget = m_PipelineState[PipelineStateType::DEBUG_LINE]->GetColorAttachment();
-        auto& dlDepthBuffer = m_PipelineState[PipelineStateType::DEBUG_LINE]->GetDepthStencilAttachment();
-
-        auto dlRtv = dlColorTarget.GetDescriptorHandle();
-        auto dlDsv = dlDepthBuffer.GetDescriptorHandle();
-
-        // Set viewports, scissor rects and render targets
-        commandList3->SetViewports(1, &m_Viewport);
-        commandList3->SetScissorRects(1, &m_ScissorRect);
-        commandList3->SetRenderTargets(1, &dlRtv, &dlDsv);
-
-        // Set pipeline state and root signature
-        commandList3->SetPipelineState(*m_PipelineState[PipelineStateType::DEBUG_LINE].get());
-        commandList3->SetRootConstantBufferView(0, *m_SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
-
-        m_LineBuffer->SetBufferData(&m_LineDrawData[0]);
-        commandList3->SetVertexBuffers(0, 1, *m_LineBuffer);
-
-        commandList3->Draw(m_LineDrawData.size(), 1);
-
-        m_CommandQueueDirect->ExecuteCommandList(commandList3);
-    }
-
-    /*
     
         Post process: Tone mapping
     
@@ -321,6 +303,38 @@ void Renderer::Render()
     commandList2->ResourceBarrier(1, &rtBarrier);
 
     m_CommandQueueDirect->ExecuteCommandList(commandList2);
+
+    /*
+
+        Debug line
+
+    */
+
+    if (m_LineVertexData.size() == 0)
+        return;
+
+    auto commandList3 = m_CommandQueueDirect->GetCommandList();
+    auto& dlColorTarget = m_PipelineState[PipelineStateType::DEBUG_LINE]->GetColorAttachment();
+    auto& dlDepthBuffer = m_PipelineState[PipelineStateType::DEBUG_LINE]->GetDepthStencilAttachment();
+
+    auto dlRtv = dlColorTarget.GetDescriptorHandle();
+    auto dlDsv = dlDepthBuffer.GetDescriptorHandle();
+
+    // Set viewports, scissor rects and render targets
+    commandList3->SetViewports(1, &m_Viewport);
+    commandList3->SetScissorRects(1, &m_ScissorRect);
+    commandList3->SetRenderTargets(1, &tmRtv, &tmDsv);
+
+    // Set pipeline state and root signature
+    commandList3->SetPipelineState(*m_PipelineState[PipelineStateType::DEBUG_LINE].get());
+    commandList3->SetRootConstantBufferView(0, *m_SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
+
+    m_LineBuffer->SetBufferData(&m_LineVertexData[0], sizeof(LineVertex) * m_LineVertexData.size());
+    commandList3->SetVertexBuffers(0, 1, *m_LineBuffer);
+
+    commandList3->Draw(m_LineVertexData.size(), 1);
+
+    m_CommandQueueDirect->ExecuteCommandList(commandList3);
 }
 
 void Renderer::ImGuiRender()
@@ -351,7 +365,7 @@ void Renderer::EndFrame()
 
     m_MeshDrawData.clear();
     m_PointlightDrawData.clear();
-    m_LineDrawData.clear();
+    m_LineVertexData.clear();
 
     m_RenderStatistics.Reset();
 }
@@ -378,7 +392,8 @@ void Renderer::Submit(const PointlightData& pointlightData)
 
 void Renderer::Submit(const glm::vec3& lineStart, const glm::vec3& lineEnd, const glm::vec4& color)
 {
-    m_LineDrawData.emplace_back(lineStart, lineEnd, color);
+    m_LineVertexData.emplace_back(lineStart, color);
+    m_LineVertexData.emplace_back(lineEnd, color);
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)

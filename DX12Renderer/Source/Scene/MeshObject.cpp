@@ -25,7 +25,7 @@ void MeshObject::Render(const Camera& camera)
 	{
 		for (auto& mesh : m_Meshes)
 		{
-			// TODO: View frustum culling should be checked against each mesh via bounding spheres
+			// TODO: View frustum culling should be checked against each mesh via bounding spheres and/or boxes
 			Mesh::BoundingSphere boundingSphere = mesh->GetBoundingSphere();
 
 			const glm::vec3& worldPosition = boundingSphere.Position * m_Transform.GetScale()/* * m_Transform.Rotation()*/;
@@ -44,7 +44,6 @@ void MeshObject::Render(const Camera& camera)
 			if (camera.IsSphereInViewFrustum(worldPosition, scaledBoundingRadius))
 			{
 				Application::Get().GetRenderer()->Submit(mesh, m_Transform.GetTransformMatrix());
-				Application::Get().GetRenderer()->Submit(m_Transform.GetPosition(), m_Transform.GetPosition() + glm::vec3(0.0f, 1000.0f, 0.0f), glm::vec4(1.0f));
 			}
 		}
 	}
