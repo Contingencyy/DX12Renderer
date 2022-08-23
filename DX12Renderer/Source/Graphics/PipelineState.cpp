@@ -6,25 +6,20 @@
 #include "Graphics/RootSignature.h"
 #include "Graphics/Shader.h"
 
-PipelineState::PipelineState(const PipelineStateDesc& pipelineStateDesc, const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout,
-	const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters, bool lineTopology)
-	: m_PipelineStateDesc(pipelineStateDesc), m_LineTopology(lineTopology)
+PipelineState::PipelineState(const RenderPassDesc& renderPassDesc)
 {
-	m_RootSignature = std::make_unique<RootSignature>(descriptorRanges, rootParameters);
-	Create(inputLayout);
+	m_RootSignature = std::make_unique<RootSignature>(renderPassDesc.DescriptorRanges, renderPassDesc.RootParameters);
+	Create(renderPassDesc, renderPassDesc.ShaderInputLayout);
 }
 
 PipelineState::~PipelineState()
 {
 }
 
-void PipelineState::Create(const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout)
+void PipelineState::Create(const RenderPassDesc& renderPassDesc, const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout)
 {
-	m_VertexShader = std::make_unique<Shader>(m_PipelineStateDesc.VertexShaderPath, "main", "vs_5_1");
-	m_PixelShader = std::make_unique<Shader>(m_PipelineStateDesc.PixelShaderPath, "main", "ps_5_1");
-
-	m_ColorAttachment = std::make_unique<Texture>(m_PipelineStateDesc.ColorAttachmentDesc);
-	m_DepthStencilAttachment = std::make_unique<Texture>(m_PipelineStateDesc.DepthStencilAttachmentDesc);
+	m_VertexShader = std::make_unique<Shader>(StringHelper::StringToWString(renderPassDesc.VertexShaderPath), "main", "vs_5_1");
+	m_PixelShader = std::make_unique<Shader>(StringHelper::StringToWString(renderPassDesc.PixelShaderPath), "main", "ps_5_1");
 
 	D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
 	rtBlendDesc.BlendEnable = TRUE;
@@ -49,19 +44,19 @@ void PipelineState::Create(const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLay
 	psoDesc.PS = m_PixelShader->GetShaderByteCode();
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	psoDesc.BlendState = blendDesc;
-	psoDesc.DepthStencilState.DepthEnable = m_PipelineStateDesc.DepthTest ? TRUE : FALSE;
-	psoDesc.DSVFormat = TextureFormatToDXGI(m_DepthStencilAttachment->GetTextureDesc().Format);
+	psoDesc.DepthStencilState.DepthEnable = renderPassDesc.DepthEnabled ? TRUE : FALSE;
+	psoDesc.DSVFormat = TextureFormatToDXGI(renderPassDesc.DepthAttachmentDesc.Format);
 	psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 	psoDesc.DepthStencilState.StencilEnable = FALSE;
 	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = m_LineTopology ? D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE : D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.PrimitiveTopologyType = renderPassDesc.TopologyType;
 	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = TextureFormatToDXGI(m_ColorAttachment->GetTextureDesc().Format);
+	psoDesc.RTVFormats[0] = TextureFormatToDXGI(renderPassDesc.ColorAttachmentDesc.Format);
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.pRootSignature = m_RootSignature->GetD3D12RootSignature().Get();
 
 	Application::Get().GetRenderer()->GetDevice()->CreatePipelineState(psoDesc, m_d3d12PipelineState);
 
-	m_d3d12PrimitiveToplogy = m_LineTopology ? D3D10_PRIMITIVE_TOPOLOGY_LINELIST : D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	m_d3d12PrimitiveToplogy = renderPassDesc.Topology;
 }

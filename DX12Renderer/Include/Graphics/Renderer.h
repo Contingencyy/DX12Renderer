@@ -10,7 +10,7 @@ class CommandQueue;
 class SwapChain;
 class DescriptorHeap;
 class Mesh;
-class PipelineState;
+class RenderPass;
 
 class Renderer
 {
@@ -72,23 +72,26 @@ public:
 	std::shared_ptr<CommandQueue> GetCommandQueueDirect() const { return m_CommandQueueDirect; }
 	std::shared_ptr<Device> GetDevice() const { return m_Device; }
 
-	PipelineState& GetPipelineState() { return *m_PipelineState[PipelineStateType::TONE_MAPPING].get(); }
-
 	RenderSettings& GetRenderSettings() { return m_RenderSettings; }
 	const RenderSettings& GetRenderSettings() const { return m_RenderSettings; }
 	RenderStatistics& GetRenderStatistics() { return m_RenderStatistics; }
 	const RenderStatistics& GetRenderStatistics() const { return m_RenderStatistics; }
 
+	// Temp
+	RenderPass& GetRenderPass() const;
+
 private:
-	enum PipelineStateType : uint32_t
+	enum RenderPassType : uint32_t
 	{
 		DEFAULT,
 		DEBUG_LINE,
 		TONE_MAPPING,
-		NUM_PIPELINE_STATE_TYPES = (TONE_MAPPING + 1)
+		NUM_RENDER_PASSES = (TONE_MAPPING + 1)
 	};
 
 private:
+	void CreateRenderPasses();
+	void InitializeBuffers();
 	void Flush();
 
 private:
@@ -100,7 +103,7 @@ private:
 	std::shared_ptr<SwapChain> m_SwapChain;
 
 	std::unique_ptr<DescriptorHeap> m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
-	std::unique_ptr<PipelineState> m_PipelineState[PipelineStateType::NUM_PIPELINE_STATE_TYPES];
+	std::unique_ptr<RenderPass> m_RenderPasses[RenderPassType::NUM_RENDER_PASSES];
 
 	D3D12_VIEWPORT m_Viewport = D3D12_VIEWPORT();
 	D3D12_RECT m_ScissorRect = D3D12_RECT();

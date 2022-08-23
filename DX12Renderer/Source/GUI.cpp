@@ -77,10 +77,10 @@ void GUI::EndFrame()
 	auto renderer = Application::Get().GetRenderer();
 	auto& commandQueue = renderer->m_CommandQueueDirect;
 	auto commandList = commandQueue->GetCommandList();
-	auto& pipelineState = renderer->GetPipelineState();
+	auto& renderPass = renderer->GetRenderPass();
 
-	auto& colorTarget = pipelineState.GetColorAttachment();
-	auto& depthBuffer = pipelineState.GetDepthStencilAttachment();
+	auto& colorTarget = renderPass.GetColorAttachment();
+	auto& depthBuffer = renderPass.GetDepthAttachment();
 
 	auto rtv = colorTarget.GetDescriptorHandle();
 	auto dsv = depthBuffer.GetDescriptorHandle();

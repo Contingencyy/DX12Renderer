@@ -9,8 +9,7 @@
 #include "Graphics/Mesh.h"
 #include "Graphics/Shader.h"
 #include "Resource/Model.h"
-#include "Graphics/PipelineState.h"
-#include "Graphics/RootSignature.h"
+#include "Graphics/RenderPass.h"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_win32.h>
@@ -42,103 +41,8 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
     for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
         m_DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
 
-    // Default pipeline
-    PipelineStateDesc defaultPipelineDesc = {};
-    defaultPipelineDesc.VertexShaderPath = L"Resources/Shaders/Default_VS.hlsl";
-    defaultPipelineDesc.PixelShaderPath = L"Resources/Shaders/Default_PS.hlsl";
-    defaultPipelineDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA16_UNORM,
-        m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
-    defaultPipelineDesc.DepthStencilAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-        m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
-
-	std::vector<D3D12_INPUT_ELEMENT_DESC> defaultInputLayout = {
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 1, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 2, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-		{ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-		{ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-		{ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 }
-	};
-
-    std::vector<CD3DX12_DESCRIPTOR_RANGE1> descriptorRanges;
-    descriptorRanges.resize(2);
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 2);
-    descriptorRanges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0);
-
-    std::vector<CD3DX12_ROOT_PARAMETER1> rootParameters;
-    rootParameters.resize(2);
-    rootParameters[0].InitAsConstantBufferView(0, 0);
-    rootParameters[1].InitAsDescriptorTable(descriptorRanges.size(), &descriptorRanges[0], D3D12_SHADER_VISIBILITY_PIXEL);
-
-    m_PipelineState[PipelineStateType::DEFAULT] = std::make_unique<PipelineState>(defaultPipelineDesc, defaultInputLayout, descriptorRanges, rootParameters);
-
-    // Debug line pipeline
-    PipelineStateDesc debugLinePipelineDesc = {};
-    debugLinePipelineDesc.VertexShaderPath = L"Resources/Shaders/DebugLine_VS.hlsl";
-    debugLinePipelineDesc.PixelShaderPath = L"Resources/Shaders/DebugLine_PS.hlsl";
-    debugLinePipelineDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-        m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
-    debugLinePipelineDesc.DepthStencilAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-        m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
-
-    std::vector<D3D12_INPUT_ELEMENT_DESC> debugLineInputLayout = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-    };
-
-    std::vector<CD3DX12_DESCRIPTOR_RANGE1> debugLineDescriptorRanges;
-    std::vector<CD3DX12_ROOT_PARAMETER1> debugLineRootParameters;
-    debugLineRootParameters.resize(1);
-    debugLineRootParameters[0].InitAsConstantBufferView(0, 0);
-
-    m_PipelineState[PipelineStateType::DEBUG_LINE] = std::make_unique<PipelineState>(debugLinePipelineDesc, debugLineInputLayout, debugLineDescriptorRanges, debugLineRootParameters, true);
-
-    // Tone mapping pipeline
-    PipelineStateDesc toneMappingPipelineDesc = {};
-    toneMappingPipelineDesc.VertexShaderPath = L"Resources/Shaders/ToneMapping_VS.hlsl";
-    toneMappingPipelineDesc.PixelShaderPath = L"Resources/Shaders/ToneMapping_PS.hlsl";
-    toneMappingPipelineDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-        m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
-    toneMappingPipelineDesc.DepthStencilAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-        m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
-    toneMappingPipelineDesc.DepthTest = false;
-
-    std::vector<D3D12_INPUT_ELEMENT_DESC> toneMappingInputLayout = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-    };
-
-    std::vector<CD3DX12_DESCRIPTOR_RANGE1> toneMappingDescriptorRanges;
-    toneMappingDescriptorRanges.resize(1);
-    toneMappingDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
-
-    std::vector<CD3DX12_ROOT_PARAMETER1> toneMappingRootParameters;
-    toneMappingRootParameters.resize(1);
-    toneMappingRootParameters[0].InitAsDescriptorTable(toneMappingDescriptorRanges.size(), &toneMappingDescriptorRanges[0], D3D12_SHADER_VISIBILITY_PIXEL);
-
-    m_PipelineState[PipelineStateType::TONE_MAPPING] = std::make_unique<PipelineState>(toneMappingPipelineDesc, toneMappingInputLayout, toneMappingDescriptorRanges, toneMappingRootParameters);
-
-    m_MeshInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, m_RenderSettings.MaxModelInstances, sizeof(MeshInstanceData)));
-    m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, m_RenderSettings.MaxPointLights, sizeof(PointlightData)));
-    m_LineBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 10000, sizeof(LineVertex)));
-
-    // Tone mapping vertices, positions are in normalized device coordinates
-    std::vector<float> toneMappingVertices = {
-        -1.0f, -1.0f, 0.0f, 1.0f,
-        -1.0f, 1.0f, 0.0f, 0.0f,
-        1.0f, 1.0f, 1.0f, 0.0f,
-        1.0f, -1.0f, 1.0f, 1.0f,
-    };
-    std::vector<WORD> toneMappingIndices = {
-        0, 1, 2,
-        2, 3, 0
-    };
-    m_ToneMapVertexBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, 4, sizeof(float) * 4), &toneMappingVertices[0]);
-    m_ToneMapIndexBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, 6, sizeof(WORD)), &toneMappingIndices[0]);
-
-    m_SceneDataConstantBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(SceneData)));
+    CreateRenderPasses();
+    InitializeBuffers();
 }
 
 void Renderer::Finalize()
@@ -154,19 +58,8 @@ void Renderer::BeginFrame(const Camera& camera)
 
     auto commandList = m_CommandQueueDirect->GetCommandList();
 
-    for (uint32_t i = 0; i < PipelineStateType::NUM_PIPELINE_STATE_TYPES; ++i)
-    {
-        auto& colorTarget = m_PipelineState[i]->GetColorAttachment();
-        auto& depthBuffer = m_PipelineState[i]->GetDepthStencilAttachment();
-
-        auto rtv = colorTarget.GetDescriptorHandle();
-        auto dsv = depthBuffer.GetDescriptorHandle();
-
-        // Clear render target and depth stencil view
-        float clearColor[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
-        commandList->ClearRenderTargetView(rtv, clearColor);
-        commandList->ClearDepthStencilView(dsv);
-    }
+    for (auto& renderPass : m_RenderPasses)
+        renderPass->ClearViews(commandList);
 
     m_CommandQueueDirect->ExecuteCommandList(commandList);
 }
@@ -177,26 +70,12 @@ void Renderer::Render()
 
     /*
     
-        Render pass (Pseudo code):
-        - Get command list
-        - Bind pipeline
-            - Set render target and depth stencil view from attachments
-            - Set viewport, scissor rect, and render target(s)
-            - Set pipeline state and root signature
-            - Bind all bindings (root constants, root descriptors, descriptor tables, buffers, textures)
-        - Draw call
-        - Execute command list
-    
-    */
-
-    /*
-    
         Default pipeline
     
     */
     auto commandList = m_CommandQueueDirect->GetCommandList();
-    auto& defaultColorTarget = m_PipelineState[PipelineStateType::DEFAULT]->GetColorAttachment();
-    auto& defaultDepthBuffer = m_PipelineState[PipelineStateType::DEFAULT]->GetDepthStencilAttachment();
+    auto& defaultColorTarget = m_RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment();
+    auto& defaultDepthBuffer = m_RenderPasses[RenderPassType::DEFAULT]->GetDepthAttachment();
 
     auto rtv = defaultColorTarget.GetDescriptorHandle();
     auto dsv = defaultDepthBuffer.GetDescriptorHandle();
@@ -207,7 +86,7 @@ void Renderer::Render()
     commandList->SetRenderTargets(1, &rtv, &dsv);
 
     // Set pipeline state, root signature, and scene data constant buffer
-    commandList->SetPipelineState(*m_PipelineState[PipelineStateType::DEFAULT].get());
+    commandList->SetPipelineState(m_RenderPasses[RenderPassType::DEFAULT]->GetPipelineState());
 
     m_SceneData.Ambient = glm::vec3(0.1f);
     m_SceneData.NumPointlights = m_PointlightDrawData.size();
@@ -271,8 +150,8 @@ void Renderer::Render()
     
     */
     auto commandList2 = m_CommandQueueDirect->GetCommandList();
-    auto& tmColorTarget = m_PipelineState[PipelineStateType::TONE_MAPPING]->GetColorAttachment();
-    auto& tmDepthBuffer = m_PipelineState[PipelineStateType::TONE_MAPPING]->GetDepthStencilAttachment();
+    auto& tmColorTarget = m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
+    auto& tmDepthBuffer = m_RenderPasses[RenderPassType::TONE_MAPPING]->GetDepthAttachment();
 
     auto tmRtv = tmColorTarget.GetDescriptorHandle();
     auto tmDsv = tmDepthBuffer.GetDescriptorHandle();
@@ -283,14 +162,14 @@ void Renderer::Render()
     commandList2->SetRenderTargets(1, &tmRtv, &tmDsv);
 
     // Set pipeline state and root signature
-    commandList2->SetPipelineState(*m_PipelineState[PipelineStateType::TONE_MAPPING].get());
+    commandList2->SetPipelineState(m_RenderPasses[RenderPassType::TONE_MAPPING]->GetPipelineState());
 
     // Set tone mapping vertex buffer
     commandList2->SetVertexBuffers(0, 1, *m_ToneMapVertexBuffer.get());
     commandList2->SetIndexBuffer(*m_ToneMapIndexBuffer.get());
 
     // Set shader resource view to the previous color target
-    auto& defaultColorTargetTexture = m_PipelineState[PipelineStateType::DEFAULT]->GetColorAttachment();
+    auto& defaultColorTargetTexture = m_RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment();
     CD3DX12_RESOURCE_BARRIER commonBarrier = CD3DX12_RESOURCE_BARRIER::Transition(defaultColorTargetTexture.GetD3D12Resource().Get(),
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COMMON);
     commandList2->ResourceBarrier(1, &commonBarrier);
@@ -314,8 +193,8 @@ void Renderer::Render()
         return;
 
     auto commandList3 = m_CommandQueueDirect->GetCommandList();
-    auto& dlColorTarget = m_PipelineState[PipelineStateType::DEBUG_LINE]->GetColorAttachment();
-    auto& dlDepthBuffer = m_PipelineState[PipelineStateType::DEBUG_LINE]->GetDepthStencilAttachment();
+    auto& dlColorTarget = m_RenderPasses[RenderPassType::DEBUG_LINE]->GetColorAttachment();
+    auto& dlDepthBuffer = m_RenderPasses[RenderPassType::DEBUG_LINE]->GetDepthAttachment();
 
     auto dlRtv = dlColorTarget.GetDescriptorHandle();
     auto dlDsv = dlDepthBuffer.GetDescriptorHandle();
@@ -326,7 +205,7 @@ void Renderer::Render()
     commandList3->SetRenderTargets(1, &tmRtv, &dsv);
 
     // Set pipeline state and root signature
-    commandList3->SetPipelineState(*m_PipelineState[PipelineStateType::DEBUG_LINE].get());
+    commandList3->SetPipelineState(m_RenderPasses[RenderPassType::DEBUG_LINE]->GetPipelineState());
     commandList3->SetRootConstantBufferView(0, *m_SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
 
     m_LineBuffer->SetBufferData(&m_LineVertexData[0], sizeof(LineVertex) * m_LineVertexData.size());
@@ -357,7 +236,7 @@ void Renderer::EndFrame()
 {
     SCOPED_TIMER("Renderer::EndFrame");
 
-    m_SwapChain->ResolveToBackBuffer(m_PipelineState[PipelineStateType::TONE_MAPPING]->GetColorAttachment());
+    m_SwapChain->ResolveToBackBuffer(m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
     m_SwapChain->SwapBuffers();
 
     m_CommandQueueDirect->ResetCommandLists();
@@ -411,11 +290,8 @@ void Renderer::Resize(uint32_t width, uint32_t height)
         m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->Reset();
         m_SwapChain->Resize(m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
 
-        for (uint32_t i = 0; i < PipelineStateType::NUM_PIPELINE_STATE_TYPES; ++i)
-        {
-            m_PipelineState[i]->GetColorAttachment().Resize(m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
-            m_PipelineState[i]->GetDepthStencilAttachment().Resize(m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
-        }
+        for (auto& renderPass : m_RenderPasses)
+            renderPass->Resize(m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
     }
 }
 
@@ -440,6 +316,121 @@ void Renderer::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, con
 DescriptorAllocation Renderer::AllocateDescriptors(uint32_t numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
     return m_DescriptorHeaps[type]->Allocate(numDescriptors);
+}
+
+// Temp
+RenderPass& Renderer::GetRenderPass() const
+{
+    return *m_RenderPasses[RenderPassType::TONE_MAPPING];
+}
+
+void Renderer::CreateRenderPasses()
+{
+    {
+        // Default render pass
+        RenderPassDesc desc;
+        desc.VertexShaderPath = "Resources/Shaders/Default_VS.hlsl";
+        desc.PixelShaderPath = "Resources/Shaders/Default_PS.hlsl";
+        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA16_UNORM,
+            m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+        desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+            m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+        desc.ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+        desc.DepthEnabled = true;
+        desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+        desc.DescriptorRanges.resize(2);
+        desc.DescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 2);
+        desc.DescriptorRanges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0);
+
+        desc.RootParameters.resize(2);
+        desc.RootParameters[0].InitAsConstantBufferView(0, 0);
+        desc.RootParameters[1].InitAsDescriptorTable(desc.DescriptorRanges.size(), &desc.DescriptorRanges[0], D3D12_SHADER_VISIBILITY_PIXEL);
+
+        desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 1, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 2, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+
+        m_RenderPasses[RenderPassType::DEFAULT] = std::make_unique<RenderPass>(desc);
+    }
+
+    {
+        // Debug line render pass
+        RenderPassDesc desc;
+        desc.VertexShaderPath = "Resources/Shaders/DebugLine_VS.hlsl";
+        desc.PixelShaderPath = "Resources/Shaders/DebugLine_PS.hlsl";
+        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+            m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+        desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+            m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+        desc.ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+        desc.DepthEnabled = true;
+        desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+        desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+
+        desc.RootParameters.resize(1);
+        desc.RootParameters[0].InitAsConstantBufferView(0, 0);
+
+        desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+
+        m_RenderPasses[RenderPassType::DEBUG_LINE] = std::make_unique<RenderPass>(desc);
+    }
+
+    {
+        // Tonemapping render pass
+        RenderPassDesc desc;
+        desc.VertexShaderPath = "Resources/Shaders/ToneMapping_VS.hlsl";
+        desc.PixelShaderPath = "Resources/Shaders/ToneMapping_PS.hlsl";
+        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+            m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+        desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+            m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+        desc.ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+        desc.DepthEnabled = false;
+        desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+        desc.DescriptorRanges.resize(1);
+        desc.DescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+
+        desc.RootParameters.resize(1);
+        desc.RootParameters[0].InitAsDescriptorTable(desc.DescriptorRanges.size(), &desc.DescriptorRanges[0], D3D12_SHADER_VISIBILITY_PIXEL);
+
+        desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+
+        m_RenderPasses[RenderPassType::TONE_MAPPING] = std::make_unique<RenderPass>(desc);
+    }
+}
+
+void Renderer::InitializeBuffers()
+{
+    m_MeshInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, m_RenderSettings.MaxModelInstances, sizeof(MeshInstanceData)));
+    m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, m_RenderSettings.MaxPointLights, sizeof(PointlightData)));
+    m_LineBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 10000, sizeof(LineVertex)));
+
+    // Tone mapping vertices, positions are in normalized device coordinates
+    std::vector<float> toneMappingVertices = {
+        -1.0f, -1.0f, 0.0f, 1.0f,
+        -1.0f, 1.0f, 0.0f, 0.0f,
+        1.0f, 1.0f, 1.0f, 0.0f,
+        1.0f, -1.0f, 1.0f, 1.0f,
+    };
+    std::vector<WORD> toneMappingIndices = {
+        0, 1, 2,
+        2, 3, 0
+    };
+    m_ToneMapVertexBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, 4, sizeof(float) * 4), &toneMappingVertices[0]);
+    m_ToneMapIndexBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, 6, sizeof(WORD)), &toneMappingIndices[0]);
+
+    m_SceneDataConstantBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(SceneData)));
 }
 
 void Renderer::Flush()
