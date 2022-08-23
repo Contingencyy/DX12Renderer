@@ -13,6 +13,7 @@ public:
 
 	bool IsPointInViewFrustum(const glm::vec3& point) const;
 	bool IsSphereInViewFrustum(const glm::vec3& point, float radius) const;
+	bool IsBoxInViewFrustum(const glm::vec3& min, const glm::vec3& max) const;
 
 	glm::mat4 GetViewProjection() const { return m_ViewProjectionMatrix; };
 	bool IsFrustumCullingEnabled() const { return m_EnableFrustumCulling; }

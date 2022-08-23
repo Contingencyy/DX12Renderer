@@ -25,25 +25,30 @@ void MeshObject::Render(const Camera& camera)
 	{
 		for (auto& mesh : m_Meshes)
 		{
-			// TODO: View frustum culling should be checked against each mesh via bounding spheres and/or boxes
-			Mesh::BoundingSphere boundingSphere = mesh->GetBoundingSphere();
+			Mesh::BoundingBox boundingBox = mesh->GetBoundingBox();
 
-			const glm::vec3& worldPosition = boundingSphere.Position * m_Transform.GetScale()/* * m_Transform.Rotation()*/;
-			const glm::vec3& scaledRadius = boundingSphere.Radius * m_Transform.GetScale()/* * m_Transform.Rotation()*/;
-			
-			/*
-			const glm::vec3& position = m_Transform.GetPosition();
-			const glm::vec3& scale = m_Transform.GetScale();
+			boundingBox.Min = boundingBox.Min * m_Transform.GetScale() + m_Transform.GetPosition();
+			boundingBox.Max = boundingBox.Max * m_Transform.GetScale() + m_Transform.GetPosition();
 
-			float radius = std::max(std::max(scale.x, scale.y), scale.z);
-			*/
-			
-			float scaledBoundingRadius = std::max(std::max(scaledRadius.x, scaledRadius.y), scaledRadius.z);
-
-			//if (camera.IsSphereInViewFrustum(position, radius))
-			if (camera.IsSphereInViewFrustum(worldPosition, scaledBoundingRadius))
+			if (camera.IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
 			{
 				Application::Get().GetRenderer()->Submit(mesh, m_Transform.GetTransformMatrix());
+
+				// Draw bounding box
+				Application::Get().GetRenderer()->Submit(boundingBox.Min, glm::vec3(boundingBox.Max.x, boundingBox.Min.y, boundingBox.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+				Application::Get().GetRenderer()->Submit(glm::vec3(boundingBox.Max.x, boundingBox.Min.y, boundingBox.Min.z), glm::vec3(boundingBox.Max.x, boundingBox.Max.y, boundingBox.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+				Application::Get().GetRenderer()->Submit(glm::vec3(boundingBox.Max.x, boundingBox.Max.y, boundingBox.Min.z), glm::vec3(boundingBox.Min.x, boundingBox.Max.y, boundingBox.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+				Application::Get().GetRenderer()->Submit(glm::vec3(boundingBox.Min.x, boundingBox.Max.y, boundingBox.Min.z), boundingBox.Min, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+
+				Application::Get().GetRenderer()->Submit(glm::vec3(boundingBox.Min.x, boundingBox.Min.y, boundingBox.Max.z), glm::vec3(boundingBox.Max.x, boundingBox.Min.y, boundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+				Application::Get().GetRenderer()->Submit(glm::vec3(boundingBox.Max.x, boundingBox.Min.y, boundingBox.Max.z), glm::vec3(boundingBox.Max.x, boundingBox.Max.y, boundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+				Application::Get().GetRenderer()->Submit(glm::vec3(boundingBox.Max.x, boundingBox.Max.y, boundingBox.Max.z), glm::vec3(boundingBox.Min.x, boundingBox.Max.y, boundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+				Application::Get().GetRenderer()->Submit(glm::vec3(boundingBox.Min.x, boundingBox.Max.y, boundingBox.Max.z), glm::vec3(boundingBox.Min.x, boundingBox.Min.y, boundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+
+				Application::Get().GetRenderer()->Submit(boundingBox.Min, glm::vec3(boundingBox.Min.x, boundingBox.Min.y, boundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+				Application::Get().GetRenderer()->Submit(glm::vec3(boundingBox.Min.x, boundingBox.Max.y, boundingBox.Min.z), glm::vec3(boundingBox.Min.x, boundingBox.Max.y, boundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+				Application::Get().GetRenderer()->Submit(glm::vec3(boundingBox.Max.x, boundingBox.Min.y, boundingBox.Min.z), glm::vec3(boundingBox.Max.x, boundingBox.Min.y, boundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+				Application::Get().GetRenderer()->Submit(glm::vec3(boundingBox.Max.x, boundingBox.Max.y, boundingBox.Min.z), glm::vec3(boundingBox.Max.x, boundingBox.Max.y, boundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
 			}
 		}
 	}

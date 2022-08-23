@@ -111,10 +111,10 @@ bool Camera::IsPointInViewFrustum(const glm::vec3& point) const
 	{
 		distance = glm::dot(m_ViewFrustum.Planes[i].Normal, (point - m_ViewFrustum.Planes[i].Point));
 		if (distance < 0.0f)
-			return false; // Point lies outside of view frustum
+			return false;
 	}
 
-	return true; // Point lies inside of view frustum
+	return true;
 }
 
 bool Camera::IsSphereInViewFrustum(const glm::vec3& point, float radius) const
@@ -125,12 +125,48 @@ bool Camera::IsSphereInViewFrustum(const glm::vec3& point, float radius) const
 	{
 		distance = glm::dot(m_ViewFrustum.Planes[i].Normal, (point - m_ViewFrustum.Planes[i].Point));
 		if (distance < -radius)
-			return false; // Sphere lies outside of view frustum
+			return false;
 		else if (distance < radius)
-			result = true; // Sphere intersects with view frustum
+			result = true;
 	}
 
-	return result; // Sphere lies inside of view frustum
+	return result;
+}
+
+bool Camera::IsBoxInViewFrustum(const glm::vec3& min, const glm::vec3& max) const
+{
+	bool result = true;
+
+	for (uint32_t i = 0; i < 6; ++i)
+	{
+		const ViewFrustum::Plane& plane = m_ViewFrustum.Planes[i];
+
+		glm::vec3 posVert = min;
+		glm::vec3 negVert = max;
+
+		if (plane.Normal.x >= 0)
+		{
+			posVert.x = max.x;
+			negVert.x = min.x;
+		}
+		if (plane.Normal.y >= 0)
+		{
+			posVert.y = max.y;
+			negVert.y = min.y;
+		}
+		if (plane.Normal.z >= 0)
+		{
+			posVert.z = max.z;
+			negVert.z = min.z;
+		}
+
+		if (glm::dot(plane.Normal, (posVert - plane.Point)) < 0)
+			return false;
+		else if (glm::dot(plane.Normal, (negVert - plane.Point)) < 0)
+			result = true;
+	}
+
+	return result;
 }
 
 void Camera::UpdateViewFrustumBounds()
@@ -222,13 +258,6 @@ void Camera::DebugDrawViewFrustum()
 
 	renderer->Submit(topLeftNearPlane, topLeftFarPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
 	renderer->Submit(bottomLeftFarPlane, bottomLeftNearPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-
 	renderer->Submit(topLeftNearPlane, topLeftFarPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
 	renderer->Submit(topRightFarPlane, topRightNearPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-
-	renderer->Submit(topRightNearPlane, topRightFarPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	renderer->Submit(bottomRightFarPlane, bottomRightNearPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-
-	renderer->Submit(bottomLeftNearPlane, bottomLeftFarPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	renderer->Submit(bottomRightFarPlane, bottomRightNearPlane, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
 }

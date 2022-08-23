@@ -57,15 +57,8 @@ void Mesh::CreateBuffers(const tinygltf::Model& glTFModel, const tinygltf::Primi
 
 			if (attributeName == "POSITION")
 			{
-				double xRadius = (accessor.maxValues[0] - accessor.minValues[0]) / 2;
-				double yRadius = (accessor.maxValues[1] - accessor.minValues[1]) / 2;
-				double zRadius = (accessor.maxValues[2] - accessor.minValues[2]) / 2;
-
-				m_BoundingSphere.Position.x = static_cast<float>(accessor.maxValues[0] - xRadius);
-				m_BoundingSphere.Position.y = static_cast<float>(accessor.maxValues[1] - yRadius);
-				m_BoundingSphere.Position.z = static_cast<float>(accessor.maxValues[2] - zRadius);
-
-				m_BoundingSphere.Radius = static_cast<float>(std::max(std::max(xRadius, yRadius), zRadius));
+				CreateBoundingBox(accessor);
+				CreateBoundingSphere(accessor);
 			}
 		}
 		else
@@ -124,4 +117,28 @@ void Mesh::CreateTextures(const tinygltf::Model& glTFModel, uint32_t matID)
 		m_Textures[MeshTextureType::TEX_NORMAL] = std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
 			1, 1), &whiteImageData);
 	}
+}
+
+void Mesh::CreateBoundingBox(const tinygltf::Accessor& accessor)
+{
+	m_BoundingBox.Min.x = static_cast<float>(accessor.minValues[0]);
+	m_BoundingBox.Min.y = static_cast<float>(accessor.minValues[1]);
+	m_BoundingBox.Min.z = static_cast<float>(accessor.minValues[2]);
+
+	m_BoundingBox.Max.x = static_cast<float>(accessor.maxValues[0]);
+	m_BoundingBox.Max.y = static_cast<float>(accessor.maxValues[1]);
+	m_BoundingBox.Max.z = static_cast<float>(accessor.maxValues[2]);
+}
+
+void Mesh::CreateBoundingSphere(const tinygltf::Accessor& accessor)
+{
+	double xRadius = (accessor.maxValues[0] - accessor.minValues[0]) / 2;
+	double yRadius = (accessor.maxValues[1] - accessor.minValues[1]) / 2;
+	double zRadius = (accessor.maxValues[2] - accessor.minValues[2]) / 2;
+
+	m_BoundingSphere.Position.x = static_cast<float>(accessor.maxValues[0] - xRadius);
+	m_BoundingSphere.Position.y = static_cast<float>(accessor.maxValues[1] - yRadius);
+	m_BoundingSphere.Position.z = static_cast<float>(accessor.maxValues[2] - zRadius);
+
+	m_BoundingSphere.Radius = static_cast<float>(std::max(std::max(xRadius, yRadius), zRadius));
 }

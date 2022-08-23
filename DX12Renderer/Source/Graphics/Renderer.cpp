@@ -122,7 +122,7 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 
     m_MeshInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, m_RenderSettings.MaxModelInstances, sizeof(MeshInstanceData)));
     m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, m_RenderSettings.MaxPointLights, sizeof(PointlightData)));
-    m_LineBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1000, sizeof(LineVertex)));
+    m_LineBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 10000, sizeof(LineVertex)));
 
     // Tone mapping vertices, positions are in normalized device coordinates
     std::vector<float> toneMappingVertices = {
@@ -323,7 +323,7 @@ void Renderer::Render()
     // Set viewports, scissor rects and render targets
     commandList3->SetViewports(1, &m_Viewport);
     commandList3->SetScissorRects(1, &m_ScissorRect);
-    commandList3->SetRenderTargets(1, &tmRtv, &tmDsv);
+    commandList3->SetRenderTargets(1, &tmRtv, &dsv);
 
     // Set pipeline state and root signature
     commandList3->SetPipelineState(*m_PipelineState[PipelineStateType::DEBUG_LINE].get());

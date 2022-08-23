@@ -23,6 +23,12 @@ enum MeshTextureType : uint32_t
 class Mesh
 {
 public:
+	struct BoundingBox
+	{
+		glm::vec3 Min;
+		glm::vec3 Max;
+	};
+
 	struct BoundingSphere
 	{
 		glm::vec3 Position;
@@ -36,6 +42,7 @@ public:
 	std::shared_ptr<Buffer> GetBuffer(MeshBufferAttributeType type) const;
 	std::shared_ptr<Texture> GetTexture(MeshTextureType type) const;
 
+	const BoundingBox& GetBoundingBox() const { return m_BoundingBox; }
 	const BoundingSphere& GetBoundingSphere() const { return m_BoundingSphere; }
 
 	const std::string& GetName() const;
@@ -45,6 +52,9 @@ private:
 	void CreateBuffers(const tinygltf::Model& glTFModel, const tinygltf::Primitive& glTFPrimitive);
 	void CreateTextures(const tinygltf::Model& glTFModel, uint32_t matID);
 
+	void CreateBoundingBox(const tinygltf::Accessor& accessor);
+	void CreateBoundingSphere(const tinygltf::Accessor& accessor);
+
 private:
 	std::string m_Name;
 	std::size_t m_Hash;
@@ -52,6 +62,7 @@ private:
 	std::shared_ptr<Buffer> m_MeshBuffers[MeshBufferAttributeType::NUM_ATTRIBUTE_TYPES];
 	std::shared_ptr<Texture> m_Textures[MeshTextureType::NUM_TEXTURE_TYPES];
 
+	BoundingBox m_BoundingBox;
 	BoundingSphere m_BoundingSphere;
 
 };
