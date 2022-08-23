@@ -1,6 +1,6 @@
 #pragma once
 #include "Transform.h"
-#include "Camera.h"
+#include "Scene/Camera/Camera.h"
 
 class Model;
 

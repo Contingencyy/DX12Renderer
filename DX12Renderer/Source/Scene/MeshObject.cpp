@@ -23,6 +23,8 @@ void MeshObject::Render(const Camera& camera)
 {
 	if (camera.IsFrustumCullingEnabled())
 	{
+		const ViewFrustum& cameraViewFrustum = camera.GetViewFrustum();
+
 		for (auto& mesh : m_Meshes)
 		{
 			Mesh::BoundingBox boundingBox = mesh->GetBoundingBox();
@@ -30,7 +32,7 @@ void MeshObject::Render(const Camera& camera)
 			boundingBox.Min = boundingBox.Min * m_Transform.GetScale() + m_Transform.GetPosition();
 			boundingBox.Max = boundingBox.Max * m_Transform.GetScale() + m_Transform.GetPosition();
 
-			if (camera.IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
+			if (cameraViewFrustum.IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
 			{
 				Application::Get().GetRenderer()->Submit(mesh, m_Transform.GetTransformMatrix());
 

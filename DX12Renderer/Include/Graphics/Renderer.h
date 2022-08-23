@@ -2,7 +2,7 @@
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
 #include "Graphics/DescriptorAllocation.h"
-#include "Camera.h"
+#include "Scene/Camera/Camera.h"
 #include "Scene/LightObject.h"
 
 class Device;

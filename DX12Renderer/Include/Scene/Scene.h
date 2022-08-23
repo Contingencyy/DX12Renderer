@@ -1,6 +1,6 @@
 #pragma once
 #include "Graphics/ParticleSystem.h"
-#include "Camera.h"
+#include "Scene/Camera/Camera.h"
 
 class SceneObject;
 
