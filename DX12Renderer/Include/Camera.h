@@ -19,6 +19,9 @@ public:
 	bool IsFrustumCullingEnabled() const { return m_EnableFrustumCulling; }
 
 private:
+	bool UpdateMovement(float deltaTime);
+	bool UpdateRotation(float deltaTime);
+
 	void UpdateViewFrustumBounds();
 	void MakeViewFrustumPlanes();
 	void DebugDrawViewFrustum();
@@ -31,10 +34,9 @@ private:
 	glm::mat4 m_ViewProjectionMatrix = glm::identity<glm::mat4>();
 
 	float m_Speed = 250.0f;
-	float m_RotationSpeed = 10.0f;
-	float m_RotationDeadZone = 25.0f;
-	float m_FOV = 60.0f;
-	float m_AspectRatio = 16.0f / 9.0f;
+	float m_RotationSpeed = 0.7f, m_RotationDeadZone = 25.0f;
+	float m_FOV = 60.0f, m_AspectRatio = 16.0f / 9.0f;
+	float m_Yaw = 0.0f, m_Pitch = 0.0f;
 
 	bool m_DebugDrawViewFrustum = false;
 	bool m_EnableFrustumCulling = true;

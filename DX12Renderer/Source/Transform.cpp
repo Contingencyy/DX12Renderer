@@ -33,6 +33,30 @@ void Transform::Scale(const glm::vec3& scale)
 	MakeTransformMatrix();
 }
 
+void Transform::SetTranslation(const glm::vec3& position)
+{
+	m_Position = position;
+	m_TranslationMatrix = glm::translate(glm::identity<glm::mat4>(), m_Position);
+
+	MakeTransformMatrix();
+}
+
+void Transform::SetRotation(const glm::vec3& rotation)
+{
+	m_Rotation = rotation;
+	m_QuatRotation = glm::fquat(rotation);
+
+	MakeTransformMatrix();
+}
+
+void Transform::SetScale(const glm::vec3& scale)
+{
+	m_Scale = scale;
+	m_ScaleMatrix = glm::scale(glm::identity<glm::mat4>(), m_Scale);
+
+	MakeTransformMatrix();
+}
+
 glm::vec3 Transform::Right() const
 {
 	return glm::vec3(m_TransformMatrix[0][0], m_TransformMatrix[1][0], m_TransformMatrix[2][0]);
