@@ -1,18 +1,18 @@
 #include "Pch.h"
 #include "Graphics/SwapChain.h"
 #include "Graphics/Texture.h"
-#include "Application.h"
-#include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
 #include "Graphics/CommandQueue.h"
 #include "Graphics/CommandList.h"
+#include "Graphics/RenderBackend.h"
 
-SwapChain::SwapChain(HWND hWnd, uint32_t width, uint32_t height)
+SwapChain::SwapChain(HWND hWnd, std::shared_ptr<CommandQueue> commandQueue, uint32_t width, uint32_t height)
+    : m_CommandQueueDirect(commandQueue)
 {
     ComPtr<IDXGIFactory> dxgiFactory;
     ComPtr<IDXGIFactory5> dxgiFactory5;
 
-    DX_CALL(Application::Get().GetRenderer()->GetDevice()->GetDXGIAdapter()->GetParent(IID_PPV_ARGS(&dxgiFactory)));
+    DX_CALL(RenderBackend::Get().GetDevice()->GetDXGIAdapter()->GetParent(IID_PPV_ARGS(&dxgiFactory)));
     DX_CALL(dxgiFactory.As(&dxgiFactory5));
 
     BOOL allowTearing = false;
@@ -34,10 +34,8 @@ SwapChain::SwapChain(HWND hWnd, uint32_t width, uint32_t height)
     swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
     swapChainDesc.Flags = m_TearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
-    auto commandQueue = Application::Get().GetRenderer()->GetCommandQueueDirect();
-
     ComPtr<IDXGISwapChain1> dxgiSwapChain1;
-    DX_CALL(dxgiFactory5->CreateSwapChainForHwnd(commandQueue->GetD3D12CommandQueue().Get(),
+    DX_CALL(dxgiFactory5->CreateSwapChainForHwnd(m_CommandQueueDirect->GetD3D12CommandQueue().Get(),
         hWnd, &swapChainDesc, nullptr, nullptr, &dxgiSwapChain1));
     DX_CALL(dxgiSwapChain1.As(&m_dxgiSwapChain));
 
@@ -54,8 +52,7 @@ SwapChain::~SwapChain()
 
 void SwapChain::ResolveToBackBuffer(const Texture& texture)
 {
-    auto commandQueue = Application::Get().GetRenderer()->GetCommandQueueDirect();
-    auto commandList = commandQueue->GetCommandList();
+    auto commandList = m_CommandQueueDirect->GetCommandList();
 
     auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
 
@@ -77,24 +74,21 @@ void SwapChain::ResolveToBackBuffer(const Texture& texture)
     };
     commandList->ResourceBarrier(2, renderBarriers);
 
-    commandQueue->ExecuteCommandList(commandList);
+    m_CommandQueueDirect->ExecuteCommandList(commandList);
 }
 
-void SwapChain::SwapBuffers()
+void SwapChain::SwapBuffers(bool vSync)
 {
     SCOPED_TIMER("SwapChain::SwapBuffers");
 
-    Renderer::RenderSettings renderSettings = Application::Get().GetRenderer()->GetRenderSettings();
-
-    unsigned int syncInterval = renderSettings.VSync ? 1 : 0;
-    unsigned int presentFlags = m_TearingSupported && !renderSettings.VSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
+    unsigned int syncInterval = vSync ? 1 : 0;
+    unsigned int presentFlags = m_TearingSupported && !vSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
     DX_CALL(m_dxgiSwapChain->Present(syncInterval, presentFlags));
 
-    auto commandQueue = Application::Get().GetRenderer()->GetCommandQueueDirect();
-    m_FenceValues[m_CurrentBackBufferIndex] = commandQueue->Signal();
+    m_FenceValues[m_CurrentBackBufferIndex] = m_CommandQueueDirect->Signal();
 
     m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
-    commandQueue->WaitForFenceValue(m_FenceValues[m_CurrentBackBufferIndex]);
+    m_CommandQueueDirect->WaitForFenceValue(m_FenceValues[m_CurrentBackBufferIndex]);
 }
 
 void SwapChain::Resize(uint32_t width, uint32_t height)

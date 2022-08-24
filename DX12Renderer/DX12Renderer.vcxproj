@@ -204,6 +204,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Source\Application.cpp" />
+    <ClCompile Include="Source\Graphics\RenderBackend.cpp" />
     <ClCompile Include="Source\Graphics\RenderPass.cpp" />
     <ClCompile Include="Source\Scene\Camera\Camera.cpp" />
     <ClCompile Include="Source\Graphics\Buffer.cpp" />
@@ -250,6 +251,7 @@
     <ClInclude Include="Extern\imgui\imgui_impl_win32.h" />
     <ClInclude Include="Extern\stb_image\stb_image.h" />
     <ClInclude Include="Include\Application.h" />
+    <ClInclude Include="Include\Graphics\RenderBackend.h" />
     <ClInclude Include="Include\Graphics\RenderPass.h" />
     <ClInclude Include="Include\Scene\Camera\Camera.h" />
     <ClInclude Include="Include\Graphics\Buffer.h" />

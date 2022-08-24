@@ -1,21 +1,17 @@
 #include "Pch.h"
 #include "Graphics/DescriptorHeap.h"
-#include "Application.h"
-#include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
 
-DescriptorHeap::DescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
-    : m_NumDescriptors(numDescriptors)
+DescriptorHeap::DescriptorHeap(std::shared_ptr<Device> device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
+    : m_NumDescriptors(numDescriptors), m_Device(device)
 {
     D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
     heapDesc.NumDescriptors = numDescriptors;
     heapDesc.Type = type;
     heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
-    auto device = Application::Get().GetRenderer()->GetDevice();
-
-    device->CreateDescriptorHeap(heapDesc, m_d3d12DescriptorHeap);
-    m_DescriptorHandleIncrementSize = device->GetDescriptorIncrementSize(type);
+    m_Device->CreateDescriptorHeap(heapDesc, m_d3d12DescriptorHeap);
+    m_DescriptorHandleIncrementSize = m_Device->GetDescriptorIncrementSize(type);
 
     m_BaseDescriptor = m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 }

@@ -1,10 +1,9 @@
 #include "Pch.h"
 #include "Graphics/PipelineState.h"
-#include "Application.h"
-#include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
 #include "Graphics/RootSignature.h"
 #include "Graphics/Shader.h"
+#include "Graphics/RenderBackend.h"
 
 PipelineState::PipelineState(const RenderPassDesc& renderPassDesc)
 {
@@ -56,7 +55,7 @@ void PipelineState::Create(const RenderPassDesc& renderPassDesc, const std::vect
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.pRootSignature = m_RootSignature->GetD3D12RootSignature().Get();
 
-	Application::Get().GetRenderer()->GetDevice()->CreatePipelineState(psoDesc, m_d3d12PipelineState);
+	RenderBackend::Get().GetDevice()->CreatePipelineState(psoDesc, m_d3d12PipelineState);
 
 	m_d3d12PrimitiveToplogy = renderPassDesc.Topology;
 }

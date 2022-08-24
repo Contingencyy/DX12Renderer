@@ -1,7 +1,6 @@
 #pragma once
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
-#include "Graphics/DescriptorAllocation.h"
 #include "Scene/Camera/Camera.h"
 #include "Scene/LightObject.h"
 
@@ -59,23 +58,12 @@ public:
 	void Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform);
 	void Submit(const PointlightData& pointlightData);
 	void Submit(const glm::vec3& lineStart, const glm::vec3& lineEnd, const glm::vec4& color);
+
 	void Resize(uint32_t width, uint32_t height);
-
-	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
-	void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
-	DescriptorAllocation AllocateDescriptors(uint32_t numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type);
-
 	void ToggleVSync() { m_RenderSettings.VSync = !m_RenderSettings.VSync; }
 	bool IsVSyncEnabled() const { return m_RenderSettings.VSync; }
 
-	std::shared_ptr<SwapChain> GetSwapChain() const { return m_SwapChain; }
-	std::shared_ptr<CommandQueue> GetCommandQueueDirect() const { return m_CommandQueueDirect; }
-	std::shared_ptr<Device> GetDevice() const { return m_Device; }
-
-	RenderSettings& GetRenderSettings() { return m_RenderSettings; }
-	const RenderSettings& GetRenderSettings() const { return m_RenderSettings; }
-	RenderStatistics& GetRenderStatistics() { return m_RenderStatistics; }
-	const RenderStatistics& GetRenderStatistics() const { return m_RenderStatistics; }
+	const RenderSettings& GetSettings() { return m_RenderSettings; }
 
 	// Temp
 	RenderPass& GetRenderPass() const;
@@ -92,17 +80,10 @@ private:
 private:
 	void CreateRenderPasses();
 	void InitializeBuffers();
-	void Flush();
 
 private:
 	friend class GUI;
 
-	std::shared_ptr<Device> m_Device;
-	std::shared_ptr<CommandQueue> m_CommandQueueDirect;
-	std::shared_ptr<CommandQueue> m_CommandQueueCopy;
-	std::shared_ptr<SwapChain> m_SwapChain;
-
-	std::unique_ptr<DescriptorHeap> m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 	std::unique_ptr<RenderPass> m_RenderPasses[RenderPassType::NUM_RENDER_PASSES];
 
 	D3D12_VIEWPORT m_Viewport = D3D12_VIEWPORT();
@@ -163,8 +144,5 @@ private:
 
 	SceneData m_SceneData;
 	std::unique_ptr<Buffer> m_SceneDataConstantBuffer;
-
-	std::thread m_ProcessInFlightCommandListsThread;
-	std::atomic_bool m_ProcessInFlightCommandLists;
 
 };

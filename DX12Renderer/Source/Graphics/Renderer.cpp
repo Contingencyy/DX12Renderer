@@ -10,6 +10,7 @@
 #include "Graphics/Shader.h"
 #include "Resource/Model.h"
 #include "Graphics/RenderPass.h"
+#include "Graphics/RenderBackend.h"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_win32.h>
@@ -25,45 +26,21 @@ Renderer::~Renderer()
 
 void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 {
+    RenderBackend::Get().Initialize(hWnd, width, height);
+
     m_RenderSettings.Resolution.x = width;
     m_RenderSettings.Resolution.y = height;
 
     m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(m_RenderSettings.Resolution.x), static_cast<float>(m_RenderSettings.Resolution.y), 0.0f, 1.0f);
     m_ScissorRect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
 
-    m_Device = std::make_shared<Device>();
-
-    m_CommandQueueDirect = std::make_shared<CommandQueue>(D3D12_COMMAND_LIST_TYPE_DIRECT);
-    m_CommandQueueCopy = std::make_shared<CommandQueue>(D3D12_COMMAND_LIST_TYPE_COPY);
-
-    m_SwapChain = std::make_shared<SwapChain>(hWnd, width, height);
-
-    for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-        m_DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
-
     CreateRenderPasses();
     InitializeBuffers();
-
-    m_ProcessInFlightCommandLists = true;
-    m_ProcessInFlightCommandListsThread = std::thread([this]() {
-        while (m_ProcessInFlightCommandLists)
-        {
-            m_CommandQueueDirect->ResetCommandLists();
-            m_CommandQueueCopy->ResetCommandLists();
-
-            //std::this_thread::yield();
-        }
-    });
 }
 
 void Renderer::Finalize()
 {
-    Flush();
-
-    m_ProcessInFlightCommandLists = false;
-
-    if (m_ProcessInFlightCommandListsThread.joinable())
-        m_ProcessInFlightCommandListsThread.join();
+    RenderBackend::Get().Finalize();
 }
 
 void Renderer::BeginFrame(const Camera& camera)
@@ -72,12 +49,12 @@ void Renderer::BeginFrame(const Camera& camera)
 
     m_SceneData.ViewProjection = camera.GetViewProjection();
 
-    auto commandList = m_CommandQueueDirect->GetCommandList();
+    auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
     for (auto& renderPass : m_RenderPasses)
         renderPass->ClearViews(commandList);
 
-    m_CommandQueueDirect->ExecuteCommandList(commandList);
+    RenderBackend::Get().ExecuteCommandList(commandList);
 }
 
 void Renderer::Render()
@@ -89,7 +66,7 @@ void Renderer::Render()
         Default pipeline
     
     */
-    auto commandList = m_CommandQueueDirect->GetCommandList();
+    auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
     auto& defaultColorTarget = m_RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment();
     auto& defaultDepthBuffer = m_RenderPasses[RenderPassType::DEFAULT]->GetDepthAttachment();
 
@@ -158,14 +135,14 @@ void Renderer::Render()
         m_RenderStatistics.MeshCount += meshInstanceData.size();
     }
 
-    m_CommandQueueDirect->ExecuteCommandList(commandList);
+    RenderBackend::Get().ExecuteCommandList(commandList);
 
     /*
     
         Post process: Tone mapping
     
     */
-    auto commandList2 = m_CommandQueueDirect->GetCommandList();
+    auto commandList2 = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
     auto& tmColorTarget = m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
     auto& tmDepthBuffer = m_RenderPasses[RenderPassType::TONE_MAPPING]->GetDepthAttachment();
 
@@ -197,7 +174,7 @@ void Renderer::Render()
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
     commandList2->ResourceBarrier(1, &rtBarrier);
 
-    m_CommandQueueDirect->ExecuteCommandList(commandList2);
+    RenderBackend::Get().ExecuteCommandList(commandList2);
 
     /*
 
@@ -208,7 +185,7 @@ void Renderer::Render()
     if (m_LineVertexData.size() == 0)
         return;
 
-    auto commandList3 = m_CommandQueueDirect->GetCommandList();
+    auto commandList3 = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
     auto& dlColorTarget = m_RenderPasses[RenderPassType::DEBUG_LINE]->GetColorAttachment();
     auto& dlDepthBuffer = m_RenderPasses[RenderPassType::DEBUG_LINE]->GetDepthAttachment();
 
@@ -229,7 +206,7 @@ void Renderer::Render()
 
     commandList3->Draw(m_LineVertexData.size(), 1);
 
-    m_CommandQueueDirect->ExecuteCommandList(commandList3);
+    RenderBackend::Get().ExecuteCommandList(commandList3);
 }
 
 void Renderer::ImGuiRender()
@@ -252,11 +229,8 @@ void Renderer::EndFrame()
 {
     SCOPED_TIMER("Renderer::EndFrame");
 
-    m_SwapChain->ResolveToBackBuffer(m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
-    m_SwapChain->SwapBuffers();
-
-    //m_CommandQueueDirect->ResetCommandLists();
-    //m_CommandQueueCopy->ResetCommandLists();
+    RenderBackend::Get().ResolveToBackBuffer(m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
+    RenderBackend::Get().SwapBuffers(m_RenderSettings.VSync);
 
     m_MeshDrawData.clear();
     m_PointlightDrawData.clear();
@@ -301,37 +275,11 @@ void Renderer::Resize(uint32_t width, uint32_t height)
         m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(m_RenderSettings.Resolution.x),
             static_cast<float>(m_RenderSettings.Resolution.y), 0.0f, 1.0f);
 
-        Flush();
-
-        m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->Reset();
-        m_SwapChain->Resize(m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
+        RenderBackend::Get().Resize(width, height);
 
         for (auto& renderPass : m_RenderPasses)
             renderPass->Resize(m_RenderSettings.Resolution.x, m_RenderSettings.Resolution.y);
     }
-}
-
-void Renderer::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData)
-{
-    auto commandList = m_CommandQueueCopy->GetCommandList();
-    commandList->CopyBuffer(intermediateBuffer, destBuffer, bufferData);
-
-    uint64_t fenceValue = m_CommandQueueCopy->ExecuteCommandList(commandList);
-    m_CommandQueueCopy->WaitForFenceValue(fenceValue);
-}
-
-void Renderer::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData)
-{
-    auto commandList = m_CommandQueueCopy->GetCommandList();
-    commandList->CopyTexture(intermediateBuffer, destTexture, textureData);
-
-    uint64_t fenceValue = m_CommandQueueCopy->ExecuteCommandList(commandList);
-    m_CommandQueueCopy->WaitForFenceValue(fenceValue);
-}
-
-DescriptorAllocation Renderer::AllocateDescriptors(uint32_t numDescriptors, D3D12_DESCRIPTOR_HEAP_TYPE type)
-{
-    return m_DescriptorHeaps[type]->Allocate(numDescriptors);
 }
 
 // Temp
@@ -447,9 +395,4 @@ void Renderer::InitializeBuffers()
     m_ToneMapIndexBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, 6, sizeof(WORD)), &toneMappingIndices[0]);
 
     m_SceneDataConstantBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(SceneData)));
-}
-
-void Renderer::Flush()
-{
-    m_CommandQueueDirect->Flush();
 }

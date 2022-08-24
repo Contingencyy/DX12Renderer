@@ -1,11 +1,9 @@
 #include "Pch.h"
 #include "Graphics/DynamicDescriptorHeap.h"
-#include "Application.h"
-#include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
 
-DynamicDescriptorHeap::DynamicDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
-	: m_Type(type), m_NumDescriptors(numDescriptors)
+DynamicDescriptorHeap::DynamicDescriptorHeap(std::shared_ptr<Device> device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
+	: m_Type(type), m_NumDescriptors(numDescriptors), m_Device(device)
 {
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
 	heapDesc.Type = m_Type;
@@ -15,12 +13,12 @@ DynamicDescriptorHeap::DynamicDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ui
 	if (m_Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV || m_Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
 		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
-	Application::Get().GetRenderer()->GetDevice()->CreateDescriptorHeap(heapDesc, m_d3d12DescriptorHeap);
+	m_Device->CreateDescriptorHeap(heapDesc, m_d3d12DescriptorHeap);
 
 	m_CurrentCPUDescriptorHandle = (m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 	m_CurrentGPUDescriptorHandle = (m_d3d12DescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
-	m_DescriptorHandleIncrementSize = Application::Get().GetRenderer()->GetDevice()->GetDescriptorIncrementSize(m_Type);
+	m_DescriptorHandleIncrementSize = m_Device->GetDescriptorIncrementSize(m_Type);
 	m_DescriptorHandleCache = std::make_unique<D3D12_CPU_DESCRIPTOR_HANDLE[]>(m_NumDescriptors);
 }
 
@@ -94,7 +92,7 @@ void DynamicDescriptorHeap::CommitStagedDescriptors(CommandList& commandList)
 				numSrcDescriptors
 			};
 
-			Application::Get().GetRenderer()->GetDevice()->CopyDescriptors(1, destDescriptorRangeStarts, destDescriptorRangeSizes,
+			m_Device->CopyDescriptors(1, destDescriptorRangeStarts, destDescriptorRangeSizes,
 				numSrcDescriptors, srcDescriptorHandlesPtr, nullptr, m_Type);
 
 			d3d12CommandList->SetGraphicsRootDescriptorTable(descriptorTableCache.first, m_CurrentGPUDescriptorHandle);

@@ -1,8 +1,7 @@
 #include "Pch.h"
-#include "Application.h"
-#include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
 #include "Graphics/Buffer.h"
+#include "Graphics/RenderBackend.h"
 
 Buffer::Buffer(const BufferDesc& bufferDesc, const void* data)
 	: m_BufferDesc(bufferDesc)
@@ -30,7 +29,7 @@ void Buffer::SetBufferData(const void* data, std::size_t byteSize)
 	if (m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_CONSTANT && m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
 		Buffer uploadBuffer(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, dataByteSize));
-		Application::Get().GetRenderer()->CopyBuffer(uploadBuffer, *this, data);
+		RenderBackend::Get().CopyBuffer(uploadBuffer, *this, data);
 	}
 	else
 	{
@@ -42,13 +41,13 @@ D3D12_CPU_DESCRIPTOR_HANDLE Buffer::GetDescriptorHandle()
 {
 	if (m_DescriptorAllocation.IsNull())
 	{
-		m_DescriptorAllocation = Application::Get().GetRenderer()->AllocateDescriptors(1, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_DescriptorAllocation = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
 		cbvDesc.BufferLocation = m_d3d12Resource->GetGPUVirtualAddress();
 		cbvDesc.SizeInBytes = m_ByteSize;
 
-		Application::Get().GetRenderer()->GetDevice()->CreateConstantBufferView(*this, cbvDesc, m_DescriptorAllocation.GetDescriptorHandle());
+		RenderBackend::Get().GetDevice()->CreateConstantBufferView(*this, cbvDesc, m_DescriptorAllocation.GetDescriptorHandle());
 	}
 
 	return m_DescriptorAllocation.GetDescriptorHandle();
@@ -56,7 +55,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Buffer::GetDescriptorHandle()
 
 void Buffer::Create()
 {
-	auto device = Application::Get().GetRenderer()->GetDevice();
+	auto device = RenderBackend::Get().GetDevice();
 	D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
 	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
 

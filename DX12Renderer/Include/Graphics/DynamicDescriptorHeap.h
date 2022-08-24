@@ -5,7 +5,7 @@
 class DynamicDescriptorHeap
 {
 public:
-	DynamicDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors = 512);
+	DynamicDescriptorHeap(std::shared_ptr<Device> device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors = 512);
 	~DynamicDescriptorHeap();
 
 	void ParseRootSignature(const RootSignature& rootSignature);
@@ -19,6 +19,8 @@ private:
 
 	ComPtr<ID3D12DescriptorHeap> m_d3d12DescriptorHeap;
 	D3D12_DESCRIPTOR_HEAP_TYPE m_Type;
+
+	std::shared_ptr<Device> m_Device;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE m_CurrentCPUDescriptorHandle;
 	CD3DX12_GPU_DESCRIPTOR_HANDLE m_CurrentGPUDescriptorHandle;

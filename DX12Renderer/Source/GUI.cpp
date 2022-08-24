@@ -1,11 +1,13 @@
 #include "Pch.h"
 #include "GUI.h"
-#include "Application.h"
-#include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
 #include "Graphics/CommandQueue.h"
 #include "Graphics/CommandList.h"
 #include "Graphics/SwapChain.h"
+#include "Graphics/RenderBackend.h"
+
+#include "Application.h"
+#include "Graphics/Renderer.h"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_win32.h>
@@ -46,13 +48,12 @@ void GUI::Initialize(HWND hWnd)
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	heapDesc.NodeMask = 0;
 
-	auto renderer = Application::Get().GetRenderer();
-	auto device = renderer->GetDevice();
+	auto device = RenderBackend::Get().GetDevice();
 	device->CreateDescriptorHeap(heapDesc, m_d3d12DescriptorHeap);
 
 	ImGui_ImplWin32_Init(hWnd);
 	ImGui_ImplDX12_Init(
-		device->GetD3D12Device().Get(), renderer->GetSwapChain()->GetBackBufferCount(),
+		device->GetD3D12Device().Get(), 3,
 		DXGI_FORMAT_R8G8B8A8_UNORM, m_d3d12DescriptorHeap.Get(),
 		m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
 		m_d3d12DescriptorHeap->GetGPUDescriptorHandleForHeapStart()
@@ -74,10 +75,8 @@ void GUI::EndFrame()
 {
 	ImGui::Render();
 
-	auto renderer = Application::Get().GetRenderer();
-	auto& commandQueue = renderer->m_CommandQueueDirect;
-	auto commandList = commandQueue->GetCommandList();
-	auto& renderPass = renderer->GetRenderPass();
+	auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+	auto& renderPass = Application::Get().GetRenderer()->GetRenderPass();
 
 	auto& colorTarget = renderPass.GetColorAttachment();
 	auto& depthBuffer = renderPass.GetDepthAttachment();
@@ -97,8 +96,7 @@ void GUI::EndFrame()
 		ImGui::RenderPlatformWindowsDefault(NULL, (void*)commandList->GetGraphicsCommandList().Get());
 	}*/
 
-	uint64_t fenceValue = commandQueue->ExecuteCommandList(commandList);
-	commandQueue->WaitForFenceValue(fenceValue);
+	RenderBackend::Get().ExecuteCommandListAndWait(commandList);
 }
 
 void GUI::Finalize()

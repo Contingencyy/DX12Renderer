@@ -1,8 +1,7 @@
 #include "Pch.h"
 #include "Graphics/RootSignature.h"
-#include "Application.h"
-#include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
+#include "Graphics/RenderBackend.h"
 
 RootSignature::RootSignature(const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
 {
@@ -39,7 +38,7 @@ void RootSignature::Create(const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descrip
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC versionedRootSignatureDesc = {};
 	versionedRootSignatureDesc.Init_1_1(rootParameters.size(), &rootParameters[0], _countof(staticSamplers), &staticSamplers[0], rootSignatureFlags);
 
-	Application::Get().GetRenderer()->GetDevice()->CreateRootSignature(versionedRootSignatureDesc, m_d3d12RootSignature);
+	RenderBackend::Get().GetDevice()->CreateRootSignature(versionedRootSignatureDesc, m_d3d12RootSignature);
 	
 	ParseDescriptorTableRanges(versionedRootSignatureDesc.Desc_1_1);
 }

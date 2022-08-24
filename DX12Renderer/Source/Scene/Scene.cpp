@@ -14,7 +14,7 @@
 
 Scene::Scene()
 {
-	Renderer::RenderSettings renderSettings = Application::Get().GetRenderer()->GetRenderSettings();
+	Renderer::RenderSettings renderSettings = Application::Get().GetRenderer()->GetSettings();
 	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f), 60.0f, static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
 	
 	/*glm::vec3 position = glm::vec3(0.0f);

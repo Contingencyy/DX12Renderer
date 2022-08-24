@@ -1,8 +1,7 @@
 #include "Pch.h"
-#include "Application.h"
-#include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
 #include "Graphics/Texture.h"
+#include "Graphics/RenderBackend.h"
 
 DXGI_FORMAT TextureFormatToDXGI(TextureFormat format)
 {
@@ -26,7 +25,7 @@ Texture::Texture(const TextureDesc& textureDesc, const void* data)
 	Create();
 
 	Buffer uploadBuffer(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, m_ByteSize));
-	Application::Get().GetRenderer()->CopyTexture(uploadBuffer, *this, data);
+	RenderBackend::Get().CopyTexture(uploadBuffer, *this, data);
 }
 
 Texture::Texture(const TextureDesc& textureDesc)
@@ -58,17 +57,17 @@ D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetDescriptorHandle()
 		{
 		case TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE:
 		{
-			m_DescriptorAllocation = Application::Get().GetRenderer()->AllocateDescriptors(1, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			m_DescriptorAllocation = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			break;
 		}
 		case TextureUsage::TEXTURE_USAGE_RENDER_TARGET:
 		{
-			m_DescriptorAllocation = Application::Get().GetRenderer()->AllocateDescriptors(1, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+			m_DescriptorAllocation = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 			break;
 		}
 		case TextureUsage::TEXTURE_USAGE_DEPTH:
 		{
-			m_DescriptorAllocation = Application::Get().GetRenderer()->AllocateDescriptors(1, D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+			m_DescriptorAllocation = RenderBackend::Get().AllocateDescriptors( D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 			break;
 		}
 		}
@@ -83,7 +82,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetSRVDescriptorHandle()
 {
 	if (m_SRVDescriptorAllocation.IsNull())
 	{
-		m_SRVDescriptorAllocation = Application::Get().GetRenderer()->AllocateDescriptors(1, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_SRVDescriptorAllocation = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -91,7 +90,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetSRVDescriptorHandle()
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels = m_d3d12Resource->GetDesc().MipLevels;
 
-		Application::Get().GetRenderer()->GetDevice()->CreateShaderResourceView(*this, srvDesc, m_SRVDescriptorAllocation.GetDescriptorHandle());
+		RenderBackend::Get().GetDevice()->CreateShaderResourceView(*this, srvDesc, m_SRVDescriptorAllocation.GetDescriptorHandle());
 	}
 
 	return m_SRVDescriptorAllocation.GetDescriptorHandle();
@@ -114,11 +113,11 @@ void Texture::Create()
 	{
 	case TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE:
 		d3d12ResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		Application::Get().GetRenderer()->GetDevice()->CreateTexture(*this, d3d12ResourceDesc, D3D12_RESOURCE_STATE_COMMON);
+		RenderBackend::Get().GetDevice()->CreateTexture(*this, d3d12ResourceDesc, D3D12_RESOURCE_STATE_COMMON);
 		break;
 	case TextureUsage::TEXTURE_USAGE_RENDER_TARGET:
 		d3d12ResourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-		Application::Get().GetRenderer()->GetDevice()->CreateTexture(*this, d3d12ResourceDesc, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		RenderBackend::Get().GetDevice()->CreateTexture(*this, d3d12ResourceDesc, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		break;
 	case TextureUsage::TEXTURE_USAGE_DEPTH:
 		D3D12_CLEAR_VALUE clearValue = {};
@@ -126,7 +125,7 @@ void Texture::Create()
 		clearValue.DepthStencil = { 1.0f, 0 };
 
 		d3d12ResourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-		Application::Get().GetRenderer()->GetDevice()->CreateTexture(*this, d3d12ResourceDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue);
+		RenderBackend::Get().GetDevice()->CreateTexture(*this, d3d12ResourceDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue);
 		break;
 	}
 
@@ -135,7 +134,7 @@ void Texture::Create()
 
 void Texture::CreateView()
 {
-	auto device = Application::Get().GetRenderer()->GetDevice();
+	auto device = RenderBackend::Get().GetDevice();
 
 	switch (m_TextureDesc.Usage)
 	{

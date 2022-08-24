@@ -6,11 +6,11 @@ class Texture;
 class SwapChain
 {
 public:
-	SwapChain(HWND hWnd, uint32_t width, uint32_t height);
+	SwapChain(HWND hWnd, std::shared_ptr<CommandQueue> commandQueue, uint32_t width, uint32_t height);
 	~SwapChain();
 
 	void ResolveToBackBuffer(const Texture& texture);
-	void SwapBuffers();
+	void SwapBuffers(bool vSync);
 	void Resize(uint32_t width, uint32_t height);
 
 	uint32_t GetBackBufferCount() const { return s_BackBufferCount; }
@@ -24,6 +24,7 @@ private:
 
 	ComPtr<IDXGISwapChain4> m_dxgiSwapChain;
 
+	std::shared_ptr<CommandQueue> m_CommandQueueDirect;
 	std::unique_ptr<Texture> m_BackBuffers[s_BackBufferCount];
 
 	uint32_t m_CurrentBackBufferIndex = 0;

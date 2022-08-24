@@ -1,20 +1,16 @@
 #include "Pch.h"
 #include "Graphics/CommandQueue.h"
 #include "Graphics/CommandList.h"
-#include "Application.h"
-#include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
 
-CommandQueue::CommandQueue(D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_QUEUE_PRIORITY priority)
-    : m_d3d12CommandListType(type)
+CommandQueue::CommandQueue(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_QUEUE_PRIORITY priority)
+    : m_d3d12CommandListType(type), m_Device(device)
 {
     D3D12_COMMAND_QUEUE_DESC queueDesc = {};
     queueDesc.Type = type;
     queueDesc.Priority = priority;
     queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     queueDesc.NodeMask = 0;
-
-    auto device = Application::Get().GetRenderer()->GetDevice();
 
     device->CreateCommandQueue(*this, queueDesc);
 }
@@ -32,7 +28,7 @@ std::shared_ptr<CommandList> CommandQueue::GetCommandList()
     }
     else
     {
-        commandList = std::make_shared<CommandList>(m_d3d12CommandListType);
+        commandList = std::make_shared<CommandList>(m_Device, m_d3d12CommandListType);
     }
 
     return commandList;

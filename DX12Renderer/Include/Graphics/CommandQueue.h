@@ -1,11 +1,12 @@
 #pragma once
 
 class CommandList;
+class Device;
 
 class CommandQueue
 {
 public:
-	CommandQueue(D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_QUEUE_PRIORITY priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL);
+	CommandQueue(const std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_QUEUE_PRIORITY priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL);
 	~CommandQueue();
 
 	std::shared_ptr<CommandList> GetCommandList();
@@ -26,6 +27,8 @@ public:
 private:
 	ComPtr<ID3D12CommandQueue> m_d3d12CommandQueue;
 	D3D12_COMMAND_LIST_TYPE m_d3d12CommandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+
+	std::shared_ptr<Device> m_Device;
 
 	ComPtr<ID3D12Fence> m_d3d12Fence;
 	uint64_t m_FenceValue = 0;

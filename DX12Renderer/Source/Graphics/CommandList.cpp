@@ -7,17 +7,16 @@
 #include "Graphics/DescriptorHeap.h"
 #include "Graphics/DynamicDescriptorHeap.h"
 
-CommandList::CommandList(D3D12_COMMAND_LIST_TYPE type)
-	: m_d3d12CommandListType(type)
+CommandList::CommandList(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE type)
+	: m_d3d12CommandListType(type), m_Device(device)
 {
-	auto device = Application::Get().GetRenderer()->GetDevice();
-	device->CreateCommandList(*this);
+	m_Device->CreateCommandList(*this);
 	
 	m_RootSignature = nullptr;
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
 	{
 		m_DescriptorHeaps[i] = nullptr;
-		m_DynamicDescriptorHeaps[i] = std::make_unique<DynamicDescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+		m_DynamicDescriptorHeaps[i] = std::make_unique<DynamicDescriptorHeap>(m_Device, static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
 	}
 }
 

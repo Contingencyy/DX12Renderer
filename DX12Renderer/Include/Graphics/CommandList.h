@@ -6,11 +6,12 @@
 
 class DescriptorHeap;
 class DynamicDescriptorHeap;
+class Device;
 
 class CommandList
 {
 public:
-	CommandList(D3D12_COMMAND_LIST_TYPE type);
+	CommandList(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE type);
 	~CommandList();
 
 	void ClearRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE rtv, const float* clearColor);
@@ -57,6 +58,8 @@ private:
 	ComPtr<ID3D12GraphicsCommandList2> m_d3d12CommandList;
 	D3D12_COMMAND_LIST_TYPE m_d3d12CommandListType;
 	ComPtr<ID3D12CommandAllocator> m_d3d12CommandAllocator;
+
+	std::shared_ptr<Device> m_Device;
 
 	std::vector<ComPtr<ID3D12Object>> m_TrackedObjects;
 
