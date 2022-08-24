@@ -284,6 +284,7 @@
     <ClInclude Include="Include\Graphics\Renderer.h" />
     <ClInclude Include="Include\Util\StringHelper.h" />
     <ClInclude Include="Include\Util\Profiler.h" />
+    <ClInclude Include="Include\Util\ThreadSafeQueue.h" />
     <ClInclude Include="Include\Window.h" />
     <ClInclude Include="Include\WinIncludes.h" />
   </ItemGroup>

@@ -43,11 +43,27 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 
     CreateRenderPasses();
     InitializeBuffers();
+
+    m_ProcessInFlightCommandLists = true;
+    m_ProcessInFlightCommandListsThread = std::thread([this]() {
+        while (m_ProcessInFlightCommandLists)
+        {
+            m_CommandQueueDirect->ResetCommandLists();
+            m_CommandQueueCopy->ResetCommandLists();
+
+            //std::this_thread::yield();
+        }
+    });
 }
 
 void Renderer::Finalize()
 {
     Flush();
+
+    m_ProcessInFlightCommandLists = false;
+
+    if (m_ProcessInFlightCommandListsThread.joinable())
+        m_ProcessInFlightCommandListsThread.join();
 }
 
 void Renderer::BeginFrame(const Camera& camera)
@@ -239,8 +255,8 @@ void Renderer::EndFrame()
     m_SwapChain->ResolveToBackBuffer(m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
     m_SwapChain->SwapBuffers();
 
-    m_CommandQueueDirect->ResetCommandLists();
-    m_CommandQueueCopy->ResetCommandLists();
+    //m_CommandQueueDirect->ResetCommandLists();
+    //m_CommandQueueCopy->ResetCommandLists();
 
     m_MeshDrawData.clear();
     m_PointlightDrawData.clear();

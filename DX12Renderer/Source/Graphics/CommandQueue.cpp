@@ -26,10 +26,9 @@ CommandQueue::~CommandQueue()
 std::shared_ptr<CommandList> CommandQueue::GetCommandList()
 {
     std::shared_ptr<CommandList> commandList;
-    if (!m_AvailableCommandLists.empty())
+    if (!m_AvailableCommandLists.Empty())
     {
-        commandList = m_AvailableCommandLists.front();
-        m_AvailableCommandLists.pop();
+        m_AvailableCommandLists.TryPop(commandList);
     }
     else
     {
@@ -47,7 +46,7 @@ uint64_t CommandQueue::ExecuteCommandList(std::shared_ptr<CommandList> commandLi
     m_d3d12CommandQueue->ExecuteCommandLists(1, ppCommandLists);
     uint64_t fenceValue = Signal();
 
-    m_InFlightCommandLists.push({ commandList, fenceValue });
+    m_InFlightCommandLists.Push({ commandList, fenceValue });
     return fenceValue;
 }
 
@@ -80,20 +79,26 @@ void CommandQueue::WaitForFenceValue(uint64_t fenceValue) const
 
 void CommandQueue::ResetCommandLists()
 {
-    std::shared_ptr<CommandList> commandList;
-    while (!m_InFlightCommandLists.empty())
+    std::unique_lock<std::mutex> lock(m_InFlightCommandListsMutex, std::defer_lock);
+
+    InFlightCommandList inFlightCommandList;
+    lock.lock();
+
+    while (m_InFlightCommandLists.TryPop(inFlightCommandList))
     {
-        InFlightCommandList inFlight = m_InFlightCommandLists.front();
-        m_InFlightCommandLists.pop();
-
-        WaitForFenceValue(inFlight.FenceValue);
-        inFlight.CommandList->Reset();
-
-        m_AvailableCommandLists.push(inFlight.CommandList);
+        WaitForFenceValue(inFlightCommandList.FenceValue);
+        inFlightCommandList.CommandList->Reset();
+        m_AvailableCommandLists.Push(inFlightCommandList.CommandList);
     }
+
+    lock.unlock();
+    m_InFlightCommandListsCV.notify_one();
 }
 
 void CommandQueue::Flush()
 {
+    std::unique_lock<std::mutex> lock(m_InFlightCommandListsMutex);
+    m_InFlightCommandListsCV.wait(lock, [this] { return m_InFlightCommandLists.Empty(); });
+
     WaitForFenceValue(m_FenceValue);
 }

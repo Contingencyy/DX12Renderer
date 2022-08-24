@@ -36,7 +36,10 @@ private:
 		uint64_t FenceValue;
 	};
 
-	std::queue<InFlightCommandList> m_InFlightCommandLists;
-	std::queue<std::shared_ptr<CommandList>> m_AvailableCommandLists;
+	ThreadSafeQueue<InFlightCommandList> m_InFlightCommandLists;
+	ThreadSafeQueue<std::shared_ptr<CommandList>> m_AvailableCommandLists;
+
+	std::mutex m_InFlightCommandListsMutex;
+	std::condition_variable m_InFlightCommandListsCV;
 
 };

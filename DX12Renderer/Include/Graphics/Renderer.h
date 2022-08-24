@@ -164,4 +164,7 @@ private:
 	SceneData m_SceneData;
 	std::unique_ptr<Buffer> m_SceneDataConstantBuffer;
 
+	std::thread m_ProcessInFlightCommandListsThread;
+	std::atomic_bool m_ProcessInFlightCommandLists;
+
 };

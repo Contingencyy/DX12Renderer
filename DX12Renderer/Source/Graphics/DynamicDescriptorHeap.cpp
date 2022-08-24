@@ -80,6 +80,11 @@ void DynamicDescriptorHeap::CommitStagedDescriptors(CommandList& commandList)
 		for (auto& descriptorTableCache : m_DescriptorTableCache)
 		{
 			uint32_t numSrcDescriptors = descriptorTableCache.second.NumDescriptors;
+
+			// Skip if the number of descriptors is 0, which means this is a stale descriptor entry from a previous draw
+			if (numSrcDescriptors == 0)
+				continue;
+
 			D3D12_CPU_DESCRIPTOR_HANDLE* srcDescriptorHandlesPtr = descriptorTableCache.second.BaseDescriptor;
 
 			D3D12_CPU_DESCRIPTOR_HANDLE destDescriptorRangeStarts[] = {
