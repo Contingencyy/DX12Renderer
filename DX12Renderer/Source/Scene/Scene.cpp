@@ -1,10 +1,10 @@
 #include "Pch.h"
 #include "Scene/Scene.h"
-#include "Application.h"
 #include "Graphics/Renderer.h"
 #include "Scene/SceneObject.h"
 #include "Scene/MeshObject.h"
 #include "Scene/LightObject.h"
+#include "Application.h"
 #include "Resource/ResourceManager.h"
 #include "Resource/Model.h"
 
@@ -14,7 +14,7 @@
 
 Scene::Scene()
 {
-	Renderer::RenderSettings renderSettings = Application::Get().GetRenderer()->GetSettings();
+	Renderer::RenderSettings renderSettings = Renderer::GetSettings();
 	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f), 60.0f, static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
 	
 	/*glm::vec3 position = glm::vec3(0.0f);

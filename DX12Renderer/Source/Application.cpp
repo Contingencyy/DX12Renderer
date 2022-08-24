@@ -54,8 +54,7 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 	m_Window->Show();
 	LOG_INFO("[Window] Initialized Window");
 
-	m_Renderer = std::make_unique<Renderer>();
-	m_Renderer->Initialize(m_Window->GetHandle(), m_Window->GetWidth(), m_Window->GetHeight());
+	Renderer::Initialize(m_Window->GetHandle(), m_Window->GetWidth(), m_Window->GetHeight());
 	LOG_INFO("[Renderer] Initialized Renderer");
 
 	m_GUI = std::make_unique<GUI>();
@@ -96,7 +95,7 @@ void Application::Finalize()
 	m_GUI->Finalize();
 	LOG_INFO("Finalized GUI");
 
-	m_Renderer->Finalize();
+	Renderer::Finalize();
 	LOG_INFO("Finalized Renderer");
 
 	m_Window->Finalize();
@@ -107,7 +106,7 @@ void Application::OnWindowResize(uint32_t width, uint32_t height)
 {
 	if (width > 0 && height > 0)
 	{
-		m_Renderer->Resize(width, height);
+		Renderer::Resize(width, height);
 		m_Scene->GetActiveCamera().ResizeProjection(static_cast<float>(width), static_cast<float>(height));
 	}
 }
@@ -128,14 +127,14 @@ void Application::Render()
 {
 	SCOPED_TIMER("Application::Render");
 
-	m_Renderer->BeginFrame(m_Scene->GetActiveCamera());
+	Renderer::BeginFrame(m_Scene->GetActiveCamera());
 	m_GUI->BeginFrame();
 
 	m_Scene->Render();
-	m_Renderer->Render();
+	Renderer::Render();
 
 	m_Scene->ImGuiRender();
-	m_Renderer->ImGuiRender();
+	Renderer::ImGuiRender();
 
 	// Profiler
 	{
@@ -167,5 +166,5 @@ void Application::Render()
 	}
 
 	m_GUI->EndFrame();
-	m_Renderer->EndFrame();
+	Renderer::EndFrame();
 }

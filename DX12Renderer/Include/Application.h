@@ -23,7 +23,6 @@ public:
 	bool IsInitialized() const { return m_Initialized; }
 
 	Window* GetWindow() const { return m_Window.get(); }
-	Renderer* GetRenderer() const { return m_Renderer.get(); }
 	ResourceManager* GetResourceManager() const { return m_ResourceManager.get(); }
 
 private:
@@ -44,7 +43,6 @@ private:
 
 private:
 	std::unique_ptr<Window> m_Window = nullptr;
-	std::unique_ptr<Renderer> m_Renderer = nullptr;
 	std::unique_ptr<GUI> m_GUI = nullptr;
 	std::unique_ptr<ResourceManager> m_ResourceManager = nullptr;
 	std::unique_ptr<Scene> m_Scene = nullptr;

@@ -5,8 +5,6 @@
 #include "Graphics/CommandList.h"
 #include "Graphics/SwapChain.h"
 #include "Graphics/RenderBackend.h"
-
-#include "Application.h"
 #include "Graphics/Renderer.h"
 
 #include <imgui/imgui.h>
@@ -76,7 +74,7 @@ void GUI::EndFrame()
 	ImGui::Render();
 
 	auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-	auto& renderPass = Application::Get().GetRenderer()->GetRenderPass();
+	auto& renderPass = Renderer::GetRenderPass();
 
 	auto& colorTarget = renderPass.GetColorAttachment();
 	auto& depthBuffer = renderPass.GetDepthAttachment();

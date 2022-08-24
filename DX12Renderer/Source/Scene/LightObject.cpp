@@ -1,7 +1,5 @@
 #include "Pch.h"
 #include "Scene/LightObject.h"
-
-#include "Application.h"
 #include "Graphics/Renderer.h"
 
 PointlightObject::PointlightObject(const PointlightData& pointlightData, const std::string& name,
@@ -22,5 +20,5 @@ void PointlightObject::Update(float deltaTime)
 
 void PointlightObject::Render(const Camera& camera)
 {
-	Application::Get().GetRenderer()->Submit(m_PointlightData);
+	Renderer::Submit(m_PointlightData);
 }
