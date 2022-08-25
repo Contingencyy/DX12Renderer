@@ -1,11 +1,11 @@
 #pragma once
-#include "Graphics/Buffer.h"
-#include "Graphics/Texture.h"
 #include "Scene/Camera/Camera.h"
 #include "Scene/LightObject.h"
 
 class Mesh;
 class RenderPass;
+class Buffer;
+class Texture;
 
 class Renderer
 {
@@ -23,7 +23,44 @@ public:
 		uint32_t MaxPointLights = 100;
 	};
 
-	struct RenderStatistics
+	struct SceneData
+	{
+		SceneData() = default;
+
+		glm::mat4 ViewProjection = glm::identity<glm::mat4>();
+		glm::vec3 Ambient = glm::vec3(0.0f);
+		uint32_t NumPointlights = 0;
+	};
+
+public:
+	static void Initialize(HWND hWnd, uint32_t width, uint32_t height);
+	static void Finalize();
+
+	static void BeginFrame(const Camera& camera);
+	static void Render();
+	static void ImGuiRender();
+	static void EndFrame();
+
+	static void Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform);
+	static void Submit(const PointlightData& pointlightData);
+
+	static void Resize(uint32_t width, uint32_t height);
+	static void ToggleVSync();
+	static bool IsVSyncEnabled();
+
+	static const RenderSettings& GetSettings();
+
+	// Temp
+	static Texture& GetFinalColorOutput();
+	// Temp
+	static Texture& GetFinalDepthOutput();
+
+private:
+	static void MakeRenderPasses();
+	static void MakeBuffers();
+
+private:
+	struct RendererStatistics
 	{
 		void Reset()
 		{
@@ -39,30 +76,53 @@ public:
 		uint32_t PointLightCount = 0;
 	};
 
-public:
-	static void Initialize(HWND hWnd, uint32_t width, uint32_t height);
-	static void Finalize();
+private:
+	enum RenderPassType : uint32_t
+	{
+		DEFAULT,
+		TONE_MAPPING,
+		NUM_RENDER_PASSES = (TONE_MAPPING + 1)
+	};
 
-	static void BeginFrame(const Camera& camera);
-	static void Render();
-	static void ImGuiRender();
-	static void EndFrame();
+	struct MeshInstanceData
+	{
+		MeshInstanceData(const glm::mat4& transform, const glm::vec4& color)
+			: Transform(transform), Color(color) {}
 
-	static void Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform);
-	static void Submit(const PointlightData& pointlightData);
-	static void Submit(const glm::vec3& lineStart, const glm::vec3& lineEnd, const glm::vec4& color);
+		glm::mat4 Transform = glm::identity<glm::mat4>();
+		glm::vec4 Color = glm::vec4(1.0f);
+	};
 
-	static void Resize(uint32_t width, uint32_t height);
-	static void ToggleVSync();
-	static bool IsVSyncEnabled();
+	struct MeshDrawData
+	{
+		MeshDrawData(const std::shared_ptr<Mesh>& mesh)
+			: Mesh(mesh)
+		{
+		}
 
-	static const RenderSettings& GetSettings();
-
-	// Temp
-	static RenderPass& GetRenderPass();
+		std::shared_ptr<Mesh> Mesh;
+		std::vector<MeshInstanceData> MeshInstanceData;
+	};
 
 private:
-	static void CreateRenderPasses();
-	static void InitializeBuffers();
+	std::unique_ptr<RenderPass> m_RenderPasses[RenderPassType::NUM_RENDER_PASSES];
+
+	D3D12_VIEWPORT m_Viewport = D3D12_VIEWPORT();
+	D3D12_RECT m_ScissorRect = D3D12_RECT();
+
+	Renderer::RenderSettings m_RenderSettings;
+	Renderer::RendererStatistics m_RenderStatistics;
+
+	std::unordered_map<std::size_t, MeshDrawData> m_MeshDrawData = std::unordered_map<std::size_t, MeshDrawData>();
+	std::unique_ptr<Buffer> m_MeshInstanceBuffer;
+
+	std::vector<PointlightData> m_PointlightDrawData;
+	std::unique_ptr<Buffer> m_PointlightBuffer;
+
+	std::unique_ptr<Buffer> m_ToneMapVertexBuffer;
+	std::unique_ptr<Buffer> m_ToneMapIndexBuffer;
+
+	Renderer::SceneData m_SceneData;
+	std::unique_ptr<Buffer> m_SceneDataConstantBuffer;
 
 };

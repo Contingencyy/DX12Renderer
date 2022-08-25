@@ -33,7 +33,7 @@ Scene::Scene()
 	}*/
 
 	// Pointlights
-	PointlightData pointlightData(5000.0f, glm::vec3(0.0f, 0.001f, 0.0005f), glm::vec4(0.5f, 0.0f, 0.0f, 1.0f), glm::vec4(0.1f, 0.05f, 0.05f, 1.0f));
+	PointlightData pointlightData(500.0f, glm::vec3(0.0f, 0.001f, 0.0005f), glm::vec4(0.5f, 0.0f, 0.0f, 1.0f), glm::vec4(0.1f, 0.05f, 0.05f, 1.0f));
 	m_SceneObjects.push_back(std::make_unique<PointlightObject>(pointlightData, "Pointlight", glm::vec3(-25.0f, 25.0f, 0.0f)));
 
 	pointlightData.Diffuse = glm::vec4(0.0f, 0.5f, 0.0f, 1.0f);
@@ -72,7 +72,7 @@ void Scene::Render()
 
 void Scene::ImGuiRender()
 {
-	std::string objectName = "";
+	/*std::string objectName = "";
 	uint32_t idx = 0;
 
 	ImGui::SetNextWindowSizeConstraints(ImVec2(75, 75), ImVec2(200, 400));
@@ -84,5 +84,5 @@ void Scene::ImGuiRender()
 		ImGui::Text(sceneObject->GetName().c_str());
 	}
 
-	ImGui::End();
+	ImGui::End();*/
 }

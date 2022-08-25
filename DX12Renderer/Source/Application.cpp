@@ -2,6 +2,7 @@
 #include "Application.h"
 #include "Window.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/DebugRenderer.h"
 #include "GUI.h"
 #include "Scene/Scene.h"
 #include "InputHandler.h"
@@ -57,6 +58,9 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 	Renderer::Initialize(m_Window->GetHandle(), m_Window->GetWidth(), m_Window->GetHeight());
 	LOG_INFO("[Renderer] Initialized Renderer");
 
+	DebugRenderer::Initialize(m_Window->GetWidth(), m_Window->GetHeight());
+	LOG_INFO("[DebugRenderer] Initialized DebugRenderer");
+
 	m_GUI = std::make_unique<GUI>();
 	m_GUI->Initialize(m_Window->GetHandle());
 	LOG_INFO("[GUI] Initialized GUI");
@@ -95,6 +99,9 @@ void Application::Finalize()
 	m_GUI->Finalize();
 	LOG_INFO("Finalized GUI");
 
+	DebugRenderer::Finalize();
+	LOG_INFO("Finalized DebugRenderer");
+
 	Renderer::Finalize();
 	LOG_INFO("Finalized Renderer");
 
@@ -107,6 +114,7 @@ void Application::OnWindowResize(uint32_t width, uint32_t height)
 	if (width > 0 && height > 0)
 	{
 		Renderer::Resize(width, height);
+		DebugRenderer::Resize(width, height);
 		m_Scene->GetActiveCamera().ResizeProjection(static_cast<float>(width), static_cast<float>(height));
 	}
 }
@@ -128,13 +136,20 @@ void Application::Render()
 	SCOPED_TIMER("Application::Render");
 
 	Renderer::BeginFrame(m_Scene->GetActiveCamera());
+	DebugRenderer::BeginFrame(m_Scene->GetActiveCamera());
 	m_GUI->BeginFrame();
 
 	m_Scene->Render();
 	Renderer::Render();
+	DebugRenderer::Render();
 
 	m_Scene->ImGuiRender();
+
+	ImGui::Begin("Rendering");
 	Renderer::ImGuiRender();
+	ImGui::Separator();
+	DebugRenderer::ImGuiRender();
+	ImGui::End();
 
 	// Profiler
 	{
@@ -166,5 +181,6 @@ void Application::Render()
 	}
 
 	m_GUI->EndFrame();
+	DebugRenderer::EndFrame();
 	Renderer::EndFrame();
 }

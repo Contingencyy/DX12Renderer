@@ -74,10 +74,9 @@ void GUI::EndFrame()
 	ImGui::Render();
 
 	auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-	auto& renderPass = Renderer::GetRenderPass();
-
-	auto& colorTarget = renderPass.GetColorAttachment();
-	auto& depthBuffer = renderPass.GetDepthAttachment();
+	
+	auto& colorTarget = Renderer::GetFinalColorOutput();
+	auto& depthBuffer = Renderer::GetFinalDepthOutput();
 
 	auto rtv = colorTarget.GetDescriptorHandle();
 	auto dsv = depthBuffer.GetDescriptorHandle();
