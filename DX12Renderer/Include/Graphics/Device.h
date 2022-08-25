@@ -24,6 +24,7 @@ public:
 	void CreateDepthStencilView(Texture& texture, const D3D12_DEPTH_STENCIL_VIEW_DESC& dsvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor);
 	void CreateConstantBufferView(Buffer& buffer, const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor);
 	void CreateShaderResourceView(Texture& texture, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor);
+	void CreateUnorderedAccessView(Texture& texture, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor);
 
 	uint32_t GetDescriptorIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type);
 	void CopyDescriptors(uint32_t numDescriptorRanges, const D3D12_CPU_DESCRIPTOR_HANDLE* destDescriptorRangeStarts, const uint32_t* destDescriptorRangeSizes,

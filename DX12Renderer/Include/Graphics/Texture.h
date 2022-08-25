@@ -38,8 +38,10 @@ public:
 	~Texture();
 
 	void Resize(uint32_t width, uint32_t height);
-	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle();
-	D3D12_CPU_DESCRIPTOR_HANDLE GetSRVDescriptorHandle();
+
+	D3D12_CPU_DESCRIPTOR_HANDLE GetRenderTargetDepthStencilView();
+	D3D12_CPU_DESCRIPTOR_HANDLE GetShaderResourceView();
+	D3D12_CPU_DESCRIPTOR_HANDLE GetUnorderedAccessView();
 
 	TextureDesc GetTextureDesc() const { return m_TextureDesc; }
 	std::size_t GetByteSize() const { return m_ByteSize; }
@@ -49,14 +51,15 @@ public:
 
 private:
 	void Create();
-	void CreateView();
 
 private:
 	TextureDesc m_TextureDesc = {};
 	ComPtr<ID3D12Resource> m_d3d12Resource;
 
-	DescriptorAllocation m_DescriptorAllocation = {};
-	DescriptorAllocation m_SRVDescriptorAllocation = {};
+	DescriptorAllocation m_RenderTargetDepthStencilDescriptor = {};
+	DescriptorAllocation m_ShaderResourceViewDescriptor = {};
+	DescriptorAllocation m_UnorderedAccessViewDescriptor = {};
+
 	std::size_t m_ByteSize = 0;
 
 };

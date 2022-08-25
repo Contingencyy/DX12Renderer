@@ -78,9 +78,9 @@ bool Camera::UpdateRotation(float deltaTime)
 	{
 		glm::vec2 screenCenter(Application::Get().GetWindow()->GetWidth() / 2, Application::Get().GetWindow()->GetHeight() / 2);
 		glm::vec2 mouseDelta = InputHandler::GetMousePositionAbs() - screenCenter;
-		float mouseDeltaLength = glm::length(mouseDelta);
+		float mouseDeltaLength = glm::length(mouseDelta) - m_RotationDeadZone;
 
-		if (mouseDeltaLength > m_RotationDeadZone)
+		if (mouseDeltaLength > 0)
 		{
 			glm::vec2 mouseDirectionFromCenter = glm::normalize(mouseDelta);
 			float rotationStrength = sqrt(sqrt(mouseDeltaLength));

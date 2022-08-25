@@ -43,46 +43,55 @@ void Texture::Resize(uint32_t width, uint32_t height)
 	m_TextureDesc.Width = width;
 	m_TextureDesc.Height = height;
 
-	m_SRVDescriptorAllocation.~DescriptorAllocation();
+	m_RenderTargetDepthStencilDescriptor.~DescriptorAllocation();
+	m_ShaderResourceViewDescriptor.~DescriptorAllocation();
+	m_UnorderedAccessViewDescriptor.~DescriptorAllocation();
 
 	Create();
-	CreateView();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetDescriptorHandle()
+D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetRenderTargetDepthStencilView()
 {
-	if (m_DescriptorAllocation.IsNull())
+	if (m_RenderTargetDepthStencilDescriptor.IsNull())
 	{
 		switch (m_TextureDesc.Usage)
 		{
-		case TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE:
-		{
-			m_DescriptorAllocation = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-			break;
-		}
 		case TextureUsage::TEXTURE_USAGE_RENDER_TARGET:
 		{
-			m_DescriptorAllocation = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+			m_RenderTargetDepthStencilDescriptor = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+			rtvDesc.Format = TextureFormatToDXGI(m_TextureDesc.Format);
+			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+			rtvDesc.Texture2D = D3D12_TEX2D_RTV();
+
+			RenderBackend::Get().GetDevice()->CreateRenderTargetView(*this, rtvDesc, m_RenderTargetDepthStencilDescriptor.GetDescriptorHandle());
 			break;
 		}
 		case TextureUsage::TEXTURE_USAGE_DEPTH:
 		{
-			m_DescriptorAllocation = RenderBackend::Get().AllocateDescriptors( D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+			m_RenderTargetDepthStencilDescriptor = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+			dsvDesc.Format = TextureFormatToDXGI(m_TextureDesc.Format);
+			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+			dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+			dsvDesc.Texture2D = D3D12_TEX2D_DSV();
+
+			RenderBackend::Get().GetDevice()->CreateDepthStencilView(*this, dsvDesc, m_RenderTargetDepthStencilDescriptor.GetDescriptorHandle());
 			break;
 		}
 		}
-
-		CreateView();
 	}
 
-	return m_DescriptorAllocation.GetDescriptorHandle();
+	return m_RenderTargetDepthStencilDescriptor.GetDescriptorHandle();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetSRVDescriptorHandle()
+D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetShaderResourceView()
 {
-	if (m_SRVDescriptorAllocation.IsNull())
+	if (m_ShaderResourceViewDescriptor.IsNull())
 	{
-		m_SRVDescriptorAllocation = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_ShaderResourceViewDescriptor = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -90,10 +99,29 @@ D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetSRVDescriptorHandle()
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels = m_d3d12Resource->GetDesc().MipLevels;
 
-		RenderBackend::Get().GetDevice()->CreateShaderResourceView(*this, srvDesc, m_SRVDescriptorAllocation.GetDescriptorHandle());
+		RenderBackend::Get().GetDevice()->CreateShaderResourceView(*this, srvDesc, m_ShaderResourceViewDescriptor.GetDescriptorHandle());
 	}
 
-	return m_SRVDescriptorAllocation.GetDescriptorHandle();
+	return m_ShaderResourceViewDescriptor.GetDescriptorHandle();
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetUnorderedAccessView()
+{
+	if (m_UnorderedAccessViewDescriptor.IsNull())
+	{
+		m_UnorderedAccessViewDescriptor = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+		uavDesc.Format = TextureFormatToDXGI(m_TextureDesc.Format);
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+		/*uavDesc.Buffer.FirstElement = 0;
+		uavDesc.Buffer.NumElements = 1;
+		uavDesc.Buffer.CounterOffsetInBytes = 0;*/
+
+		RenderBackend::Get().GetDevice()->CreateUnorderedAccessView(*this, uavDesc, m_UnorderedAccessViewDescriptor.GetDescriptorHandle());
+	}
+
+	return m_UnorderedAccessViewDescriptor.GetDescriptorHandle();
 }
 
 void Texture::Create()
@@ -130,45 +158,4 @@ void Texture::Create()
 	}
 
 	m_ByteSize = GetRequiredIntermediateSize(m_d3d12Resource.Get(), 0, 1);
-}
-
-void Texture::CreateView()
-{
-	auto device = RenderBackend::Get().GetDevice();
-
-	switch (m_TextureDesc.Usage)
-	{
-	case TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE:
-	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.Format = TextureFormatToDXGI(m_TextureDesc.Format);
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = m_d3d12Resource->GetDesc().MipLevels;
-
-		device->CreateShaderResourceView(*this, srvDesc, m_DescriptorAllocation.GetDescriptorHandle());
-		break;
-	}
-	case TextureUsage::TEXTURE_USAGE_RENDER_TARGET:
-	{
-		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-		rtvDesc.Format = TextureFormatToDXGI(m_TextureDesc.Format);
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-		rtvDesc.Texture2D = D3D12_TEX2D_RTV();
-
-		device->CreateRenderTargetView(*this, rtvDesc, m_DescriptorAllocation.GetDescriptorHandle());
-		break;
-	}
-	case TextureUsage::TEXTURE_USAGE_DEPTH:
-	{
-		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-		dsvDesc.Format = TextureFormatToDXGI(m_TextureDesc.Format);
-		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-		dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-		dsvDesc.Texture2D = D3D12_TEX2D_DSV();
-
-		device->CreateDepthStencilView(*this, dsvDesc, m_DescriptorAllocation.GetDescriptorHandle());
-		break;
-	}
-	}
 }

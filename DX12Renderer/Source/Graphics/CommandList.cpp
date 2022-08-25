@@ -138,7 +138,7 @@ void CommandList::SetShaderResourceView(uint32_t rootParameterIndex, uint32_t de
 	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(texture.GetD3D12Resource().Get(), D3D12_RESOURCE_STATE_COMMON, stateAfter, 0);
 	m_d3d12CommandList->ResourceBarrier(1, &barrier);
 
-	m_DynamicDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->StageDescriptors(rootParameterIndex, descriptorOffset, 1, texture.GetSRVDescriptorHandle());
+	m_DynamicDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->StageDescriptors(rootParameterIndex, descriptorOffset, 1, texture.GetShaderResourceView());
 }
 
 void CommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance)

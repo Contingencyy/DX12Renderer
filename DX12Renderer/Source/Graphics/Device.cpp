@@ -118,6 +118,11 @@ void Device::CreateShaderResourceView(Texture& texture, const D3D12_SHADER_RESOU
     m_d3d12Device->CreateShaderResourceView(texture.GetD3D12Resource().Get(), &srvDesc, descriptor);
 }
 
+void Device::CreateUnorderedAccessView(Texture& texture, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor)
+{
+    m_d3d12Device->CreateUnorderedAccessView(texture.GetD3D12Resource().Get(), nullptr, &uavDesc, descriptor);
+}
+
 uint32_t Device::GetDescriptorIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
     return m_d3d12Device->GetDescriptorHandleIncrementSize(type);

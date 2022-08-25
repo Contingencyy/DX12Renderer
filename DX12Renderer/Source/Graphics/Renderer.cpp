@@ -67,8 +67,8 @@ void Renderer::Render()
     auto& defaultColorTarget = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment();
     auto& defaultDepthBuffer = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetDepthAttachment();
 
-    auto rtv = defaultColorTarget.GetDescriptorHandle();
-    auto dsv = defaultDepthBuffer.GetDescriptorHandle();
+    auto rtv = defaultColorTarget.GetRenderTargetDepthStencilView();
+    auto dsv = defaultDepthBuffer.GetRenderTargetDepthStencilView();
 
     // Set viewports, scissor rects and render targets
     commandList->SetViewports(1, &s_Instance->m_Viewport);
@@ -143,8 +143,8 @@ void Renderer::Render()
     auto& tmColorTarget = s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
     auto& tmDepthBuffer = s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetDepthAttachment();
 
-    auto tmRtv = tmColorTarget.GetDescriptorHandle();
-    auto tmDsv = tmDepthBuffer.GetDescriptorHandle();
+    auto tmRtv = tmColorTarget.GetRenderTargetDepthStencilView();
+    auto tmDsv = tmDepthBuffer.GetRenderTargetDepthStencilView();
 
     // Set viewports, scissor rects and render targets
     commandList2->SetViewports(1, &s_Instance->m_Viewport);

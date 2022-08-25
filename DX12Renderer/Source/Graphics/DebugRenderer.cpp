@@ -43,18 +43,15 @@ void DebugRenderer::Render()
 {
     SCOPED_TIMER("DebugRenderer::Render");
 
-    if (!s_Instance->m_DebugRenderSettings.Enable)
-        return;
-
-    if (s_Instance->m_LineVertexData.size() == 0)
+    if (!s_Instance->m_DebugRenderSettings.Enable || s_Instance->m_LineVertexData.size() == 0)
         return;
 
     auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
     auto& colorAttachment = Renderer::GetFinalColorOutput();
     auto& depthAttachment = Renderer::GetFinalDepthOutput();
 
-    auto rtv = colorAttachment.GetDescriptorHandle();
-    auto dsv = depthAttachment.GetDescriptorHandle();
+    auto rtv = colorAttachment.GetRenderTargetDepthStencilView();
+    auto dsv = depthAttachment.GetRenderTargetDepthStencilView();
 
     // Set viewports, scissor rects and render targets
     commandList->SetViewports(1, &s_Instance->m_Viewport);
