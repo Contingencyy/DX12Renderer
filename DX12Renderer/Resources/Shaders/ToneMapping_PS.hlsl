@@ -7,7 +7,8 @@ struct PixelShaderInput
 	float2 TexCoord : TEXCOORD;
 };
 
-static const float GAMMA = 1.5f;
+static const float GAMMA = 2.2f;
+static const float EXPOSURE = 1.5f;
 
 float3 LinearToneMapping(float3 color);
 float3 ReinhardToneMapping(float3 color);
@@ -18,13 +19,12 @@ float3 ACESFilmicToneMapping(float3 color);
 float4 main(PixelShaderInput IN) : SV_TARGET
 {
 	float4 sampled = tex2D.Sample(samp2D, IN.TexCoord);
-	return float4(UnchartedTwoToneMapping(sampled.xyz), sampled.w);
+	return float4(ReinhardToneMapping(sampled.xyz), sampled.w);
 }
 
 float3 LinearToneMapping(float3 color)
 {
-	float exposure = 1.;
-	color = clamp(exposure * color, 0.0f, 1.0f);
+	color = clamp(EXPOSURE * color, 0.0f, 1.0f);
 	color = pow(color, (1.0f / GAMMA));
 
 	return color;
@@ -32,9 +32,8 @@ float3 LinearToneMapping(float3 color)
 
 float3 ReinhardToneMapping(float3 color)
 {
-	float exposure = 1.5;
-	color *= exposure / (1.0 + color / exposure);
-	color = pow(color, (1.0 / GAMMA));
+	float3 mapped = float3(1.0f, 1.0f, 1.0f) - exp(-color * EXPOSURE);
+	mapped = pow(mapped, 1.0f / GAMMA);
 
 	return color;
 }
@@ -56,12 +55,13 @@ float3 UnchartedTwoToneMapping(float3 color)
 	float E = 0.02f;
 	float F = 0.30f;
 	float W = 11.2f;
-	float exposure = 2.0f;
-	color *= exposure;
+
+	color *= EXPOSURE;
 	color = ((color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F)) - E / F;
 	float white = ((W * (A * W + C * B) + D * E) / (W * (A * W + B) + D * F)) - E / F;
 	color /= white;
 	color = pow(abs(color), (1.0f / GAMMA));
+
 	return color;
 }
 

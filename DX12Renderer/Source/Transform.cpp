@@ -17,10 +17,7 @@ void Transform::Translate(const glm::vec3& translation)
 void Transform::Rotate(const glm::vec3& rotation)
 {
 	m_Rotation += rotation;
-
-	m_QuatRotation = glm::angleAxis(glm::radians(m_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-	m_QuatRotation = m_QuatRotation * glm::angleAxis(glm::radians(m_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-	m_QuatRotation = m_QuatRotation * glm::angleAxis(glm::radians(m_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+	m_QuatRotation = glm::fquat(m_Rotation);
 
 	MakeTransformMatrix();
 }

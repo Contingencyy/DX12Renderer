@@ -43,7 +43,7 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 			m_CommandQueueCompute->ResetCommandLists();
 			m_CommandQueueCopy->ResetCommandLists();
 
-			//std::this_thread::yield();
+			std::this_thread::yield();
 		}
 		});
 }
