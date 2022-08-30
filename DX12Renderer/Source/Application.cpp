@@ -135,20 +135,21 @@ void Application::Render()
 {
 	SCOPED_TIMER("Application::Render");
 
-	Renderer::BeginFrame(m_Scene->GetActiveCamera());
-	DebugRenderer::BeginFrame(m_Scene->GetActiveCamera());
+	const Camera& sceneCamera = m_Scene->GetActiveCamera();
+	Renderer::BeginScene(sceneCamera, m_Scene->GetAmbientLight());
+	DebugRenderer::BeginScene(sceneCamera, m_Scene->GetAmbientLight());
 	m_GUI->BeginFrame();
 
 	m_Scene->Render();
 	Renderer::Render();
 	DebugRenderer::Render();
 
-	m_Scene->ImGuiRender();
+	m_Scene->OnImGuiRender();
 
 	ImGui::Begin("Rendering");
-	Renderer::ImGuiRender();
+	Renderer::OnImGuiRender();
 	ImGui::Separator();
-	DebugRenderer::ImGuiRender();
+	DebugRenderer::OnImGuiRender();
 	ImGui::End();
 
 	// Profiler
@@ -181,6 +182,6 @@ void Application::Render()
 	}
 
 	m_GUI->EndFrame();
-	DebugRenderer::EndFrame();
-	Renderer::EndFrame();
+	DebugRenderer::EndScene();
+	Renderer::EndScene();
 }

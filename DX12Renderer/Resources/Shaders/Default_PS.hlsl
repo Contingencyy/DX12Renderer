@@ -31,10 +31,10 @@ struct Pointlight
 
 struct PointlightBuffer
 {
-	Pointlight pointlights[100];
+	Pointlight Pointlights[100];
 };
 
-ConstantBuffer<PointlightBuffer> PointlightCB : register(b2);
+ConstantBuffer<PointlightBuffer> PointlightCB : register(b1);
 
 float3 PointLightAttenuation(float3 fragPos, float3 fragNormal, float3 diffuseColor, Pointlight pointlight);
 
@@ -48,7 +48,7 @@ float4 main(PixelShaderInput IN) : SV_TARGET
 
 	for (uint i = 0; i < SceneDataCB.NumPointlights; ++i)
 	{
-		finalColor += PointLightAttenuation(float3(IN.WorldPosition.xyz), normalize(IN.Normal * textureNormal.xyz), diffuseColor.xyz, PointlightCB.pointlights[i]);
+		finalColor += PointLightAttenuation(float3(IN.WorldPosition.xyz), normalize(IN.Normal * textureNormal.xyz), diffuseColor.xyz, PointlightCB.Pointlights[i]);
 	}
 
 	return float4(finalColor, diffuseColor.w);

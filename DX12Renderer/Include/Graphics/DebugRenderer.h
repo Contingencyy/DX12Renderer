@@ -8,10 +8,10 @@ public:
 	static void Initialize(uint32_t width, uint32_t height);
 	static void Finalize();
 
-	static void BeginFrame(const Camera& camera);
+	static void BeginScene(const Camera& sceneCamera, const glm::vec3& ambient);
 	static void Render();
-	static void ImGuiRender();
-	static void EndFrame();
+	static void OnImGuiRender();
+	static void EndScene();
 
 	static void Submit(const glm::vec3& lineStart, const glm::vec3& lineEnd, const glm::vec4& color);
 

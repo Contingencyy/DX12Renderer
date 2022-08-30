@@ -45,6 +45,8 @@
 #define CONCAT(a, b) CONCAT_IMPL(a, b)
 #define BYTE_PADDING(x) unsigned char CONCAT(_padding_, __LINE__)[x]
 
+constexpr bool GPU_VALIDATION_ENABLED = false;
+
 /*
 
 	Project includes

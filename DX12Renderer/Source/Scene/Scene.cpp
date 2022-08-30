@@ -1,6 +1,7 @@
 #include "Pch.h"
 #include "Scene/Scene.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/DebugRenderer.h"
 #include "Scene/SceneObject.h"
 #include "Scene/MeshObject.h"
 #include "Scene/LightObject.h"
@@ -16,6 +17,7 @@ Scene::Scene()
 {
 	Renderer::RenderSettings renderSettings = Renderer::GetSettings();
 	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f), 60.0f, static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
+	m_AmbientLight = glm::vec3(0.1f);
 	
 	/*glm::vec3 position = glm::vec3(0.0f);
 	glm::vec3 rotation = glm::vec3(90.0f, 0.0f, 180.0f);
@@ -33,14 +35,14 @@ Scene::Scene()
 	}*/
 
 	// Pointlights
-	PointlightData pointlightData(500.0f, glm::vec3(0.0f, 0.001f, 0.0005f), glm::vec3(50.0f, 0.0f, 0.0f), glm::vec3(0.1f, 0.05f, 0.05f));
+	PointlightData pointlightData(500.0f, glm::vec3(0.0f, 0.001f, 0.0005f), glm::vec3(20.0f, 0.0f, 0.0f), glm::vec3(0.1f, 0.05f, 0.05f));
 	m_SceneObjects.push_back(std::make_unique<PointlightObject>(pointlightData, "Pointlight", glm::vec3(-100.0f, 25.0f, 0.0f)));
 
-	pointlightData.Diffuse = glm::vec3(0.0f, 50.0f, 0.0f);
+	pointlightData.Diffuse = glm::vec3(0.0f, 20.0f, 0.0f);
 	pointlightData.Ambient = glm::vec3(0.05f, 0.1f, 0.05f);
 	m_SceneObjects.push_back(std::make_unique<PointlightObject>(pointlightData, "Pointlight", glm::vec3(0.0f, 25.0f, 0.0f)));
 
-	pointlightData.Diffuse = glm::vec3(0.0f, 0.0f, 50.0f);
+	pointlightData.Diffuse = glm::vec3(0.0f, 0.0f, 20.0f);
 	pointlightData.Ambient = glm::vec3(0.05f, 0.05f, 0.1f);
 	m_SceneObjects.push_back(std::make_unique<PointlightObject>(pointlightData, "Pointlight", glm::vec3(100.0f, 25.0f, 0.0f)));
 
@@ -70,8 +72,12 @@ void Scene::Render()
 	}
 }
 
-void Scene::ImGuiRender()
+void Scene::OnImGuiRender()
 {
+	ImGui::Begin("Scene");
+	m_ActiveCamera.OnImGuiRender();
+	ImGui::End();
+
 	/*std::string objectName = "";
 	uint32_t idx = 0;
 

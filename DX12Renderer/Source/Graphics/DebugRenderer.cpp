@@ -28,11 +28,12 @@ void DebugRenderer::Finalize()
     delete s_Instance;
 }
 
-void DebugRenderer::BeginFrame(const Camera& camera)
+void DebugRenderer::BeginScene(const Camera& sceneCamera, const glm::vec3& ambient)
 {
     SCOPED_TIMER("DebugRenderer::BeginFrame");
 
-    s_Instance->m_SceneData.ViewProjection = camera.GetViewProjection();
+    s_Instance->m_SceneData.ViewProjection = sceneCamera.GetViewProjection();
+    s_Instance->m_SceneData.Ambient = ambient;
 
     auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
     s_Instance->m_RenderPass->ClearViews(commandList);
@@ -78,7 +79,7 @@ void DebugRenderer::Render()
     RenderBackend::Get().ExecuteCommandList(commandList);
 }
 
-void DebugRenderer::ImGuiRender()
+void DebugRenderer::OnImGuiRender()
 {
     ImGui::Text("Debug renderer");
     ImGui::Text("Draw calls: %u", s_Instance->m_DebugRenderStatistics.DrawCallCount);
@@ -86,7 +87,7 @@ void DebugRenderer::ImGuiRender()
     ImGui::Checkbox("Draw lines", &s_Instance->m_DebugRenderSettings.Enable);
 }
 
-void DebugRenderer::EndFrame()
+void DebugRenderer::EndScene()
 {
     SCOPED_TIMER("DebugRenderer::EndFrame");
 
@@ -130,7 +131,7 @@ void DebugRenderer::MakeRenderPasses()
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 
         desc.RootParameters.resize(1);
-        desc.RootParameters[0].InitAsConstantBufferView(0, 0);
+        desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_VERTEX);
 
         desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });

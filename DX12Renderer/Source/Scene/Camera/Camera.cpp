@@ -1,10 +1,12 @@
 #include "Pch.h"
 #include "Scene/Camera/Camera.h"
 #include "InputHandler.h"
-
 #include "Application.h"
-#include "Graphics/Renderer.h"
 #include "Window.h"
+
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_win32.h>
+#include <imgui/imgui_impl_dx12.h>
 
 Camera::Camera(const glm::vec3& pos, float fov, float width, float height, float near, float far)
 	: m_FOV(fov)
@@ -50,6 +52,14 @@ void Camera::ResizeProjection(float width, float height)
 
 	m_ViewFrustum.UpdateBounds(m_AspectRatio);
 	m_ViewFrustum.UpdatePlanes(m_Transform);
+}
+
+void Camera::OnImGuiRender()
+{
+	ImGui::Text("Camera");
+	ImGui::Checkbox("Frustum culling", &m_EnableFrustumCulling);
+	ImGui::DragFloat("Exposure", &m_Exposure, 0.01f, 0.01f, 10.0f);
+	ImGui::DragFloat("Gamma", &m_Gamma, 0.01f, 0.01f, 10.0f);
 }
 
 bool Camera::UpdateMovement(float deltaTime)

@@ -5,8 +5,8 @@ Device::Device()
 {
     EnableDebugLayer();
 
-	CreateAdapter();
-	CreateDevice();
+    CreateAdapter();
+    CreateDevice();
 }
 
 Device::~Device()
@@ -136,9 +136,18 @@ void Device::CopyDescriptors(uint32_t numDescriptorRanges, const D3D12_CPU_DESCR
 void Device::EnableDebugLayer()
 {
 #if defined(_DEBUG)
-    ComPtr<ID3D12Debug> debugInterface;
-    DX_CALL(D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface)));
-    debugInterface->EnableDebugLayer();
+    ComPtr<ID3D12Debug> d3d12DebugController0;
+    ComPtr<ID3D12Debug1> d3d12DebugController1;
+
+    DX_CALL(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12DebugController0)));
+    d3d12DebugController0->EnableDebugLayer();
+
+    if (GPU_VALIDATION_ENABLED)
+    {
+        DX_CALL(d3d12DebugController0->QueryInterface(IID_PPV_ARGS(&d3d12DebugController1)));
+        d3d12DebugController1->SetEnableGPUBasedValidation(true);
+        LOG_INFO("[Device] Enabled GPU based validation");
+    }
 #endif
 }
 
@@ -176,6 +185,20 @@ void Device::CreateDevice()
     DX_CALL(D3D12CreateDevice(m_dxgiAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_d3d12Device)));
 
 #if defined(_DEBUG)
+    if (GPU_VALIDATION_ENABLED)
+    {
+        // Set up GPU validation
+        ComPtr<ID3D12DebugDevice1> d3d12DebugDevice;
+        DX_CALL(m_d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
+
+        D3D12_DEBUG_DEVICE_GPU_BASED_VALIDATION_SETTINGS debugValidationSettings = {};
+        debugValidationSettings.MaxMessagesPerCommandList = 10;
+        debugValidationSettings.DefaultShaderPatchMode = D3D12_GPU_BASED_VALIDATION_SHADER_PATCH_MODE_GUARDED_VALIDATION;
+        debugValidationSettings.PipelineStateCreateFlags = D3D12_GPU_BASED_VALIDATION_PIPELINE_STATE_CREATE_FLAG_FRONT_LOAD_CREATE_GUARDED_VALIDATION_SHADERS;
+        DX_CALL(d3d12DebugDevice->SetDebugParameter(D3D12_DEBUG_DEVICE_PARAMETER_GPU_BASED_VALIDATION_SETTINGS, &debugValidationSettings, sizeof(D3D12_DEBUG_DEVICE_GPU_BASED_VALIDATION_SETTINGS)));
+    }
+
+    // Set up info queue with filters
     ComPtr<ID3D12InfoQueue> pInfoQueue;
 
     if (SUCCEEDED(m_d3d12Device.As(&pInfoQueue)))
@@ -186,7 +209,7 @@ void Device::CreateDevice()
 
         // Suppress whole categories of messages
         //D3D12_MESSAGE_CATEGORY categories[] = {};
-
+        
         // Suppress messages based on their severity level
         D3D12_MESSAGE_SEVERITY severities[] =
         {

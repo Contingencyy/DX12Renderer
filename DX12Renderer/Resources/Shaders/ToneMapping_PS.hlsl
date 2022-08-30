@@ -7,41 +7,54 @@ struct PixelShaderInput
 	float2 TexCoord : TEXCOORD;
 };
 
-static const float GAMMA = 2.2f;
-static const float EXPOSURE = 1.5f;
+struct TonemapSettings
+{
+	float Exposure;
+	float Gamma;
+	uint Type;
+};
+
+ConstantBuffer<TonemapSettings> TonemapCB : register(b0);
 
 float3 LinearToneMapping(float3 color);
 float3 ReinhardToneMapping(float3 color);
-float3 FilmicToneMapping(float3 color);
 float3 UnchartedTwoToneMapping(float3 color);
+float3 FilmicToneMapping(float3 color);
 float3 ACESFilmicToneMapping(float3 color);
 
 float4 main(PixelShaderInput IN) : SV_TARGET
 {
 	float4 sampled = tex2D.Sample(samp2D, IN.TexCoord);
-	return float4(ReinhardToneMapping(sampled.xyz), sampled.w);
+
+	switch (TonemapCB.Type)
+	{
+	case 0:
+		return float4(LinearToneMapping(sampled.xyz), sampled.w);
+	case 1:
+		return float4(ReinhardToneMapping(sampled.xyz), sampled.w);
+	case 2:
+		return float4(UnchartedTwoToneMapping(sampled.xyz), sampled.w);
+	case 3:
+		return float4(FilmicToneMapping(sampled.xyz), sampled.w);
+	case 4:
+		return float4(ACESFilmicToneMapping(sampled.xyz), sampled.w);
+	default:
+		return float4(ReinhardToneMapping(sampled.xyz), sampled.w);
+	}
 }
 
 float3 LinearToneMapping(float3 color)
 {
-	color = clamp(EXPOSURE * color, 0.0f, 1.0f);
-	color = pow(color, (1.0f / GAMMA));
+	color = clamp(TonemapCB.Exposure * color, 0.0f, 1.0f);
+	color = pow(color, (1.0f / TonemapCB.Gamma));
 
 	return color;
 }
 
 float3 ReinhardToneMapping(float3 color)
 {
-	float3 mapped = float3(1.0f, 1.0f, 1.0f) - exp(-color * EXPOSURE);
-	mapped = pow(mapped, 1.0f / GAMMA);
-
-	return color;
-}
-
-float3 FilmicToneMapping(float3 color)
-{
-	color = max(float3(0.0f, 0.0f, 0.0f), color - float3(0.004f, 0.004f, 0.004f));
-	color = (color * (6.2f * color + 0.5f)) / (color * (6.2f * color + 1.7f) + 0.06f);
+	color = float3(1.0f, 1.0f, 1.0f) - exp(-color * TonemapCB.Exposure);
+	color = pow(color, 1.0f / TonemapCB.Gamma);
 
 	return color;
 }
@@ -56,11 +69,19 @@ float3 UnchartedTwoToneMapping(float3 color)
 	float F = 0.30f;
 	float W = 11.2f;
 
-	color *= EXPOSURE;
+	color *= TonemapCB.Exposure;
 	color = ((color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F)) - E / F;
 	float white = ((W * (A * W + C * B) + D * E) / (W * (A * W + B) + D * F)) - E / F;
 	color /= white;
-	color = pow(abs(color), (1.0f / GAMMA));
+	color = pow(abs(color), (1.0f / TonemapCB.Gamma));
+
+	return color;
+}
+
+float3 FilmicToneMapping(float3 color)
+{
+	color = max(float3(0.0f, 0.0f, 0.0f), color - float3(0.004f, 0.004f, 0.004f));
+	color = (color * (6.2f * color + 0.5f)) / (color * (6.2f * color + 1.7f) + 0.06f);
 
 	return color;
 }

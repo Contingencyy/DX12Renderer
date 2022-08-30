@@ -68,7 +68,7 @@ void CommandList::SetPipelineState(const PipelineState& pipelineState)
 	m_d3d12CommandList->IASetPrimitiveTopology(pipelineState.GetPrimitiveTopology());
 }
 
-void CommandList::SetRoot32BitConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset)
+void CommandList::SetRootConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset)
 {
 	m_d3d12CommandList->SetGraphicsRoot32BitConstants(rootIndex, numValues, data, offset);
 }
@@ -115,21 +115,27 @@ void CommandList::SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ID3D12Descr
 
 void CommandList::SetRootConstantBufferView(uint32_t rootParameterIndex, Buffer& buffer, D3D12_RESOURCE_STATES stateAfter)
 {
+	//auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(buffer.GetD3D12Resource().Get(), D3D12_RESOURCE_STATE_COMMON, stateAfter, 0);
+	//m_d3d12CommandList->ResourceBarrier(1, &barrier);
+
 	m_d3d12CommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, buffer.GetD3D12Resource()->GetGPUVirtualAddress());
+	TrackObject(buffer.GetD3D12Resource());
 }
 
 void CommandList::SetConstantBufferView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Buffer& buffer,
 	D3D12_RESOURCE_STATES stateAfter)
 {
 	m_DynamicDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->StageDescriptors(rootParameterIndex, descriptorOffset, 1, buffer.GetDescriptorHandle());
+	TrackObject(buffer.GetD3D12Resource());
 }
 
 void CommandList::SetRootShaderResourceView(uint32_t rootParameterIndex, Texture& texture, D3D12_RESOURCE_STATES stateAfter)
 {
-	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(texture.GetD3D12Resource().Get(), D3D12_RESOURCE_STATE_COMMON, stateAfter, 0);
-	m_d3d12CommandList->ResourceBarrier(1, &barrier);
+	//auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(texture.GetD3D12Resource().Get(), D3D12_RESOURCE_STATE_COMMON, stateAfter, 0);
+	//m_d3d12CommandList->ResourceBarrier(1, &barrier);
 
 	m_d3d12CommandList->SetGraphicsRootShaderResourceView(rootParameterIndex, texture.GetD3D12Resource()->GetGPUVirtualAddress());
+	TrackObject(texture.GetD3D12Resource());
 }
 
 void CommandList::SetShaderResourceView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Texture& texture,
@@ -139,6 +145,7 @@ void CommandList::SetShaderResourceView(uint32_t rootParameterIndex, uint32_t de
 	m_d3d12CommandList->ResourceBarrier(1, &barrier);
 
 	m_DynamicDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->StageDescriptors(rootParameterIndex, descriptorOffset, 1, texture.GetShaderResourceView());
+	TrackObject(texture.GetD3D12Resource());
 }
 
 void CommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance)

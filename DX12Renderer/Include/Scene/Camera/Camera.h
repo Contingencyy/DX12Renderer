@@ -11,8 +11,11 @@ public:
 
 	void Update(float deltaTime);
 	void ResizeProjection(float width, float height);
+	void OnImGuiRender();
 
 	const ViewFrustum& GetViewFrustum() const { return m_ViewFrustum; }
+	float GetExposure() const { return m_Exposure; }
+	float GetGamma() const { return m_Gamma; }
 	glm::mat4 GetViewProjection() const { return m_ViewProjectionMatrix; };
 	bool IsFrustumCullingEnabled() const { return m_EnableFrustumCulling; }
 
@@ -31,6 +34,8 @@ private:
 	float m_RotationSpeed = 0.5f, m_RotationDeadZone = 25.0f;
 	float m_FOV = 60.0f, m_AspectRatio = 16.0f / 9.0f;
 	float m_Yaw = 0.0f, m_Pitch = 0.0f;
+	float m_Exposure = 1.5f;
+	float m_Gamma = 2.2f;
 
 	ViewFrustum m_ViewFrustum;
 	bool m_EnableFrustumCulling = true;
