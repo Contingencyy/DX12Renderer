@@ -26,7 +26,7 @@ A 3D rendering project written in C++, using DirectX 12 as the graphics API.
 - Forward/backward: W/S
 - Left/right: A/D
 - Up/down: LSHIFT/LCTRL
-- Rotate (yaw/pitch): Right mouse button + drag
+- Rotate (yaw/pitch): Hold right mouse button + drag
 
 ## Images
 ##### Instancing
