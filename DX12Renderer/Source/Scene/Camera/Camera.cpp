@@ -86,8 +86,13 @@ bool Camera::UpdateRotation(float deltaTime)
 {
 	if (InputHandler::IsKeyPressed(KeyCode::RIGHT_MOUSE))
 	{
-		glm::vec2 screenCenter(Application::Get().GetWindow()->GetWidth() / 2, Application::Get().GetWindow()->GetHeight() / 2);
-		glm::vec2 mouseDelta = InputHandler::GetMousePositionAbs() - screenCenter;
+		if (m_SetAnchorPointOnClick)
+		{
+			m_RotationAnchorPoint = InputHandler::GetMousePositionAbs();
+			m_SetAnchorPointOnClick = false;
+		}
+
+		glm::vec2 mouseDelta = InputHandler::GetMousePositionAbs() - m_RotationAnchorPoint;
 		float mouseDeltaLength = glm::length(mouseDelta) - m_RotationDeadZone;
 
 		if (mouseDeltaLength > 0)
@@ -103,6 +108,10 @@ bool Camera::UpdateRotation(float deltaTime)
 
 			return true;
 		}
+	}
+	else if (!m_SetAnchorPointOnClick)
+	{
+		m_SetAnchorPointOnClick = true;
 	}
 
 	/*if (InputHandler::IsKeyPressed(KeyCode::Q) || InputHandler::IsKeyPressed(KeyCode::E))

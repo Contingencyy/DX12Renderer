@@ -37,6 +37,9 @@ private:
 	float m_Exposure = 1.5f;
 	float m_Gamma = 2.2f;
 
+	glm::vec2 m_RotationAnchorPoint = glm::vec2(0.0f);
+	bool m_SetAnchorPointOnClick = true;
+
 	ViewFrustum m_ViewFrustum;
 	bool m_EnableFrustumCulling = true;
 
