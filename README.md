@@ -4,6 +4,7 @@ A 3D rendering project written in C++, using DirectX 12 as the graphics API.
 
 ## Features
 - GLTF model/scene loading
+- Bindful
 - ~~Instancing~~ (currently broken)
 - Albedo and normal textures
 - Geometric view frustum culling with points, spheres, and AABBs
@@ -13,6 +14,7 @@ A 3D rendering project written in C++, using DirectX 12 as the graphics API.
 
 ## Planned features
 - Directional light/spotlights
+- Bindless
 - Full PBR
 - Material system
 - Mip generation
