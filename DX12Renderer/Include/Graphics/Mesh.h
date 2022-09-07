@@ -36,7 +36,8 @@ public:
 	};
 
 public:
-	Mesh(const tinygltf::Model& glTFModel, const tinygltf::Primitive& glTFPrimitive, const std::string& name, std::size_t hash);
+	Mesh(const std::vector<std::shared_ptr<Buffer>>& buffers, const std::vector<std::shared_ptr<Texture>>& textures,
+		const glm::vec3& minBounds, const glm::vec3& maxBounds, const std::string& name, std::size_t hash);
 	~Mesh();
 
 	std::shared_ptr<Buffer> GetBuffer(MeshBufferAttributeType type) const;
@@ -49,17 +50,14 @@ public:
 	std::size_t GetHash() const;
 
 private:
-	void CreateBuffers(const tinygltf::Model& glTFModel, const tinygltf::Primitive& glTFPrimitive);
-	void CreateTextures(const tinygltf::Model& glTFModel, uint32_t matID);
-
-	void CreateBoundingBox(const tinygltf::Accessor& accessor);
-	void CreateBoundingSphere(const tinygltf::Accessor& accessor);
+	void CreateBoundingBox(const glm::vec3& minBounds, const glm::vec3& maxBounds);
+	void CreateBoundingSphere(const glm::vec3& minBounds, const glm::vec3& maxBounds);
 
 private:
 	std::string m_Name;
 	std::size_t m_Hash;
 
-	std::shared_ptr<Buffer> m_MeshBuffers[MeshBufferAttributeType::NUM_ATTRIBUTE_TYPES];
+	std::shared_ptr<Buffer> m_Buffers[MeshBufferAttributeType::NUM_ATTRIBUTE_TYPES];
 	std::shared_ptr<Texture> m_Textures[MeshTextureType::NUM_TEXTURE_TYPES];
 
 	BoundingBox m_BoundingBox;

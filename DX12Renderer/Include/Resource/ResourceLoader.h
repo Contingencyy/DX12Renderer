@@ -1,6 +1,8 @@
 #pragma once
 #include <tinygltf/tiny_gltf.h>
 
+class Model;
+
 struct ImageInfo
 {
 	unsigned char* Data;
@@ -15,5 +17,5 @@ class ResourceLoader
 public:
 	static ImageInfo LoadImage(const std::string& filepath);
 	static std::string LoadShader(const std::string& filepath);
-	static tinygltf::Model LoadModel(const std::string& filepath);
+	static tinygltf::Model LoadGLTFModel(const std::string& filepath);
 };

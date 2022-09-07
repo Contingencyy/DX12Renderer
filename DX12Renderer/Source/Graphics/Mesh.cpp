@@ -3,10 +3,22 @@
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
 
-Mesh::Mesh(const tinygltf::Model& glTFModel, const tinygltf::Primitive& glTFPrimitive, const std::string& name, std::size_t hash)
+Mesh::Mesh(const std::vector<std::shared_ptr<Buffer>>& buffers, const std::vector<std::shared_ptr<Texture>>& textures,
+	const glm::vec3& minBounds, const glm::vec3& maxBounds, const std::string& name, std::size_t hash)
 	: m_Name(name), m_Hash(hash)
 {
-	CreateBuffers(glTFModel, glTFPrimitive);
+	for (uint32_t i = 0; i < MeshBufferAttributeType::NUM_ATTRIBUTE_TYPES; ++i)
+	{
+		m_Buffers[i] = buffers[i];
+	}
+
+	for (uint32_t i = 0; i < MeshTextureType::NUM_TEXTURE_TYPES; ++i)
+	{
+		m_Textures[i] = textures[i];
+	}
+
+	CreateBoundingBox(minBounds, maxBounds);
+	CreateBoundingSphere(minBounds, maxBounds);
 }
 
 Mesh::~Mesh()
@@ -15,7 +27,7 @@ Mesh::~Mesh()
 
 std::shared_ptr<Buffer> Mesh::GetBuffer(MeshBufferAttributeType type) const
 {
-	return m_MeshBuffers[type];
+	return m_Buffers[type];
 }
 
 std::shared_ptr<Texture> Mesh::GetTexture(MeshTextureType type) const
@@ -33,112 +45,26 @@ std::size_t Mesh::GetHash() const
 	return m_Hash;
 }
 
-void Mesh::CreateBuffers(const tinygltf::Model& glTFModel, const tinygltf::Primitive& glTFPrimitive)
+void Mesh::CreateBoundingBox(const glm::vec3& minBounds, const glm::vec3& maxBounds)
 {
-	// Load vertex attributes from glTF model
-	std::string attributeNames[] = { "POSITION", "TEXCOORD_0", "NORMAL" };
-	uint32_t idx = 0;
+	m_BoundingBox.Min.x = static_cast<float>(minBounds.x);
+	m_BoundingBox.Min.y = static_cast<float>(minBounds.y);
+	m_BoundingBox.Min.z = static_cast<float>(minBounds.z);
 
-	for (auto& attributeName : attributeNames)
-	{
-		auto iter = glTFPrimitive.attributes.find(attributeName);
-
-		if (iter != glTFPrimitive.attributes.end())
-		{
-			uint32_t attributeIndex = iter->second;
-			auto& accessor = glTFModel.accessors[attributeIndex];
-			auto& bufferView = glTFModel.bufferViews[accessor.bufferView];
-			auto& buffer = glTFModel.buffers[bufferView.buffer];
-
-			const unsigned char* dataPtr = &buffer.data[0] + bufferView.byteOffset;
-			ASSERT((bufferView.byteOffset < buffer.data.size()), "Buffer view byte offset exceeded buffer total size");
-
-			m_MeshBuffers[idx] = std::make_shared<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, accessor.count, accessor.ByteStride(bufferView)), dataPtr);
-
-			if (attributeName == "POSITION")
-			{
-				CreateBoundingBox(accessor);
-				CreateBoundingSphere(accessor);
-			}
-		}
-		else
-		{
-			ASSERT(false, "Mesh primitive does not contain attribute " + attributeName);
-		}
-
-		++idx;
-	}
-
-	// Load indices from glTF model
-	uint32_t indiciesIndex = glTFPrimitive.indices;
-	auto& accessor = glTFModel.accessors[indiciesIndex];
-	auto& bufferView = glTFModel.bufferViews[accessor.bufferView];
-	auto& buffer = glTFModel.buffers[bufferView.buffer];
-
-	const unsigned char* dataPtr = &buffer.data[0] + bufferView.byteOffset + accessor.byteOffset;
-	ASSERT((bufferView.byteOffset < buffer.data.size()), "Buffer view byte offset exceeded buffer total size");
-
-	m_MeshBuffers[MeshBufferAttributeType::ATTRIB_INDEX] = std::make_shared<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, accessor.count, accessor.ByteStride(bufferView)), dataPtr);
-
-	// Create textures for current mesh
-	CreateTextures(glTFModel, glTFPrimitive.material);
+	m_BoundingBox.Max.x = static_cast<float>(maxBounds.x);
+	m_BoundingBox.Max.y = static_cast<float>(maxBounds.y);
+	m_BoundingBox.Max.z = static_cast<float>(maxBounds.z);
 }
 
-void Mesh::CreateTextures(const tinygltf::Model& glTFModel, uint32_t matID)
+void Mesh::CreateBoundingSphere(const glm::vec3& minBounds, const glm::vec3& maxBounds)
 {
-	auto& material = glTFModel.materials[matID];
-	int baseColorTextureIndex = material.pbrMetallicRoughness.baseColorTexture.index;
-	int normalTextureIndex = material.normalTexture.index;
+	double xRadius = (maxBounds.x - minBounds.x) / 2;
+	double yRadius = (maxBounds.y - minBounds.y) / 2;
+	double zRadius = (maxBounds.z - minBounds.z) / 2;
 
-	if (baseColorTextureIndex >= 0)
-	{
-		uint32_t baseColorImageIndex = glTFModel.textures[baseColorTextureIndex].source;
-
-		m_Textures[MeshTextureType::TEX_BASE_COLOR] = std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-			glTFModel.images[baseColorImageIndex].width, glTFModel.images[baseColorImageIndex].height), &glTFModel.images[baseColorImageIndex].image[0]);
-	}
-	else
-	{
-		uint32_t whiteImageData = 0xFFFFFFFF;
-		m_Textures[MeshTextureType::TEX_BASE_COLOR] = std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-			1, 1), &whiteImageData);
-	}
-
-	if (normalTextureIndex >= 0)
-	{
-		uint32_t normalImageIndex = glTFModel.textures[normalTextureIndex].source;
-
-		m_Textures[MeshTextureType::TEX_NORMAL] = std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-			glTFModel.images[normalImageIndex].width, glTFModel.images[normalImageIndex].height), &glTFModel.images[normalImageIndex].image[0]);
-	}
-	else
-	{
-		uint32_t whiteImageData = 0xFFFFFFFF;
-		m_Textures[MeshTextureType::TEX_NORMAL] = std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-			1, 1), &whiteImageData);
-	}
-}
-
-void Mesh::CreateBoundingBox(const tinygltf::Accessor& accessor)
-{
-	m_BoundingBox.Min.x = static_cast<float>(accessor.minValues[0]);
-	m_BoundingBox.Min.y = static_cast<float>(accessor.minValues[1]);
-	m_BoundingBox.Min.z = static_cast<float>(accessor.minValues[2]);
-
-	m_BoundingBox.Max.x = static_cast<float>(accessor.maxValues[0]);
-	m_BoundingBox.Max.y = static_cast<float>(accessor.maxValues[1]);
-	m_BoundingBox.Max.z = static_cast<float>(accessor.maxValues[2]);
-}
-
-void Mesh::CreateBoundingSphere(const tinygltf::Accessor& accessor)
-{
-	double xRadius = (accessor.maxValues[0] - accessor.minValues[0]) / 2;
-	double yRadius = (accessor.maxValues[1] - accessor.minValues[1]) / 2;
-	double zRadius = (accessor.maxValues[2] - accessor.minValues[2]) / 2;
-
-	m_BoundingSphere.Position.x = static_cast<float>(accessor.maxValues[0] - xRadius);
-	m_BoundingSphere.Position.y = static_cast<float>(accessor.maxValues[1] - yRadius);
-	m_BoundingSphere.Position.z = static_cast<float>(accessor.maxValues[2] - zRadius);
+	m_BoundingSphere.Position.x = static_cast<float>(maxBounds.x - xRadius);
+	m_BoundingSphere.Position.y = static_cast<float>(maxBounds.y - yRadius);
+	m_BoundingSphere.Position.z = static_cast<float>(maxBounds.z - zRadius);
 
 	m_BoundingSphere.Radius = static_cast<float>(std::max(std::max(xRadius, yRadius), zRadius));
 }

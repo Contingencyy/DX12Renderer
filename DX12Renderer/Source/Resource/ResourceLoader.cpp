@@ -44,19 +44,19 @@ std::string ResourceLoader::LoadShader(const std::string& filepath)
 	return shaderCode;
 }
 
-tinygltf::Model ResourceLoader::LoadModel(const std::string& filepath)
+tinygltf::Model ResourceLoader::LoadGLTFModel(const std::string& filepath)
 {
-	tinygltf::Model model;
+	tinygltf::Model tinygltf;
 	tinygltf::TinyGLTF loader;
 	std::string err;
 	std::string warn;
 
-	bool result = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
+	bool result = loader.LoadASCIIFromFile(&tinygltf, &err, &warn, filepath);
 	if (!warn.empty())
 		LOG_WARN(warn);
 	if (!err.empty())
 		LOG_ERR(err);
 
 	ASSERT(result, "Failed to parse glTF model");
-	return model;
+	return tinygltf;
 }
