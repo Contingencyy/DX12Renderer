@@ -141,10 +141,12 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 
 std::shared_ptr<Texture> ResourceManager::GetTexture(const std::string& name)
 {
+	ASSERT(m_Textures.find(name) != m_Textures.end(), "Texture does not exist");
 	return m_Textures.at(name);
 }
 
 std::shared_ptr<Model> ResourceManager::GetModel(const std::string& name)
 {
+	ASSERT(m_Models.find(name) != m_Models.end(), "Model does not exist");
 	return m_Models.at(name);
 }
