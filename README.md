@@ -1,6 +1,6 @@
 # DX12Renderer
 ## Description
-A 3D rendering project written in C++, using DirectX 12 as the graphics API.
+A 3D rendering project written in C++17, using DirectX 12 as the graphics API.
 
 ## Features
 - GLTF model/scene loading
