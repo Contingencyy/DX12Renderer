@@ -47,4 +47,4 @@ A 3D rendering project written in C++, using DirectX 12 as the graphics API.
 ![Sponza_Bounding_Boxes](https://user-images.githubusercontent.com/34250026/187080993-3966b143-f44c-4148-b451-e3560f8e7d28.png)
 
 ## Building
-The project currently provides the Visual Studio 2019 solution file. CMake is currently not supported. You will need to have installed the latest Windows 10 SDK.
+The project currently provides the Visual Studio 2022 solution file. CMake is currently not supported. You will need to have installed the latest Windows 10 SDK in the Visual Studio workloads.
