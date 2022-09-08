@@ -15,6 +15,9 @@ public:
 	void Reset();
 
 private:
+	void CreateDescriptorHeap();
+
+private:
 	static const uint32_t s_MaxDescriptorTables = 32;
 
 	ComPtr<ID3D12DescriptorHeap> m_d3d12DescriptorHeap;

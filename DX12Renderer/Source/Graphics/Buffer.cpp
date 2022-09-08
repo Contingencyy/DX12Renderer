@@ -3,18 +3,19 @@
 #include "Graphics/Buffer.h"
 #include "Graphics/RenderBackend.h"
 
-Buffer::Buffer(const BufferDesc& bufferDesc, const void* data)
+Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc, const void* data)
 	: m_BufferDesc(bufferDesc)
 {
 	Create();
-
+	SetName(name);
 	SetBufferData(data);
 }
 
-Buffer::Buffer(const BufferDesc& bufferDesc)
+Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc)
 	: m_BufferDesc(bufferDesc)
 {
 	Create();
+	SetName(name);
 }
 
 Buffer::~Buffer()
@@ -28,7 +29,7 @@ void Buffer::SetBufferData(const void* data, std::size_t byteSize)
 	std::size_t dataByteSize = byteSize == 0 ? m_ByteSize : byteSize;
 	if (m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_CONSTANT && m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
-		Buffer uploadBuffer(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, dataByteSize));
+		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, dataByteSize));
 		RenderBackend::Get().CopyBuffer(uploadBuffer, *this, data);
 	}
 	else
@@ -51,6 +52,12 @@ D3D12_CPU_DESCRIPTOR_HANDLE Buffer::GetDescriptorHandle()
 	}
 
 	return m_DescriptorAllocation.GetDescriptorHandle();
+}
+
+void Buffer::SetName(const std::string& name)
+{
+	m_Name = name;
+	m_d3d12Resource->SetName(StringHelper::StringToWString(name).c_str());
 }
 
 void Buffer::Create()

@@ -352,8 +352,8 @@ void Renderer::MakeRenderPasses()
 
 void Renderer::MakeBuffers()
 {
-    s_Instance->m_MeshInstanceBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, s_Instance->m_RenderSettings.MaxModelInstances, sizeof(MeshInstanceData)));
-    s_Instance->m_PointlightBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxPointLights, sizeof(PointlightData)));
+    s_Instance->m_MeshInstanceBuffer = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, s_Instance->m_RenderSettings.MaxModelInstances, sizeof(MeshInstanceData)));
+    s_Instance->m_PointlightBuffer = std::make_unique<Buffer>("Pointlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxPointLights, sizeof(PointlightData)));
 
     // Tone mapping vertices, positions are in normalized device coordinates
     std::vector<float> toneMappingVertices = {
@@ -366,11 +366,11 @@ void Renderer::MakeBuffers()
         0, 1, 2,
         2, 3, 0
     };
-    s_Instance->m_TonemapConstantBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(TonemapSettings)));
-    s_Instance->m_ToneMapVertexBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, 4, sizeof(float) * 4), &toneMappingVertices[0]);
-    s_Instance->m_ToneMapIndexBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, 6, sizeof(WORD)), &toneMappingIndices[0]);
+    s_Instance->m_TonemapConstantBuffer = std::make_unique<Buffer>("Tonemap constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(TonemapSettings)));
+    s_Instance->m_ToneMapVertexBuffer = std::make_unique<Buffer>("Tonemap vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, 4, sizeof(float) * 4), &toneMappingVertices[0]);
+    s_Instance->m_ToneMapIndexBuffer = std::make_unique<Buffer>("Tonemap index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, 6, sizeof(WORD)), &toneMappingIndices[0]);
 
-    s_Instance->m_SceneDataConstantBuffer = std::make_unique<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(SceneData)));
+    s_Instance->m_SceneDataConstantBuffer = std::make_unique<Buffer>("Scene data constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(SceneData)));
 }
 
 std::string Renderer::TonemapTypeToString(TonemapType type)

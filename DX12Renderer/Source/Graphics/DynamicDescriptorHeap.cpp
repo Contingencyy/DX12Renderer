@@ -5,21 +5,10 @@
 DynamicDescriptorHeap::DynamicDescriptorHeap(std::shared_ptr<Device> device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
 	: m_Type(type), m_NumDescriptors(numDescriptors), m_Device(device)
 {
-	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-	heapDesc.Type = m_Type;
-	heapDesc.NumDescriptors = m_NumDescriptors;
-	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-
-	if (m_Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV || m_Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
-		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-
-	m_Device->CreateDescriptorHeap(heapDesc, m_d3d12DescriptorHeap);
-
-	m_CurrentCPUDescriptorHandle = (m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart());
-	m_CurrentGPUDescriptorHandle = (m_d3d12DescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-
 	m_DescriptorHandleIncrementSize = m_Device->GetDescriptorIncrementSize(m_Type);
 	m_DescriptorHandleCache = std::make_unique<D3D12_CPU_DESCRIPTOR_HANDLE[]>(m_NumDescriptors);
+
+	CreateDescriptorHeap();
 }
 
 DynamicDescriptorHeap::~DynamicDescriptorHeap()
@@ -106,10 +95,32 @@ void DynamicDescriptorHeap::CommitStagedDescriptors(CommandList& commandList)
 void DynamicDescriptorHeap::Reset()
 {
 	m_NumDescriptorsToCommit = 0;
-
-	m_CurrentCPUDescriptorHandle = (m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart());
-	m_CurrentGPUDescriptorHandle = (m_d3d12DescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	
+	if (m_Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV || m_Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
+	{
+		m_CurrentCPUDescriptorHandle = (m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+		m_CurrentGPUDescriptorHandle = (m_d3d12DescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	}
 
 	for (auto& descriptorTableCache : m_DescriptorTableCache)
 		descriptorTableCache.second.Reset();
+}
+
+void DynamicDescriptorHeap::CreateDescriptorHeap()
+{
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+	heapDesc.Type = m_Type;
+	heapDesc.NumDescriptors = m_NumDescriptors;
+	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+	if (m_Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV || m_Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
+		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+	m_Device->CreateDescriptorHeap(heapDesc, m_d3d12DescriptorHeap);
+
+	if (m_Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV || m_Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
+	{
+		m_CurrentCPUDescriptorHandle = (m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+		m_CurrentGPUDescriptorHandle = (m_d3d12DescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	}
 }

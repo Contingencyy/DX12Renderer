@@ -24,8 +24,8 @@ struct BufferDesc
 class Buffer
 {
 public:
-	Buffer(const BufferDesc& bufferdesc, const void* data);
-	Buffer(const BufferDesc& bufferDesc);
+	Buffer(const std::string& name, const BufferDesc& bufferdesc, const void* data);
+	Buffer(const std::string& name, const BufferDesc& bufferDesc);
 	~Buffer();
 
 	// This should not be called every frame, since it allocates another heap/buffer for upload in this function
@@ -36,6 +36,8 @@ public:
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle();
 	std::size_t GetByteSize() const { return m_ByteSize; }
 
+	std::string GetName() const { return m_Name; }
+	void SetName(const std::string& name);
 	ComPtr<ID3D12Resource> GetD3D12Resource() const { return m_d3d12Resource; }
 	void SetD3D12Resource(ComPtr<ID3D12Resource> resource) { m_d3d12Resource = resource; }
 
@@ -45,7 +47,9 @@ private:
 private:
 	BufferDesc m_BufferDesc = {};
 	DescriptorAllocation m_DescriptorAllocation = {};
+
 	std::size_t m_ByteSize = 0;
+	std::string m_Name = "";
 
 	ComPtr<ID3D12Resource> m_d3d12Resource;
 	void* m_CPUPtr = nullptr;

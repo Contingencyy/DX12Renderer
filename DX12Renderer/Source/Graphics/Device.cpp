@@ -221,7 +221,9 @@ void Device::CreateDevice()
         {
             D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
             D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,
-            D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE
+            D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE,
+            // This is a temporary fix for Windows 11 due to a bug that has not been fixed yet
+            D3D12_MESSAGE_ID_RESOURCE_BARRIER_MISMATCHING_COMMAND_LIST_TYPE,
         };
 
         D3D12_INFO_QUEUE_FILTER newFilter = {};

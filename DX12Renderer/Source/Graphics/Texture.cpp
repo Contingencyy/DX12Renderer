@@ -19,19 +19,21 @@ DXGI_FORMAT TextureFormatToDXGI(TextureFormat format)
 	return DXGI_FORMAT_R8G8B8A8_UNORM;
 }
 
-Texture::Texture(const TextureDesc& textureDesc, const void* data)
+Texture::Texture(const std::string& name, const TextureDesc& textureDesc, const void* data)
 	: m_TextureDesc(textureDesc)
 {
 	Create();
+	SetName(name);
 
-	Buffer uploadBuffer(BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, m_ByteSize));
+	Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, m_ByteSize));
 	RenderBackend::Get().CopyTexture(uploadBuffer, *this, data);
 }
 
-Texture::Texture(const TextureDesc& textureDesc)
+Texture::Texture(const std::string& name, const TextureDesc& textureDesc)
 	: m_TextureDesc(textureDesc)
 {
 	Create();
+	SetName(name);
 }
 
 Texture::~Texture()
@@ -122,6 +124,12 @@ D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetUnorderedAccessView()
 	}
 
 	return m_UnorderedAccessViewDescriptor.GetDescriptorHandle();
+}
+
+void Texture::SetName(const std::string& name)
+{
+	m_Name = name;
+	m_d3d12Resource->SetName(StringHelper::StringToWString(name).c_str());
 }
 
 void Texture::Create()

@@ -21,7 +21,7 @@ void ResourceManager::LoadTexture(const std::string& filepath, const std::string
 	TextureDesc textureDesc = {};
 	textureDesc.Width = imageInfo.Width;
 	textureDesc.Height = imageInfo.Height;
-	m_Textures.insert(std::pair<std::string, std::shared_ptr<Texture>>(name, std::make_shared<Texture>(textureDesc)));
+	m_Textures.insert(std::pair<std::string, std::shared_ptr<Texture>>(name, std::make_shared<Texture>(name, textureDesc)));
 
 	delete imageInfo.Data;
 
@@ -47,26 +47,26 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		if (baseColorTextureIndex >= 0)
 		{
 			uint32_t baseColorImageIndex = glTFModel.textures[baseColorTextureIndex].source;
-			textures[matIndex].push_back(std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+			textures[matIndex].push_back(std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
 				glTFModel.images[baseColorImageIndex].width, glTFModel.images[baseColorImageIndex].height), &glTFModel.images[baseColorImageIndex].image[0]));
 		}
 		else
 		{
 			uint32_t whiteImageData = 0xFFFFFFFF;
-			textures[matIndex].push_back(std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+			textures[matIndex].push_back(std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
 				1, 1), &whiteImageData));
 		}
 
 		if (normalTextureIndex >= 0)
 		{
 			uint32_t normalImageIndex = glTFModel.textures[normalTextureIndex].source;
-			textures[matIndex].push_back(std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+			textures[matIndex].push_back(std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
 				glTFModel.images[normalImageIndex].width, glTFModel.images[normalImageIndex].height), &glTFModel.images[normalImageIndex].image[0]));
 		}
 		else
 		{
 			uint32_t whiteImageData = 0xFFFFFFFF;
-			textures[matIndex].push_back(std::make_shared<Texture>(TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+			textures[matIndex].push_back(std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
 				1, 1), &whiteImageData));
 		}
 	}
@@ -102,7 +102,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 					const unsigned char* dataPtr = &buffer.data[0] + bufferView.byteOffset;
 					ASSERT((bufferView.byteOffset < buffer.data.size()), "Buffer view byte offset exceeded buffer total size");
 
-					buffers.push_back(std::make_shared<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, accessor.count, accessor.ByteStride(bufferView)), dataPtr));
+					buffers.push_back(std::make_shared<Buffer>(name + " vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, accessor.count, accessor.ByteStride(bufferView)), dataPtr));
 
 					if (attributeName == "POSITION")
 					{
@@ -126,7 +126,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			const unsigned char* dataPtr = &buffer.data[0] + bufferView.byteOffset + accessor.byteOffset;
 			ASSERT((bufferView.byteOffset < buffer.data.size()), "Buffer view byte offset exceeded buffer total size");
 
-			buffers.push_back(std::make_shared<Buffer>(BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, accessor.count, accessor.ByteStride(bufferView)), dataPtr));
+			buffers.push_back(std::make_shared<Buffer>(name + " index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, accessor.count, accessor.ByteStride(bufferView)), dataPtr));
 
 			// Create the mesh with the buffers/textures, and additional data like min/max bounds, name, and hash
 			// TODO: Name and hash generation

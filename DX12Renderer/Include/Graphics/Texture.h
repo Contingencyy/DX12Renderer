@@ -33,8 +33,8 @@ DXGI_FORMAT TextureFormatToDXGI(TextureFormat format);
 class Texture
 {
 public:
-	Texture(const TextureDesc& textureDesc, const void* data);
-	Texture(const TextureDesc& textureDesc);
+	Texture(const std::string& name, const TextureDesc& textureDesc, const void* data);
+	Texture(const std::string& name, const TextureDesc& textureDesc);
 	~Texture();
 
 	void Resize(uint32_t width, uint32_t height);
@@ -46,6 +46,8 @@ public:
 	TextureDesc GetTextureDesc() const { return m_TextureDesc; }
 	std::size_t GetByteSize() const { return m_ByteSize; }
 
+	std::string GetName() const { return m_Name; }
+	void SetName(const std::string& name);
 	ComPtr<ID3D12Resource> GetD3D12Resource() const { return m_d3d12Resource; }
 	void SetD3D12Resource(ComPtr<ID3D12Resource> resource) { m_d3d12Resource = resource; }
 
@@ -54,6 +56,7 @@ private:
 
 private:
 	TextureDesc m_TextureDesc = {};
+	std::string m_Name = "";
 	ComPtr<ID3D12Resource> m_d3d12Resource;
 
 	DescriptorAllocation m_RenderTargetDepthStencilDescriptor = {};
