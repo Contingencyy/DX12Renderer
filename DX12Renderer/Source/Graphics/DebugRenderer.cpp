@@ -136,7 +136,7 @@ void DebugRenderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 
-        s_Instance->m_RenderPass = std::make_unique<RenderPass>(desc);
+        s_Instance->m_RenderPass = std::make_unique<RenderPass>("Debug line", desc);
     }
 }
 

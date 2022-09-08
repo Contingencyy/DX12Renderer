@@ -3,13 +3,13 @@
 #include "Graphics/PipelineState.h"
 #include "Graphics/CommandList.h"
 
-RenderPass::RenderPass(const RenderPassDesc& desc)
-	: m_Desc(desc)
+RenderPass::RenderPass(const std::string& name, const RenderPassDesc& desc)
+	: m_Name(name), m_Desc(desc)
 {
 	m_PipelineState = std::make_unique<PipelineState>(m_Desc);
 
-	m_ColorAttachment = std::make_unique<Texture>("Color frame buffer", m_Desc.ColorAttachmentDesc);
-	m_DepthAttachment = std::make_unique<Texture>("Depth stencil frame buffer", m_Desc.DepthAttachmentDesc);
+	m_ColorAttachment = std::make_unique<Texture>(name + " color frame buffer", m_Desc.ColorAttachmentDesc);
+	m_DepthAttachment = std::make_unique<Texture>(name + " depth stencil frame buffer", m_Desc.DepthAttachmentDesc);
 }
 
 RenderPass::~RenderPass()

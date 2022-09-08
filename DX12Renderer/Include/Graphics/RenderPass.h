@@ -27,7 +27,7 @@ struct RenderPassDesc
 class RenderPass
 {
 public:
-	RenderPass(const RenderPassDesc& desc);
+	RenderPass(const std::string& name, const RenderPassDesc& desc);
 	~RenderPass();
 
 	void Resize(uint32_t width, uint32_t height);
@@ -42,6 +42,7 @@ public:
 	const PipelineState& GetPipelineState() const { return *m_PipelineState; }
 
 private:
+	std::string m_Name;
 	RenderPassDesc m_Desc;
 
 	std::unique_ptr<PipelineState> m_PipelineState;
