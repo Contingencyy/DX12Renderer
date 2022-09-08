@@ -3,7 +3,7 @@
 #include "Graphics/Texture.h"
 #include "Graphics/RenderBackend.h"
 
-DXGI_FORMAT TextureFormatToDXGI(TextureFormat format)
+DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format)
 {
 	switch (format)
 	{
@@ -63,7 +63,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetRenderTargetDepthStencilView()
 			m_RenderTargetDepthStencilDescriptor = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-			rtvDesc.Format = TextureFormatToDXGI(m_TextureDesc.Format);
+			rtvDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
 			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 			rtvDesc.Texture2D = D3D12_TEX2D_RTV();
 
@@ -75,7 +75,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetRenderTargetDepthStencilView()
 			m_RenderTargetDepthStencilDescriptor = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
 			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-			dsvDesc.Format = TextureFormatToDXGI(m_TextureDesc.Format);
+			dsvDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
 			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 			dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 			dsvDesc.Texture2D = D3D12_TEX2D_DSV();
@@ -97,7 +97,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetShaderResourceView()
 		
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.Format = TextureFormatToDXGI(m_TextureDesc.Format);
+		srvDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels = m_d3d12Resource->GetDesc().MipLevels;
 
@@ -114,7 +114,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetUnorderedAccessView()
 		m_UnorderedAccessViewDescriptor = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-		uavDesc.Format = TextureFormatToDXGI(m_TextureDesc.Format);
+		uavDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 		/*uavDesc.Buffer.FirstElement = 0;
 		uavDesc.Buffer.NumElements = 1;
@@ -143,7 +143,7 @@ void Texture::Create()
 	d3d12ResourceDesc.SampleDesc.Quality = 0;
 	d3d12ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	
-	d3d12ResourceDesc.Format = TextureFormatToDXGI(m_TextureDesc.Format);
+	d3d12ResourceDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
 
 	switch (m_TextureDesc.Usage)
 	{

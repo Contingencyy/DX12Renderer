@@ -15,7 +15,7 @@ ImageInfo ResourceLoader::LoadImage(const std::string& filepath)
 
 	if (imageInfo.Data == nullptr)
 	{
-		ASSERT(true, "Failed to load texture");
+		ASSERT(true, "Failed to load texture: " + filepath);
 	}
 
 	return imageInfo;
@@ -26,19 +26,18 @@ std::string ResourceLoader::LoadShader(const std::string& filepath)
 	std::string shaderCode = "";
 	std::ifstream shaderFile(filepath);
 
-	if (shaderFile.is_open())
+	if (shaderFile)
 	{
-		std::string line;
-		while (std::getline(shaderFile, line))
-		{
-			shaderCode += line + "\n";
-		}
-
+		shaderFile.seekg(0, std::ios::end);
+		shaderCode.resize(shaderFile.tellg());
+		shaderFile.seekg(0, std::ios::beg);
+		shaderFile.read(&shaderCode[0], shaderCode.size());
+		
 		shaderFile.close();
 	}
 	else
 	{
-		LOG_ERR("Could not open shader file");
+		LOG_ERR("Could not open shader file: " + filepath);
 	}
 
 	return shaderCode;
@@ -57,6 +56,6 @@ tinygltf::Model ResourceLoader::LoadGLTFModel(const std::string& filepath)
 	if (!err.empty())
 		LOG_ERR(err);
 
-	ASSERT(result, "Failed to parse glTF model");
+	ASSERT(result, "Failed to parse glTF model: " + filepath);
 	return tinygltf;
 }

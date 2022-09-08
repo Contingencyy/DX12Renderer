@@ -28,7 +28,7 @@ struct TextureDesc
 	uint32_t Height = 720;
 };
 
-DXGI_FORMAT TextureFormatToDXGI(TextureFormat format);
+DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format);
 
 class Texture
 {
