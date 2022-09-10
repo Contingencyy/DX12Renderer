@@ -5,17 +5,17 @@
 #include "Graphics/Shader.h"
 #include "Graphics/RenderBackend.h"
 
-PipelineState::PipelineState(const RenderPassDesc& renderPassDesc)
+PipelineState::PipelineState(const std::string& name, const RenderPassDesc& renderPassDesc)
 {
-	m_RootSignature = std::make_unique<RootSignature>(renderPassDesc.DescriptorRanges, renderPassDesc.RootParameters);
-	Create(renderPassDesc, renderPassDesc.ShaderInputLayout);
+	m_RootSignature = std::make_unique<RootSignature>(name, renderPassDesc.DescriptorRanges, renderPassDesc.RootParameters);
+	Create(name, renderPassDesc, renderPassDesc.ShaderInputLayout);
 }
 
 PipelineState::~PipelineState()
 {
 }
 
-void PipelineState::Create(const RenderPassDesc& renderPassDesc, const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout)
+void PipelineState::Create(const std::string& name, const RenderPassDesc& renderPassDesc, const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout)
 {
 	m_VertexShader = std::make_unique<Shader>(StringHelper::StringToWString(renderPassDesc.VertexShaderPath), "main", "vs_5_1");
 	m_PixelShader = std::make_unique<Shader>(StringHelper::StringToWString(renderPassDesc.PixelShaderPath), "main", "ps_5_1");
@@ -56,6 +56,7 @@ void PipelineState::Create(const RenderPassDesc& renderPassDesc, const std::vect
 	psoDesc.pRootSignature = m_RootSignature->GetD3D12RootSignature().Get();
 
 	RenderBackend::Get().GetDevice()->CreatePipelineState(psoDesc, m_d3d12PipelineState);
+	m_d3d12PipelineState->SetName(StringHelper::StringToWString(name + " pipeline state").c_str());
 
 	m_d3d12PrimitiveToplogy = renderPassDesc.Topology;
 }

@@ -8,7 +8,7 @@ class Shader;
 class PipelineState
 {
 public:
-	PipelineState(const RenderPassDesc& renderPassDesc);
+	PipelineState(const std::string& name, const RenderPassDesc& renderPassDesc);
 	~PipelineState();
 
 	RootSignature* GetRootSignature() const { return m_RootSignature.get(); }
@@ -17,7 +17,7 @@ public:
 	D3D12_PRIMITIVE_TOPOLOGY GetPrimitiveTopology() const { return m_d3d12PrimitiveToplogy; }
 	
 private:
-	void Create(const RenderPassDesc& renderPassDesc, const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout);
+	void Create(const std::string& name, const RenderPassDesc& renderPassDesc, const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout);
 
 private:
 	ComPtr<ID3D12PipelineState> m_d3d12PipelineState;

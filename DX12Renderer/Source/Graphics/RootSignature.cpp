@@ -3,16 +3,16 @@
 #include "Graphics/Device.h"
 #include "Graphics/RenderBackend.h"
 
-RootSignature::RootSignature(const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
+RootSignature::RootSignature(const std::string& name, const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
 {
-	Create(descriptorRanges, rootParameters);
+	Create(name, descriptorRanges, rootParameters);
 }
 
 RootSignature::~RootSignature()
 {
 }
 
-void RootSignature::Create(const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
+void RootSignature::Create(const std::string& name, const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
 {
 	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -39,6 +39,7 @@ void RootSignature::Create(const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descrip
 	versionedRootSignatureDesc.Init_1_1(rootParameters.size(), &rootParameters[0], _countof(staticSamplers), &staticSamplers[0], rootSignatureFlags);
 
 	RenderBackend::Get().GetDevice()->CreateRootSignature(versionedRootSignatureDesc, m_d3d12RootSignature);
+	m_d3d12RootSignature->SetName(StringHelper::StringToWString(name + " root signature").c_str());
 	
 	ParseDescriptorTableRanges(versionedRootSignatureDesc.Desc_1_1);
 }
