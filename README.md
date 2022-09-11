@@ -5,18 +5,17 @@ A 3D rendering project written in C++17, using DirectX 12 as the graphics API.
 ## Features
 - GLTF model/scene loading
 - Bindful rendering
-- ~~Instancing~~ (currently broken)
-- Albedo and normal textures
+- Instancing
+- Directional light/spotlights/pointlights (ambient and diffuse lighting)
 - Geometric view frustum culling with points, spheres, and AABBs
-- Point lights (ambient and diffuse)
 - Tone mapping (Uncharted2, Linear, Reinhard, Filmic, ACES filmic)
-- Render backend with platform agnostic renderers
+- Render backend with platform agnostic renderers (debug and 3D renderer)
+- GPU validation
 
 ## Planned features
-- Directional light/spotlights
 - Bindless rendering
-- Full PBR
 - Material system
+- Full PBR
 - Mipmap generation
 - MSAA
 - Shadow mapping
@@ -32,19 +31,13 @@ A 3D rendering project written in C++17, using DirectX 12 as the graphics API.
 
 ## Images
 ##### Instancing
-![Rendering instanced models](https://user-images.githubusercontent.com/34250026/173068461-ad322038-f782-4ab7-a98d-2fb115ddfd78.png)
+![Scifi_Helmet_Instancing](https://user-images.githubusercontent.com/34250026/189538438-ad586049-2a57-44b6-913f-0d1d18100035.png)
 
-##### Point lights (ambient and diffuse)
-![PointLightsAmbientDiffuse](https://user-images.githubusercontent.com/34250026/173195505-a01fbea1-0427-4e13-910f-60f886b4678b.png)
+##### Sponza (Reinhard tonemapping, directional light from above, white spotlights and colored pointlights)
+![Sponza_Lights](https://user-images.githubusercontent.com/34250026/189538342-a83f89a1-bb30-4c4b-980a-2993196fe2c5.png)
 
-##### Tone mapping (Uncharted2)
-![Tonemapping](https://user-images.githubusercontent.com/34250026/182204514-52543369-4537-464a-8929-8b68596bbd3a.png)
-
-##### Sponza (Reinhard tonemapping, ambient and diffuse point lights)
-![Sponza](https://user-images.githubusercontent.com/34250026/187080988-e7179a6e-4b41-42ec-ac40-00640270c7bc.png)
-
-##### Sponza (with bounding boxes of individual meshes for view frustum culling)
-![Sponza_Bounding_Boxes](https://user-images.githubusercontent.com/34250026/187080993-3966b143-f44c-4148-b451-e3560f8e7d28.png)
+##### Sponza (Directional lighting)
+![Sponza_Directional_Lighting](https://user-images.githubusercontent.com/34250026/189538344-3ebbda4f-6d95-412d-868a-bd101b8096a0.png)
 
 ## Building
 The project currently provides the Visual Studio 2022 solution file. CMake is currently not supported. You will need to have installed the latest Windows 10 SDK in the Visual Studio workloads.
