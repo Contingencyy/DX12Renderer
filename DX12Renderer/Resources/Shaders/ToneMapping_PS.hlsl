@@ -46,7 +46,7 @@ float4 main(PixelShaderInput IN) : SV_TARGET
 float3 LinearToneMapping(float3 color)
 {
 	color = clamp(TonemapCB.Exposure * color, 0.0f, 1.0f);
-	color = pow(color, (1.0f / TonemapCB.Gamma));
+	color = pow(abs(color), (1.0f / TonemapCB.Gamma));
 
 	return color;
 }
@@ -54,7 +54,7 @@ float3 LinearToneMapping(float3 color)
 float3 ReinhardToneMapping(float3 color)
 {
 	color = float3(1.0f, 1.0f, 1.0f) - exp(-color * TonemapCB.Exposure);
-	color = pow(color, 1.0f / TonemapCB.Gamma);
+	color = pow(abs(color), 1.0f / TonemapCB.Gamma);
 
 	return color;
 }

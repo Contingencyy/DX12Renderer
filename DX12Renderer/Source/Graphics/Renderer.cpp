@@ -42,7 +42,7 @@ void Renderer::Finalize()
 
 void Renderer::BeginScene(const Camera& sceneCamera, const glm::vec3& ambient)
 {
-    SCOPED_TIMER("Renderer::BeginFrame");
+    SCOPED_TIMER("Renderer::BeginScene");
     
     s_Instance->m_SceneData.ViewProjection = sceneCamera.GetViewProjection();
     s_Instance->m_SceneData.Ambient = ambient;
@@ -80,19 +80,31 @@ void Renderer::Render()
         // Set pipeline state, root signature, and scene data constant buffer
         commandList->SetPipelineState(s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetPipelineState());
 
-        s_Instance->m_SceneData.NumPointlights = s_Instance->m_PointlightDrawData.size();
+        s_Instance->m_SceneData.NumDirLights = s_Instance->m_DirectionalLightDrawData.size();
+        s_Instance->m_SceneData.NumPointLights = s_Instance->m_PointLightDrawData.size();
+        s_Instance->m_SceneData.NumSpotLights = s_Instance->m_SpotLightDrawData.size();
 
         s_Instance->m_SceneDataConstantBuffer->SetBufferData(&s_Instance->m_SceneData);
         commandList->SetRootConstantBufferView(0, *s_Instance->m_SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
 
-        // Set constant buffer data for point lights
-        if (s_Instance->m_SceneData.NumPointlights > 0)
-        {
-            s_Instance->m_PointlightBuffer->SetBufferData(&s_Instance->m_PointlightDrawData[0], s_Instance->m_PointlightDrawData.size() * sizeof(PointlightData));
-        }
+        // Set constant buffer data for lights
+        if (s_Instance->m_SceneData.NumDirLights > 0)
+            s_Instance->m_DirectionalLightBuffer->SetBufferData(&s_Instance->m_DirectionalLightDrawData[0], s_Instance->m_DirectionalLightDrawData.size() * sizeof(DirectionalLightData));
 
-        commandList->SetConstantBufferView(1, 0, *s_Instance->m_PointlightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
-        s_Instance->m_RenderStatistics.PointLightCount += s_Instance->m_PointlightDrawData.size();
+        commandList->SetConstantBufferView(1, 0, *s_Instance->m_DirectionalLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+        s_Instance->m_RenderStatistics.DirectionalLightCount += s_Instance->m_DirectionalLightDrawData.size();
+
+        if (s_Instance->m_SceneData.NumPointLights > 0)
+            s_Instance->m_PointLightBuffer->SetBufferData(&s_Instance->m_PointLightDrawData[0], s_Instance->m_PointLightDrawData.size() * sizeof(PointLightData));
+
+        commandList->SetConstantBufferView(1, 1, *s_Instance->m_PointLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+        s_Instance->m_RenderStatistics.PointLightCount += s_Instance->m_PointLightDrawData.size();
+
+        if (s_Instance->m_SceneData.NumSpotLights > 0)
+            s_Instance->m_SpotLightBuffer->SetBufferData(&s_Instance->m_SpotLightDrawData[0], s_Instance->m_SpotLightDrawData.size() * sizeof(SpotLightData));
+
+        commandList->SetConstantBufferView(1, 2, *s_Instance->m_SpotLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+        s_Instance->m_RenderStatistics.SpotLightCount += s_Instance->m_SpotLightDrawData.size();
 
         for (auto& [meshHash, meshDrawData] : s_Instance->m_MeshDrawData)
         {
@@ -115,8 +127,8 @@ void Renderer::Render()
             auto baseColorTexture = mesh->GetTexture(MeshTextureType::TEX_BASE_COLOR);
             auto normalTexture = mesh->GetTexture(MeshTextureType::TEX_NORMAL);
 
-            commandList->SetShaderResourceView(1, 1, *baseColorTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            commandList->SetShaderResourceView(1, 2, *normalTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            commandList->SetShaderResourceView(1, 3, *baseColorTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            commandList->SetShaderResourceView(1, 4, *normalTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
             commandList->DrawIndexed(indexBuffer->GetBufferDesc().NumElements, meshInstanceData.size());
 
@@ -186,9 +198,13 @@ void Renderer::OnImGuiRender()
     ImGui::Text("Draw calls: %u", s_Instance->m_RenderStatistics.DrawCallCount);
     ImGui::Text("Triangle count: %u", s_Instance->m_RenderStatistics.TriangleCount);
     ImGui::Text("Mesh count: %u", s_Instance->m_RenderStatistics.MeshCount);
+    ImGui::Text("Directional light count: %u", s_Instance->m_RenderStatistics.DirectionalLightCount);
     ImGui::Text("Point light count: %u", s_Instance->m_RenderStatistics.PointLightCount);
+    ImGui::Text("Spot light count: %u", s_Instance->m_RenderStatistics.SpotLightCount);
     ImGui::Text("Max model instances: %u", s_Instance->m_RenderSettings.MaxModelInstances);
+    ImGui::Text("Max directional lights: %u", s_Instance->m_RenderSettings.MaxDirectionalLights);
     ImGui::Text("Max point lights: %u", s_Instance->m_RenderSettings.MaxPointLights);
+    ImGui::Text("Max spot lights: %u", s_Instance->m_RenderSettings.MaxSpotLights);
 
     ImGui::Text("Tonemapping type");
     std::string previewValue = TonemapTypeToString(s_Instance->m_TonemapSettings.Type);
@@ -211,13 +227,15 @@ void Renderer::OnImGuiRender()
 
 void Renderer::EndScene()
 {
-    SCOPED_TIMER("Renderer::EndFrame");
+    SCOPED_TIMER("Renderer::EndScene");
 
     RenderBackend::Get().ResolveToBackBuffer(s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
     RenderBackend::Get().SwapBuffers(s_Instance->m_RenderSettings.VSync);
 
     s_Instance->m_MeshDrawData.clear();
-    s_Instance->m_PointlightDrawData.clear();
+    s_Instance->m_DirectionalLightDrawData.clear();
+    s_Instance->m_PointLightDrawData.clear();
+    s_Instance->m_SpotLightDrawData.clear();
 
     s_Instance->m_RenderStatistics.Reset();
 }
@@ -236,10 +254,22 @@ void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transf
     }
 }
 
-void Renderer::Submit(const PointlightData& pointlightData)
+void Renderer::Submit(const DirectionalLightData& dirLightData)
 {
-    s_Instance->m_PointlightDrawData.push_back(pointlightData);
-    ASSERT((s_Instance->m_PointlightDrawData.size() <= s_Instance->m_RenderSettings.MaxPointLights), "Exceeded the maximum amount of point lights");
+    s_Instance->m_DirectionalLightDrawData.push_back(dirLightData);
+    ASSERT(s_Instance->m_DirectionalLightDrawData.size() <= s_Instance->m_RenderSettings.MaxDirectionalLights, "Exceeded the maximum amount of directional lights");
+}
+
+void Renderer::Submit(const PointLightData& pointlightData)
+{
+    s_Instance->m_PointLightDrawData.push_back(pointlightData);
+    ASSERT(s_Instance->m_PointLightDrawData.size() <= s_Instance->m_RenderSettings.MaxPointLights, "Exceeded the maximum amount of point lights");
+}
+
+void Renderer::Submit(const SpotLightData& spotLightData)
+{
+    s_Instance->m_SpotLightDrawData.push_back(spotLightData);
+    ASSERT(s_Instance->m_SpotLightDrawData.size() <= s_Instance->m_RenderSettings.MaxSpotLights, "Exceeded the maximum amount of spot lights");
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)
@@ -303,7 +333,7 @@ void Renderer::MakeRenderPasses()
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
         desc.DescriptorRanges.resize(2);
-        desc.DescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
+        desc.DescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 3, 1);
         desc.DescriptorRanges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0);
 
         desc.RootParameters.resize(2);
@@ -353,7 +383,9 @@ void Renderer::MakeRenderPasses()
 void Renderer::MakeBuffers()
 {
     s_Instance->m_MeshInstanceBuffer = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, s_Instance->m_RenderSettings.MaxModelInstances, sizeof(MeshInstanceData)));
-    s_Instance->m_PointlightBuffer = std::make_unique<Buffer>("Pointlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxPointLights, sizeof(PointlightData)));
+    s_Instance->m_DirectionalLightBuffer = std::make_unique<Buffer>("Directional light constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxDirectionalLights, sizeof(DirectionalLightData)));
+    s_Instance->m_PointLightBuffer = std::make_unique<Buffer>("Pointlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxPointLights, sizeof(PointLightData)));
+    s_Instance->m_SpotLightBuffer = std::make_unique<Buffer>("Spotlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxSpotLights, sizeof(SpotLightData)));
 
     // Tone mapping vertices, positions are in normalized device coordinates
     std::vector<float> toneMappingVertices = {

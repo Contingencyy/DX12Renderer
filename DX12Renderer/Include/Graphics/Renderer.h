@@ -20,8 +20,10 @@ public:
 
 		bool VSync = true;
 
-		uint32_t MaxModelInstances = 100;
-		uint32_t MaxPointLights = 100;
+		uint32_t MaxModelInstances = 1000;
+		uint32_t MaxDirectionalLights = 5;
+		uint32_t MaxPointLights = 50;
+		uint32_t MaxSpotLights = 50;
 	};
 
 	struct SceneData
@@ -31,7 +33,9 @@ public:
 		glm::mat4 ViewProjection = glm::identity<glm::mat4>();
 		glm::vec3 Ambient = glm::vec3(0.0f);
 
-		uint32_t NumPointlights = 0;
+		uint32_t NumDirLights = 0;
+		uint32_t NumPointLights = 0;
+		uint32_t NumSpotLights = 0;
 	};
 
 public:
@@ -44,7 +48,9 @@ public:
 	static void EndScene();
 
 	static void Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform);
-	static void Submit(const PointlightData& pointlightData);
+	static void Submit(const DirectionalLightData& dirLightData);
+	static void Submit(const PointLightData& pointlightData);
+	static void Submit(const SpotLightData& spotLightData);
 
 	static void Resize(uint32_t width, uint32_t height);
 	static void ToggleVSync();
@@ -69,13 +75,17 @@ private:
 			DrawCallCount = 0;
 			TriangleCount = 0;
 			MeshCount = 0;
+			DirectionalLightCount = 0;
 			PointLightCount = 0;
+			SpotLightCount = 0;
 		}
 
 		uint32_t DrawCallCount = 0;
 		uint32_t TriangleCount = 0;
 		uint32_t MeshCount = 0;
+		uint32_t DirectionalLightCount = 0;
 		uint32_t PointLightCount = 0;
+		uint32_t SpotLightCount = 0;
 	};
 
 private:
@@ -115,8 +125,12 @@ private:
 	std::unordered_map<std::size_t, MeshDrawData> m_MeshDrawData = std::unordered_map<std::size_t, MeshDrawData>();
 	std::unique_ptr<Buffer> m_MeshInstanceBuffer;
 
-	std::vector<PointlightData> m_PointlightDrawData;
-	std::unique_ptr<Buffer> m_PointlightBuffer;
+	std::vector<DirectionalLightData> m_DirectionalLightDrawData;
+	std::unique_ptr<Buffer> m_DirectionalLightBuffer;
+	std::vector<PointLightData> m_PointLightDrawData;
+	std::unique_ptr<Buffer> m_PointLightBuffer;
+	std::vector<SpotLightData> m_SpotLightDrawData;
+	std::unique_ptr<Buffer> m_SpotLightBuffer;
 
 	enum class TonemapType : uint32_t
 	{

@@ -28,12 +28,11 @@ void DebugRenderer::Finalize()
     delete s_Instance;
 }
 
-void DebugRenderer::BeginScene(const Camera& sceneCamera, const glm::vec3& ambient)
+void DebugRenderer::BeginScene(const Camera& sceneCamera)
 {
     SCOPED_TIMER("DebugRenderer::BeginFrame");
 
-    s_Instance->m_SceneData.ViewProjection = sceneCamera.GetViewProjection();
-    s_Instance->m_SceneData.Ambient = ambient;
+    s_Instance->m_CameraViewProjection = sceneCamera.GetViewProjection();
 
     auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
     s_Instance->m_RenderPass->ClearViews(commandList);
@@ -44,7 +43,7 @@ void DebugRenderer::Render()
 {
     SCOPED_TIMER("DebugRenderer::Render");
 
-    if (!s_Instance->m_DebugRenderSettings.Enable || s_Instance->m_LineVertexData.size() == 0)
+    if (!s_Instance->m_DebugRenderSettings.DrawLines || s_Instance->m_LineVertexData.size() == 0)
         return;
 
     auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
@@ -62,11 +61,7 @@ void DebugRenderer::Render()
     // Set pipeline state and root signature
     commandList->SetPipelineState(s_Instance->m_RenderPass->GetPipelineState());
 
-    s_Instance->m_SceneData.Ambient = glm::vec3(0.1f);
-    s_Instance->m_SceneData.NumPointlights = 0;
-    
-    s_Instance->m_SceneDataConstantBuffer->SetBufferData(&s_Instance->m_SceneData);
-    commandList->SetRootConstantBufferView(0, *s_Instance->m_SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
+    commandList->SetRootConstants(0, 16, &s_Instance->m_CameraViewProjection, 0);
 
     s_Instance->m_LineBuffer->SetBufferData(&s_Instance->m_LineVertexData[0], sizeof(LineVertex) * s_Instance->m_LineVertexData.size());
     commandList->SetVertexBuffers(0, 1, *s_Instance->m_LineBuffer);
@@ -84,7 +79,7 @@ void DebugRenderer::OnImGuiRender()
     ImGui::Text("Debug renderer");
     ImGui::Text("Draw calls: %u", s_Instance->m_DebugRenderStatistics.DrawCallCount);
     ImGui::Text("Line count: %u", s_Instance->m_DebugRenderStatistics.LineCount);
-    ImGui::Checkbox("Draw lines", &s_Instance->m_DebugRenderSettings.Enable);
+    ImGui::Checkbox("Draw lines", &s_Instance->m_DebugRenderSettings.DrawLines);
 }
 
 void DebugRenderer::EndScene()
@@ -131,7 +126,7 @@ void DebugRenderer::MakeRenderPasses()
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 
         desc.RootParameters.resize(1);
-        desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_VERTEX);
+        desc.RootParameters[0].InitAsConstants(16, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
         desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
@@ -143,5 +138,4 @@ void DebugRenderer::MakeRenderPasses()
 void DebugRenderer::MakeBuffers()
 {
     s_Instance->m_LineBuffer = std::make_unique<Buffer>("Line vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 10000, sizeof(LineVertex)));
-    s_Instance->m_SceneDataConstantBuffer = std::make_unique<Buffer>("Scene data constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(Renderer::SceneData)));
 }

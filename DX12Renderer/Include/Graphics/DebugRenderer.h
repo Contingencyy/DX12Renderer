@@ -8,7 +8,7 @@ public:
 	static void Initialize(uint32_t width, uint32_t height);
 	static void Finalize();
 
-	static void BeginScene(const Camera& sceneCamera, const glm::vec3& ambient);
+	static void BeginScene(const Camera& sceneCamera);
 	static void Render();
 	static void OnImGuiRender();
 	static void EndScene();
@@ -24,7 +24,7 @@ private:
 private:
 	struct DebugRendererSettings
 	{
-		bool Enable = true;
+		bool DrawLines = false;
 	};
 
 	struct DebugRendererStatistics
@@ -60,7 +60,6 @@ private:
 	std::vector<LineVertex> m_LineVertexData;
 	std::unique_ptr<Buffer> m_LineBuffer;
 
-	Renderer::SceneData m_SceneData;
-	std::unique_ptr<Buffer> m_SceneDataConstantBuffer;
+	glm::mat4 m_CameraViewProjection;
 
 };

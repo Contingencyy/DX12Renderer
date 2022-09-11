@@ -137,7 +137,7 @@ void Application::Render()
 
 	const Camera& sceneCamera = m_Scene->GetActiveCamera();
 	Renderer::BeginScene(sceneCamera, m_Scene->GetAmbientLight());
-	DebugRenderer::BeginScene(sceneCamera, m_Scene->GetAmbientLight());
+	DebugRenderer::BeginScene(sceneCamera);
 	m_GUI->BeginFrame();
 
 	m_Scene->Render();

@@ -17,34 +17,43 @@ Scene::Scene()
 {
 	Renderer::RenderSettings renderSettings = Renderer::GetSettings();
 	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f), 60.0f, static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
-	m_AmbientLight = glm::vec3(0.1f);
+	m_AmbientLight = glm::vec3(0.0f);
 	
 	/*glm::vec3 position = glm::vec3(0.0f);
-	glm::vec3 rotation = glm::vec3(90.0f, 0.0f, 180.0f);
-
 	for (float y = -9.5f; y <= 9.5f; y += 1.0f)
 	{
 		for (float x = -9.5f; x <= 9.5f; x += 1.0f)
 		{
-			position.x = x * 2.0f;
-			position.y = y * 2.0f;
+			position.x = x * 20.0f;
+			position.y = y * 20.0f;
 
 			m_SceneObjects.push_back(std::make_unique<MeshObject>(Application::Get().GetResourceManager()->GetModel("DamagedHelmet")->GetMeshes(),
-				"DamagedHelmet", position, rotation));
+				"DamagedHelmet", position, glm::vec3(glm::radians(-90.0f), 0.0f, glm::radians(180.0f)), glm::vec3(10.0f)));
 		}
 	}*/
 
+	// Directional light
+	DirectionalLightData dirLightData(glm::normalize(glm::vec3(5.0f, -50.0f, 0.0f)), glm::vec3(0.0025f), glm::vec3(0.25f));
+	m_SceneObjects.push_back(std::make_unique<DirectionalLightObject>(dirLightData, "DirectionalLight"));
+
 	// Pointlights
-	PointlightData pointlightData(500.0f, glm::vec3(0.0f, 0.001f, 0.0005f), glm::vec3(20.0f, 0.0f, 0.0f), glm::vec3(0.1f, 0.05f, 0.05f));
-	m_SceneObjects.push_back(std::make_unique<PointlightObject>(pointlightData, "Pointlight", glm::vec3(-100.0f, 25.0f, 0.0f)));
+	PointLightData pointlightData(glm::vec3(1.0f, 0.007f, 0.0002f), glm::vec3(0.0001f, 0.00005f, 0.00005f), glm::vec3(10.0f, 0.0f, 0.0f));
+	m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(-150.0f, 25.0f, 0.0f)));
 
-	pointlightData.Diffuse = glm::vec3(0.0f, 20.0f, 0.0f);
-	pointlightData.Ambient = glm::vec3(0.05f, 0.1f, 0.05f);
-	m_SceneObjects.push_back(std::make_unique<PointlightObject>(pointlightData, "Pointlight", glm::vec3(0.0f, 25.0f, 0.0f)));
+	pointlightData.Ambient = glm::vec3(0.00005f, 0.0001f, 0.00005f);
+	pointlightData.Diffuse = glm::vec3(0.0f, 10.0f, 0.0f);
+	m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(0.0f, 25.0f, 0.0f)));
 
-	pointlightData.Diffuse = glm::vec3(0.0f, 0.0f, 20.0f);
-	pointlightData.Ambient = glm::vec3(0.05f, 0.05f, 0.1f);
-	m_SceneObjects.push_back(std::make_unique<PointlightObject>(pointlightData, "Pointlight", glm::vec3(100.0f, 25.0f, 0.0f)));
+	pointlightData.Ambient = glm::vec3(0.00005f, 0.00005f, 0.0001f);
+	pointlightData.Diffuse = glm::vec3(0.0f, 0.0f, 10.0f);
+	m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(150.0f, 25.0f, 0.0f)));
+
+	// Spotlights
+	SpotLightData spotLightData(glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f)), glm::vec3(1.0f, 0.007f, 0.0002f), 12.5f, 27.5f, glm::vec3(0.0001f, 0.0f, 0.0001f), glm::vec3(10.0f));
+	m_SceneObjects.push_back(std::make_unique<SpotLightObject>(spotLightData, "SpotLight", glm::vec3(-500.0f, 250.0f, 0.0f)));
+	m_SceneObjects.push_back(std::make_unique<SpotLightObject>(spotLightData, "SpotLight", glm::vec3(-1000.0f, 250.0f, -50.0f)));
+	m_SceneObjects.push_back(std::make_unique<SpotLightObject>(spotLightData, "SpotLight", glm::vec3(500.0f, 250.0f, 0.0f)));
+	m_SceneObjects.push_back(std::make_unique<SpotLightObject>(spotLightData, "SpotLight", glm::vec3(1000.0f, 250.0f, -50.0f)));
 
 	m_SceneObjects.push_back(std::make_unique<MeshObject>(Application::Get().GetResourceManager()->GetModel("SponzaOld")->GetMeshes(),
 		"SponzaOld", glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f)));

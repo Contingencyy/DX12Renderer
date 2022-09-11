@@ -11,7 +11,9 @@ struct SceneData
 {
 	matrix ViewProjection;
 	float3 Ambient;
-	uint NumPointlights;
+	uint NumDirectionalLights;
+	uint NumPointLights;
+	uint NumSpotLights;
 };
 
 ConstantBuffer<SceneData> SceneDataCB : register(b0);

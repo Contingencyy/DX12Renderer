@@ -4,14 +4,12 @@ struct VertexShaderInput
 	float4 Color : COLOR;
 };
 
-struct SceneData
+struct ViewProjection
 {
-	matrix ViewProjection;
-	float3 Ambient;
-	uint NumPointlights;
+	matrix VP;
 };
 
-ConstantBuffer<SceneData> SceneDataCB : register(b0);
+ConstantBuffer<ViewProjection> ViewProjectionCB : register(b0);
 
 struct VertexShaderOutput
 {
@@ -23,7 +21,7 @@ VertexShaderOutput main(VertexShaderInput IN)
 {
 	VertexShaderOutput OUT;
 
-	OUT.Position = mul(SceneDataCB.ViewProjection, float4(IN.Position, 1.0f));
+	OUT.Position = mul(ViewProjectionCB.VP, float4(IN.Position, 1.0f));
 	OUT.Color = IN.Color;
 
 	return OUT;

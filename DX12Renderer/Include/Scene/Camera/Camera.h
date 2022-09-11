@@ -18,6 +18,7 @@ public:
 	float GetGamma() const { return m_Gamma; }
 	glm::mat4 GetViewProjection() const { return m_ViewProjectionMatrix; };
 	bool IsFrustumCullingEnabled() const { return m_EnableFrustumCulling; }
+	const Transform& GetTransform() const { return m_Transform; }
 
 private:
 	bool UpdateMovement(float deltaTime);
