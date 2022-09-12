@@ -38,18 +38,18 @@ Scene::Scene()
 
 	// Pointlights
 	PointLightData pointlightData(glm::vec3(1.0f, 0.007f, 0.0002f), glm::vec3(0.0001f, 0.00005f, 0.00005f), glm::vec3(10.0f, 0.0f, 0.0f));
-	m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(-150.0f, 25.0f, 0.0f)));
+	m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(-150.0f, 5.0f, 0.0f)));
 
 	pointlightData.Ambient = glm::vec3(0.00005f, 0.0001f, 0.00005f);
 	pointlightData.Diffuse = glm::vec3(0.0f, 10.0f, 0.0f);
-	m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(0.0f, 25.0f, 0.0f)));
+	m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(0.0f, 5.0f, 0.0f)));
 
 	pointlightData.Ambient = glm::vec3(0.00005f, 0.00005f, 0.0001f);
 	pointlightData.Diffuse = glm::vec3(0.0f, 0.0f, 10.0f);
-	m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(150.0f, 25.0f, 0.0f)));
+	m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(150.0f, 5.0f, 0.0f)));
 
 	// Spotlights
-	SpotLightData spotLightData(glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f)), glm::vec3(1.0f, 0.007f, 0.0002f), 12.5f, 27.5f, glm::vec3(0.0001f, 0.0f, 0.0001f), glm::vec3(10.0f));
+	SpotLightData spotLightData(glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f)), glm::vec3(1.0f, 0.007f, 0.0002f), 12.5f, 25.0f, glm::vec3(0.0001f, 0.0001f, 0.0001f), glm::vec3(10.0f));
 	m_SceneObjects.push_back(std::make_unique<SpotLightObject>(spotLightData, "SpotLight", glm::vec3(-500.0f, 250.0f, 0.0f)));
 	m_SceneObjects.push_back(std::make_unique<SpotLightObject>(spotLightData, "SpotLight", glm::vec3(-1000.0f, 250.0f, -50.0f)));
 	m_SceneObjects.push_back(std::make_unique<SpotLightObject>(spotLightData, "SpotLight", glm::vec3(500.0f, 250.0f, 0.0f)));

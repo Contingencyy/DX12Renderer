@@ -39,6 +39,7 @@ ConstantBuffer<DirectionalLightBuffer> DirLightCB : register(b1);
 struct PointLight
 {
 	float3 Position;
+	float Range;
 	float3 Attenuation;
 	float3 Ambient;
 	float3 Diffuse;
@@ -55,6 +56,7 @@ struct SpotLight
 {
 	float3 Position;
 	float3 Direction;
+	float Range;
 	float3 Attenuation;
 	float InnerConeAngle;
 	float OuterConeAngle;
@@ -121,22 +123,36 @@ float3 CalculatePointLight(float3 fragPos, float3 fragNormal, float3 diffuseColo
 {
 	float3 ldirection = pointLight.Position - fragPos;
 	float distance = length(ldirection);
-	ldirection /= distance;
 
-	float diff = max(dot(fragNormal, ldirection), 0.0f);
+	float3 ambient = float3(0.0f, 0.0f, 0.0f);
+	float3 diffuse = float3(0.0f, 0.0f, 0.0f);
+	//float3 specular = float3(0.0f, 0.0f, 0.0f);
 
-	//float3 reflectDirection = reflect(-ldirection, fragNormal);
-	//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0f), material.shininess);
+	if (distance <= pointLight.Range)
+	{
+		ldirection /= distance;
 
-	float attenuation = 1.0f / (pointLight.Attenuation.x + (pointLight.Attenuation.y * distance) + (pointLight.Attenuation.z * (distance * distance)));
-	
-	float3 ambient = pointLight.Ambient * diffuseColor;
-	float3 diffuse = pointLight.Diffuse * diff * diffuseColor;
-	//float3 specular = pointlight.Specular.xyz * spec * specularColor;
+		// After calculating the distance attenuation, we need to rescale the value to account for the LIGHT_RANGE_EPSILON at which the light is cutoff/ignored
+		float attenuation = clamp(1.0f / (pointLight.Attenuation.x + (pointLight.Attenuation.y * distance) + (pointLight.Attenuation.z * (distance * distance))), 0.0f, 1.0f);
+		attenuation = (attenuation - 0.01f) / (1.0f - 0.01f);
+		attenuation = max(attenuation, 0.0f);
 
-	ambient *= attenuation;
-	diffuse *= attenuation;
-	//specular *= attenuation;
+		ambient = pointLight.Ambient * diffuseColor;
+		ambient *= attenuation;
+
+		//float3 reflectDirection = reflect(-ldirection, fragNormal);
+		//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0f), material.shininess);
+
+		float diff = max(dot(fragNormal, ldirection), 0.0f);
+		diffuse = pointLight.Diffuse * diff * diffuseColor;
+		//float3 specular = pointlight.Specular.xyz * spec * specularColor;
+
+		diffuse *= attenuation;
+		//specular *= attenuation;
+	}
+
+	/*if (distance > pointLight.Range)
+		return float3(1.0f, 0.0f, 1.0f);*/
 
 	return (ambient + diffuse /*+ specular*/);
 }
@@ -145,28 +161,40 @@ float3 CalculateSpotLight(float3 fragPos, float3 fragNormal, float3 diffuseColor
 {
 	float3 ldirection = spotLight.Position - fragPos;
 	float distance = length(ldirection);
-	ldirection /= distance;
 
-	float3 ambient = spotLight.Ambient * diffuseColor;
-	float theta = dot(ldirection, -spotLight.Direction);
+	float3 ambient = float3(0.0f, 0.0f, 0.0f);
 	float3 diffuse = float3(0.0f, 0.0f, 0.0f);
+	//float3 specular = float3(0.0f, 0.0f, 0.0f);
 
-	if (theta > spotLight.OuterConeAngle)
+	if (distance <= spotLight.Range)
 	{
-		//float3 reflectDirection = reflect(-ldirection, fragNormal);
-		//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0f), material.shininess);
+		ldirection /= distance;
 
-		float diff = max(dot(fragNormal, ldirection), 0.0f);
-		diffuse = spotLight.Diffuse * diff * diffuseColor;
-		//float3 specular = pointlight.Specular.xyz * spec * specularColor;
+		// After calculating the distance attenuation, we need to rescale the value to account for the LIGHT_RANGE_EPSILON at which the light is cutoff/ignored
+		float attenuation = clamp(1.0f / (spotLight.Attenuation.x + (spotLight.Attenuation.y * distance) + (spotLight.Attenuation.z * (distance * distance))), 0.0f, 1.0f);
+		attenuation = (attenuation - 0.01f) / (1.0f - 0.01f);
+		attenuation = max(attenuation, 0.0f);
 
-		float epsilon = abs(spotLight.InnerConeAngle - spotLight.OuterConeAngle);
-		float coneAttenuation = clamp((theta - spotLight.OuterConeAngle) / epsilon, 0.0f, 1.0f);
+		ambient = spotLight.Ambient * diffuseColor;
+		ambient *= attenuation;
 
-		float attenuation = 1.0f / (spotLight.Attenuation.x + (spotLight.Attenuation.y * distance) + (spotLight.Attenuation.z * (distance * distance)));
+		float angleToLight = dot(ldirection, -spotLight.Direction);
 
-		diffuse *= coneAttenuation * attenuation;
-		//specular *= coneAttenuation;
+		if (angleToLight > spotLight.OuterConeAngle)
+		{
+			//float3 reflectDirection = reflect(-ldirection, fragNormal);
+			//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0f), material.shininess);
+
+			float diff = max(dot(fragNormal, ldirection), 0.0f);
+			diffuse = spotLight.Diffuse * diff * diffuseColor;
+			//float3 specular = pointlight.Specular.xyz * spec * specularColor;
+
+			float epsilon = abs(spotLight.InnerConeAngle - spotLight.OuterConeAngle);
+			float coneAttenuation = clamp((angleToLight - spotLight.OuterConeAngle) / epsilon, 0.0f, 1.0f);
+
+			diffuse *= coneAttenuation * attenuation;
+			//specular *= coneAttenuation * attenuation;
+		}
 	}
 
 	return (ambient + diffuse /*+ specular*/);

@@ -37,7 +37,7 @@ struct PointLightData
 		: Attenuation(attenuation), Ambient(ambient), Diffuse(diffuse) {}
 
 	glm::vec3 Position = glm::vec3(0.0f);
-	BYTE_PADDING(1);
+	float Range = 0.0f;
 	glm::vec3 Attenuation = glm::vec3(0.0f);
 	BYTE_PADDING(1);
 	glm::vec3 Ambient = glm::vec3(0.0f);
@@ -70,7 +70,7 @@ struct SpotLightData
 	glm::vec3 Position = glm::vec3(0.0f);
 	BYTE_PADDING(1);
 	glm::vec3 Direction = glm::vec3(0.0f);
-	BYTE_PADDING(1);
+	float Range = 0.0f;
 	glm::vec3 Attenuation = glm::vec3(0.0f);
 	float InnerConeAngle = 0.0f;
 	float OuterConeAngle = 0.0f;

@@ -32,4 +32,11 @@ public:
     {
         return 0 == ((size_t)value & (alignment - 1));
     }
+
+    template <typename T>
+    static inline float SolveQuadraticFunc(T a, T b, T c)
+    {
+        return (-b + std::sqrt((b * b) - 4 * a * c)) / (2 * a);
+    }
+
 };
