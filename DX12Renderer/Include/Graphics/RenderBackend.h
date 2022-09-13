@@ -27,7 +27,9 @@ public:
 
 	void ResolveToBackBuffer(const Texture& texture);
 	void SwapBuffers(bool vSync);
+
 	DescriptorAllocation AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors = 1);
+	std::shared_ptr<DescriptorHeap> GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
 
 	std::shared_ptr<CommandList> GetCommandList(D3D12_COMMAND_LIST_TYPE type);
 	void ExecuteCommandList(std::shared_ptr<CommandList> commandList);
@@ -40,7 +42,7 @@ private:
 private:
 	std::shared_ptr<Device> m_Device;
 	std::unique_ptr<SwapChain> m_SwapChain;
-	std::unique_ptr<DescriptorHeap> m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+	std::shared_ptr<DescriptorHeap> m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 
 	std::shared_ptr<CommandQueue> m_CommandQueueDirect;
 	std::unique_ptr<CommandQueue> m_CommandQueueCompute;

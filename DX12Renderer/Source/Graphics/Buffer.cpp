@@ -48,10 +48,10 @@ D3D12_CPU_DESCRIPTOR_HANDLE Buffer::GetDescriptorHandle()
 		cbvDesc.BufferLocation = m_d3d12Resource->GetGPUVirtualAddress();
 		cbvDesc.SizeInBytes = m_ByteSize;
 
-		RenderBackend::Get().GetDevice()->CreateConstantBufferView(*this, cbvDesc, m_DescriptorAllocation.GetDescriptorHandle());
+		RenderBackend::Get().GetDevice()->CreateConstantBufferView(*this, cbvDesc, m_DescriptorAllocation.GetCPUDescriptorHandle());
 	}
 
-	return m_DescriptorAllocation.GetDescriptorHandle();
+	return m_DescriptorAllocation.GetCPUDescriptorHandle();
 }
 
 void Buffer::SetName(const std::string& name)

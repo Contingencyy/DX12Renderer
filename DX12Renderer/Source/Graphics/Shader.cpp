@@ -13,9 +13,9 @@ Shader::~Shader()
 
 void Shader::Compile(const std::wstring& filepath, const std::string& entryPoint, const std::string& target)
 {
-    UINT compileFlags = 0;
+    UINT compileFlags = D3DCOMPILE_ENABLE_UNBOUNDED_DESCRIPTOR_TABLES;
 #ifdef _DEBUG
-    compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+    compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
     ComPtr<ID3DBlob> errorBlob;

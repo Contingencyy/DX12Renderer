@@ -99,9 +99,6 @@
     <ClCompile Include="Source\Graphics\DescriptorAllocation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\DynamicDescriptorHeap.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Graphics\PipelineState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -243,9 +240,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DescriptorAllocation.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Graphics\DynamicDescriptorHeap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\PipelineState.h">

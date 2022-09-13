@@ -17,7 +17,7 @@ Scene::Scene()
 {
 	Renderer::RenderSettings renderSettings = Renderer::GetSettings();
 	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f), 60.0f, static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
-	m_AmbientLight = glm::vec3(0.0f);
+	m_AmbientLight = glm::vec3(0.01f);
 	
 	/*glm::vec3 position = glm::vec3(0.0f);
 	for (float y = -9.5f; y <= 9.5f; y += 1.0f)

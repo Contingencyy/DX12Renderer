@@ -5,6 +5,7 @@ struct VertexShaderInput
 	float3 Normal : NORMAL;
 	matrix Model : MODEL;
 	float4 Color : COLOR;
+	uint2 TexIndices : TEX_INDICES;
 };
 
 struct SceneData
@@ -25,6 +26,7 @@ struct VertexShaderOutput
 	float3 Normal : NORMAL;
 	float4 Color : COLOR;
 	float4 WorldPosition : WORLD_POSITION;
+	uint2 TexIndices : TEX_INDICES;
 };
 
 VertexShaderOutput main(VertexShaderInput IN)
@@ -38,6 +40,7 @@ VertexShaderOutput main(VertexShaderInput IN)
 	OUT.TexCoord = IN.TexCoord;
 	OUT.Normal = IN.Normal;
 	OUT.Color = IN.Color;
+	OUT.TexIndices = IN.TexIndices;
 
 	return OUT;
 }

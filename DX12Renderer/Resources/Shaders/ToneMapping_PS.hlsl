@@ -1,4 +1,4 @@
-Texture2D tex2D : register(t0);
+Texture2D Tex2DHeap[] : register(t0, space0);
 SamplerState samp2D : register(s0);
 
 struct PixelShaderInput
@@ -9,6 +9,7 @@ struct PixelShaderInput
 
 struct TonemapSettings
 {
+	uint HDRTargetIndex;
 	float Exposure;
 	float Gamma;
 	uint Type;
@@ -24,7 +25,7 @@ float3 ACESFilmicToneMapping(float3 color);
 
 float4 main(PixelShaderInput IN) : SV_TARGET
 {
-	float4 sampled = tex2D.Sample(samp2D, IN.TexCoord);
+	float4 sampled = Tex2DHeap[TonemapCB.HDRTargetIndex].Sample(samp2D, IN.TexCoord);
 
 	switch (TonemapCB.Type)
 	{

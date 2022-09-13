@@ -25,14 +25,11 @@ public:
 	void SetRootConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset);
 	void SetVertexBuffers(uint32_t slot, uint32_t numViews, const Buffer& vertexBuffer);
 	void SetIndexBuffer(const Buffer& indexBuffer);
-	void SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ID3D12DescriptorHeap* heap);
+	void SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHeap& descriptorHeap);
+	void SetRootDescriptorTable(uint32_t rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor);
 
 	void SetRootConstantBufferView(uint32_t rootParameterIndex, Buffer& buffer, D3D12_RESOURCE_STATES stateAfter);
-	void SetConstantBufferView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Buffer& buffer,
-		D3D12_RESOURCE_STATES stateAfter);
 	void SetRootShaderResourceView(uint32_t rootParameterIndex, Texture& texture, D3D12_RESOURCE_STATES stateAfter);
-	void SetShaderResourceView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Texture& texture,
-		D3D12_RESOURCE_STATES stateAfter);
 	
 	void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex = 0, uint32_t startInstance = 0);
 	void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0);
@@ -65,7 +62,5 @@ private:
 
 	ID3D12RootSignature* m_RootSignature;
 	ID3D12DescriptorHeap* m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
-
-	std::unique_ptr<DynamicDescriptorHeap> m_DynamicDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 
 };

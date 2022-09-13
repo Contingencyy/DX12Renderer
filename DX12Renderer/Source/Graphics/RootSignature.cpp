@@ -3,16 +3,16 @@
 #include "Graphics/Device.h"
 #include "Graphics/RenderBackend.h"
 
-RootSignature::RootSignature(const std::string& name, const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
+RootSignature::RootSignature(const std::string& name, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
 {
-	Create(name, descriptorRanges, rootParameters);
+	Create(name, rootParameters);
 }
 
 RootSignature::~RootSignature()
 {
 }
 
-void RootSignature::Create(const std::string& name, const std::vector<CD3DX12_DESCRIPTOR_RANGE1>& descriptorRanges, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
+void RootSignature::Create(const std::string& name, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
 {
 	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -40,53 +40,4 @@ void RootSignature::Create(const std::string& name, const std::vector<CD3DX12_DE
 
 	RenderBackend::Get().GetDevice()->CreateRootSignature(versionedRootSignatureDesc, m_d3d12RootSignature);
 	m_d3d12RootSignature->SetName(StringHelper::StringToWString(name + " root signature").c_str());
-	
-	ParseDescriptorTableRanges(versionedRootSignatureDesc.Desc_1_1);
-}
-
-void RootSignature::ParseDescriptorTableRanges(const D3D12_ROOT_SIGNATURE_DESC1& rootSignatureDesc)
-{
-	uint32_t numRootParameters = rootSignatureDesc.NumParameters;
-
-	if (numRootParameters > 0)
-	{
-		D3D12_ROOT_PARAMETER1* rootParameterPtr = new D3D12_ROOT_PARAMETER1[numRootParameters];
-
-		for (uint32_t i = 0; i < numRootParameters; ++i)
-		{
-			const D3D12_ROOT_PARAMETER1& rootParameter = rootSignatureDesc.pParameters[i];
-			rootParameterPtr[i] = rootParameter;
-
-			if (rootParameter.ParameterType == D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)
-			{
-				uint32_t numDescriptorRanges = rootParameter.DescriptorTable.NumDescriptorRanges;
-
-				if (numDescriptorRanges > 0)
-				{
-					D3D12_DESCRIPTOR_RANGE1* descriptorRangesPtr = new D3D12_DESCRIPTOR_RANGE1[numDescriptorRanges];
-					memcpy(descriptorRangesPtr, rootParameter.DescriptorTable.pDescriptorRanges, sizeof(D3D12_DESCRIPTOR_RANGE1) * numDescriptorRanges);
-
-					rootParameterPtr[i].DescriptorTable.NumDescriptorRanges = numDescriptorRanges;
-					rootParameterPtr[i].DescriptorTable.pDescriptorRanges = descriptorRangesPtr;
-
-					for (uint32_t j = 0; j < numDescriptorRanges; ++j)
-					{
-						switch (descriptorRangesPtr[0].RangeType)
-						{
-						case D3D12_DESCRIPTOR_RANGE_TYPE_CBV:
-						case D3D12_DESCRIPTOR_RANGE_TYPE_SRV:
-						case D3D12_DESCRIPTOR_RANGE_TYPE_UAV:
-							m_DescriptorTableRanges.emplace_back(i, descriptorRangesPtr[j].OffsetInDescriptorsFromTableStart,
-								descriptorRangesPtr[j].NumDescriptors);
-							break;
-						case D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER:
-							m_SamplerTableRanges.emplace_back(i, descriptorRangesPtr[j].OffsetInDescriptorsFromTableStart,
-								descriptorRangesPtr[j].NumDescriptors);
-							break;
-						}
-					}
-				}
-			}
-		}
-	}
 }

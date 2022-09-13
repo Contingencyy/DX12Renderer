@@ -1,5 +1,4 @@
-Texture2D tex2D : register(t0);
-Texture2D norm2D : register(t1);
+Texture2D Tex2DHeap[] : register(t0, space0);
 SamplerState samp2D : register(s0);
 
 struct PixelShaderInput
@@ -9,6 +8,7 @@ struct PixelShaderInput
 	float3 Normal : NORMAL;
 	float4 Color : COLOR;
 	float4 WorldPosition : WORLD_POSITION;
+	uint2 TexIndices : TEX_INDICES;
 };
 
 struct SceneData
@@ -77,8 +77,8 @@ float3 CalculateSpotLight(float3 fragPos, float3 fragNormal, float3 diffuseColor
 
 float4 main(PixelShaderInput IN) : SV_TARGET
 {
-	float4 diffuseColor = IN.Color * tex2D.Sample(samp2D, IN.TexCoord);
-	float4 textureNormal = norm2D.Sample(samp2D, IN.TexCoord);
+	float4 diffuseColor = IN.Color * Tex2DHeap[IN.TexIndices.x].Sample(samp2D, IN.TexCoord);
+	float4 textureNormal = Tex2DHeap[IN.TexIndices.y].Sample(samp2D, IN.TexCoord);
 	float3 finalColor = float3(0.0f, 0.0f, 0.0f);
 
 	finalColor += diffuseColor.xyz * SceneDataCB.Ambient;

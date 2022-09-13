@@ -27,7 +27,7 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 	m_Device = std::make_shared<Device>();
 	
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-		m_DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(m_Device, static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+		m_DescriptorHeaps[i] = std::make_shared<DescriptorHeap>(m_Device, static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
 
 	m_CommandQueueDirect = std::make_shared<CommandQueue>(m_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
 	m_CommandQueueCompute = std::make_unique<CommandQueue>(m_Device, D3D12_COMMAND_LIST_TYPE_COMPUTE);
@@ -105,6 +105,11 @@ void RenderBackend::SwapBuffers(bool vSync)
 DescriptorAllocation RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
 {
 	return m_DescriptorHeaps[type]->Allocate(numDescriptors);
+}
+
+std::shared_ptr<DescriptorHeap> RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const
+{
+	return m_DescriptorHeaps[type];
 }
 
 std::shared_ptr<CommandList> RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE type)

@@ -7,7 +7,7 @@
 
 PipelineState::PipelineState(const std::string& name, const RenderPassDesc& renderPassDesc)
 {
-	m_RootSignature = std::make_unique<RootSignature>(name, renderPassDesc.DescriptorRanges, renderPassDesc.RootParameters);
+	m_RootSignature = std::make_unique<RootSignature>(name, renderPassDesc.RootParameters);
 	Create(name, renderPassDesc, renderPassDesc.ShaderInputLayout);
 }
 

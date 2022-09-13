@@ -106,11 +106,13 @@ private:
 
 	struct MeshInstanceData
 	{
-		MeshInstanceData(const glm::mat4& transform, const glm::vec4& color)
-			: Transform(transform), Color(color) {}
+		MeshInstanceData(const glm::mat4& transform, const glm::vec4& color, uint32_t baseColorTexIndex, uint32_t normalTexIndex)
+			: Transform(transform), Color(color), BaseColorTexIndex(baseColorTexIndex), NormalTexIndex(normalTexIndex) {}
 
 		glm::mat4 Transform = glm::identity<glm::mat4>();
 		glm::vec4 Color = glm::vec4(1.0f);
+		uint32_t BaseColorTexIndex = 0;
+		uint32_t NormalTexIndex = 0;
 	};
 
 	struct MeshDrawData
@@ -123,7 +125,7 @@ private:
 	};
 
 	std::unordered_map<std::size_t, MeshDrawData> m_MeshDrawData = std::unordered_map<std::size_t, MeshDrawData>();
-	std::unique_ptr<Buffer> m_MeshInstanceBuffer;
+	std::unordered_map<std::size_t, std::unique_ptr<Buffer>> m_MeshInstanceBuffers;
 
 	std::vector<DirectionalLightData> m_DirectionalLightDrawData;
 	std::unique_ptr<Buffer> m_DirectionalLightBuffer;
@@ -142,6 +144,7 @@ private:
 
 	struct TonemapSettings
 	{
+		uint32_t HDRTargetIndex = 0;
 		float Exposure = 1.5f;
 		float Gamma = 2.2f;
 		TonemapType Type = TonemapType::REINHARD;

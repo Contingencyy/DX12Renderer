@@ -19,7 +19,6 @@ struct RenderPassDesc
 	D3D12_PRIMITIVE_TOPOLOGY Topology;
 	D3D12_PRIMITIVE_TOPOLOGY_TYPE TopologyType;
 
-	std::vector<CD3DX12_DESCRIPTOR_RANGE1> DescriptorRanges;
 	std::vector<CD3DX12_ROOT_PARAMETER1> RootParameters;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> ShaderInputLayout;
 };

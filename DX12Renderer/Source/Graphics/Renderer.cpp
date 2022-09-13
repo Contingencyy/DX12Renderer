@@ -62,6 +62,8 @@ void Renderer::Render()
 {
     SCOPED_TIMER("Renderer::Render");
 
+    auto& descriptorHeap = *RenderBackend::Get().GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).get();
+
     {
         /* Default render pass (lighting) */
         auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
@@ -77,6 +79,8 @@ void Renderer::Render()
         commandList->SetScissorRects(1, &s_Instance->m_ScissorRect);
         commandList->SetRenderTargets(1, &rtv, &dsv);
 
+        commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
+
         // Set pipeline state, root signature, and scene data constant buffer
         commandList->SetPipelineState(s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetPipelineState());
 
@@ -91,20 +95,23 @@ void Renderer::Render()
         if (s_Instance->m_SceneData.NumDirLights > 0)
             s_Instance->m_DirectionalLightBuffer->SetBufferData(&s_Instance->m_DirectionalLightDrawData[0], s_Instance->m_DirectionalLightDrawData.size() * sizeof(DirectionalLightData));
 
-        commandList->SetConstantBufferView(1, 0, *s_Instance->m_DirectionalLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+        commandList->SetRootConstantBufferView(1, *s_Instance->m_DirectionalLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
         s_Instance->m_RenderStatistics.DirectionalLightCount += s_Instance->m_DirectionalLightDrawData.size();
 
         if (s_Instance->m_SceneData.NumPointLights > 0)
             s_Instance->m_PointLightBuffer->SetBufferData(&s_Instance->m_PointLightDrawData[0], s_Instance->m_PointLightDrawData.size() * sizeof(PointLightData));
 
-        commandList->SetConstantBufferView(1, 1, *s_Instance->m_PointLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+        commandList->SetRootConstantBufferView(2, *s_Instance->m_PointLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
         s_Instance->m_RenderStatistics.PointLightCount += s_Instance->m_PointLightDrawData.size();
 
         if (s_Instance->m_SceneData.NumSpotLights > 0)
             s_Instance->m_SpotLightBuffer->SetBufferData(&s_Instance->m_SpotLightDrawData[0], s_Instance->m_SpotLightDrawData.size() * sizeof(SpotLightData));
 
-        commandList->SetConstantBufferView(1, 2, *s_Instance->m_SpotLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+        commandList->SetRootConstantBufferView(3,*s_Instance->m_SpotLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
         s_Instance->m_RenderStatistics.SpotLightCount += s_Instance->m_SpotLightDrawData.size();
+
+        // Set root descriptor table for bindless CBV_SRV_UAV descriptor array
+        commandList->SetRootDescriptorTable(4, descriptorHeap.GetGPUBaseDescriptor());
 
         for (auto& [meshHash, meshDrawData] : s_Instance->m_MeshDrawData)
         {
@@ -116,29 +123,16 @@ void Renderer::Render()
             auto vertexNormalBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_NORMAL);
             auto indexBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_INDEX);
 
+            auto& instanceBuffer = s_Instance->m_MeshInstanceBuffers.at(meshHash);
+            instanceBuffer->SetBufferData(&meshInstanceData[0], meshInstanceData.size() * sizeof(MeshInstanceData));
+
             commandList->SetVertexBuffers(0, 1, *vertexPositionsBuffer);
             commandList->SetVertexBuffers(1, 1, *vertexTexCoordBuffer);
             commandList->SetVertexBuffers(2, 1, *vertexNormalBuffer);
+            commandList->SetVertexBuffers(3, 1, *instanceBuffer);
             commandList->SetIndexBuffer(*indexBuffer);
 
-            s_Instance->m_MeshInstanceBuffer->SetBufferData(&meshInstanceData[0], meshInstanceData.size() * sizeof(MeshInstanceData));
-            commandList->SetVertexBuffers(3, 1, *s_Instance->m_MeshInstanceBuffer);
-
-            auto baseColorTexture = mesh->GetTexture(MeshTextureType::TEX_BASE_COLOR);
-            auto normalTexture = mesh->GetTexture(MeshTextureType::TEX_NORMAL);
-
-            commandList->SetShaderResourceView(1, 3, *baseColorTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            commandList->SetShaderResourceView(1, 4, *normalTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
             commandList->DrawIndexed(indexBuffer->GetBufferDesc().NumElements, meshInstanceData.size());
-
-            CD3DX12_RESOURCE_BARRIER shaderResourceBarrier[2] = {
-                CD3DX12_RESOURCE_BARRIER::Transition(baseColorTexture->GetD3D12Resource().Get(),
-                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON),
-                CD3DX12_RESOURCE_BARRIER::Transition(normalTexture->GetD3D12Resource().Get(),
-                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COMMON)
-            };
-            commandList->ResourceBarrier(2, shaderResourceBarrier);
 
             s_Instance->m_RenderStatistics.DrawCallCount++;
             s_Instance->m_RenderStatistics.TriangleCount += (indexBuffer->GetBufferDesc().NumElements / 3) * meshInstanceData.size();
@@ -163,28 +157,24 @@ void Renderer::Render()
         commandList->SetScissorRects(1, &s_Instance->m_ScissorRect);
         commandList->SetRenderTargets(1, &tmRtv, &tmDsv);
 
+        commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
+
         // Set pipeline state and root signature
         commandList->SetPipelineState(s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetPipelineState());
 
+        uint32_t pbrColorTargetIndex = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment().GetSRVIndex();
+        s_Instance->m_TonemapSettings.HDRTargetIndex = pbrColorTargetIndex;
         s_Instance->m_TonemapConstantBuffer->SetBufferData(&s_Instance->m_TonemapSettings);
-        commandList->SetRootConstantBufferView(0, *s_Instance->m_TonemapConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
+        commandList->SetRootConstantBufferView(0, *s_Instance->m_TonemapConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+
+        // Set root descriptor table for bindless CBV_SRV_UAV descriptor array
+        commandList->SetRootDescriptorTable(1, descriptorHeap.GetGPUBaseDescriptor());
 
         // Set tone mapping vertex buffer
         commandList->SetVertexBuffers(0, 1, *s_Instance->m_ToneMapVertexBuffer.get());
         commandList->SetIndexBuffer(*s_Instance->m_ToneMapIndexBuffer.get());
 
-        // Set shader resource view to the previous color target
-        auto& defaultColorTargetTexture = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment();
-        CD3DX12_RESOURCE_BARRIER commonBarrier = CD3DX12_RESOURCE_BARRIER::Transition(defaultColorTargetTexture.GetD3D12Resource().Get(),
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COMMON);
-        commandList->ResourceBarrier(1, &commonBarrier);
-
-        commandList->SetShaderResourceView(1, 0, defaultColorTargetTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         commandList->DrawIndexed(s_Instance->m_ToneMapIndexBuffer->GetBufferDesc().NumElements, 1);
-
-        CD3DX12_RESOURCE_BARRIER rtBarrier = CD3DX12_RESOURCE_BARRIER::Transition(defaultColorTargetTexture.GetD3D12Resource().Get(),
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        commandList->ResourceBarrier(1, &rtBarrier);
 
         RenderBackend::Get().ExecuteCommandList(commandList);
     }
@@ -242,15 +232,29 @@ void Renderer::EndScene()
 
 void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform)
 {
+    uint32_t baseColorTexIndex = mesh->GetTexture(MeshTextureType::TEX_BASE_COLOR)->GetSRVIndex();
+    uint32_t normalTexIndex = mesh->GetTexture(MeshTextureType::TEX_NORMAL)->GetSRVIndex();
+
     auto iter = s_Instance->m_MeshDrawData.find(mesh->GetHash());
+
     if (iter != s_Instance->m_MeshDrawData.end())
     {
-        iter->second.MeshInstanceData.push_back(MeshInstanceData(transform, glm::vec4(1.0f)));
+        iter->second.MeshInstanceData.push_back(MeshInstanceData(transform, glm::vec4(1.0f),
+            baseColorTexIndex, normalTexIndex));
     }
     else
     {
         s_Instance->m_MeshDrawData.emplace(std::pair<std::size_t, MeshDrawData>(mesh->GetHash(), mesh));
-        s_Instance->m_MeshDrawData.at(mesh->GetHash()).MeshInstanceData.push_back(MeshInstanceData(transform, glm::vec4(1.0f)));
+        s_Instance->m_MeshDrawData.at(mesh->GetHash()).MeshInstanceData.push_back(MeshInstanceData(transform, glm::vec4(1.0f),
+            baseColorTexIndex, normalTexIndex));
+    }
+
+    auto instanceBufferIter = s_Instance->m_MeshInstanceBuffers.find(mesh->GetHash());
+
+    if (instanceBufferIter == s_Instance->m_MeshInstanceBuffers.end())
+    {
+        s_Instance->m_MeshInstanceBuffers.emplace(std::pair<std::size_t, std::unique_ptr<Buffer>>(mesh->GetHash(),
+            std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1000, sizeof(MeshInstanceData)))));
     }
 }
 
@@ -332,13 +336,16 @@ void Renderer::MakeRenderPasses()
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
-        desc.DescriptorRanges.resize(2);
-        desc.DescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 3, 1);
-        desc.DescriptorRanges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0);
+        // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
+        CD3DX12_DESCRIPTOR_RANGE1 ranges[1] = {};
+        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 256, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE, 0);
 
-        desc.RootParameters.resize(2);
+        desc.RootParameters.resize(5);
         desc.RootParameters[0].InitAsConstantBufferView(0);
-        desc.RootParameters[1].InitAsDescriptorTable(desc.DescriptorRanges.size(), &desc.DescriptorRanges[0], D3D12_SHADER_VISIBILITY_PIXEL);
+        desc.RootParameters[1].InitAsConstantBufferView(1);
+        desc.RootParameters[2].InitAsConstantBufferView(2);
+        desc.RootParameters[3].InitAsConstantBufferView(3);
+        desc.RootParameters[4].InitAsDescriptorTable(_countof(ranges), &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
 
         desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 1, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
@@ -348,6 +355,7 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "TEX_INDICES", 0, DXGI_FORMAT_R32G32_UINT, 3, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
         s_Instance->m_RenderPasses[RenderPassType::DEFAULT] = std::make_unique<RenderPass>("PBR", desc);
     }
@@ -366,12 +374,13 @@ void Renderer::MakeRenderPasses()
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
-        desc.DescriptorRanges.resize(1);
-        desc.DescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+        // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
+        CD3DX12_DESCRIPTOR_RANGE1 ranges[1] = {};
+        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 256, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE, 0);
 
         desc.RootParameters.resize(2);
         desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE, D3D12_SHADER_VISIBILITY_PIXEL);
-        desc.RootParameters[1].InitAsDescriptorTable(desc.DescriptorRanges.size(), &desc.DescriptorRanges[0], D3D12_SHADER_VISIBILITY_PIXEL);
+        desc.RootParameters[1].InitAsDescriptorTable(_countof(ranges), &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
 
         desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
@@ -382,7 +391,6 @@ void Renderer::MakeRenderPasses()
 
 void Renderer::MakeBuffers()
 {
-    s_Instance->m_MeshInstanceBuffer = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, s_Instance->m_RenderSettings.MaxModelInstances, sizeof(MeshInstanceData)));
     s_Instance->m_DirectionalLightBuffer = std::make_unique<Buffer>("Directional light constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxDirectionalLights, sizeof(DirectionalLightData)));
     s_Instance->m_PointLightBuffer = std::make_unique<Buffer>("Pointlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxPointLights, sizeof(PointLightData)));
     s_Instance->m_SpotLightBuffer = std::make_unique<Buffer>("Spotlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxSpotLights, sizeof(SpotLightData)));

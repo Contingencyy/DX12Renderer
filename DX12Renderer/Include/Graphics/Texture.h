@@ -4,6 +4,7 @@
 enum class TextureUsage
 {
 	TEXTURE_USAGE_SHADER_RESOURCE,
+	TEXTURE_USAGE_BACK_BUFFER,
 	TEXTURE_USAGE_RENDER_TARGET,
 	TEXTURE_USAGE_DEPTH
 };
@@ -43,6 +44,9 @@ public:
 	D3D12_CPU_DESCRIPTOR_HANDLE GetShaderResourceView();
 	D3D12_CPU_DESCRIPTOR_HANDLE GetUnorderedAccessView();
 
+	uint32_t GetSRVIndex() const;
+	uint32_t GetUAVIndex() const;
+
 	TextureDesc GetTextureDesc() const { return m_TextureDesc; }
 	std::size_t GetByteSize() const { return m_ByteSize; }
 
@@ -53,6 +57,7 @@ public:
 
 private:
 	void Create();
+	void CreateViews();
 
 private:
 	TextureDesc m_TextureDesc = {};

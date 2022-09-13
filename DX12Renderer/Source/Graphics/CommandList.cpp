@@ -5,7 +5,6 @@
 #include "Graphics/Renderer.h"
 #include "Graphics/Device.h"
 #include "Graphics/DescriptorHeap.h"
-#include "Graphics/DynamicDescriptorHeap.h"
 
 CommandList::CommandList(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE type)
 	: m_d3d12CommandListType(type), m_Device(device)
@@ -16,7 +15,6 @@ CommandList::CommandList(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
 	{
 		m_DescriptorHeaps[i] = nullptr;
-		m_DynamicDescriptorHeaps[i] = std::make_unique<DynamicDescriptorHeap>(m_Device, static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
 	}
 }
 
@@ -58,11 +56,6 @@ void CommandList::SetPipelineState(const PipelineState& pipelineState)
 	{
 		m_RootSignature = d3d12RootSignature;
 		m_d3d12CommandList->SetGraphicsRootSignature(d3d12RootSignature);
-
-		for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-		{
-			m_DynamicDescriptorHeaps[i]->ParseRootSignature(*pipelineState.GetRootSignature());
-		}
 	}
 
 	m_d3d12CommandList->IASetPrimitiveTopology(pipelineState.GetPrimitiveTopology());
@@ -93,11 +86,12 @@ void CommandList::SetIndexBuffer(const Buffer& indexBuffer)
 	m_d3d12CommandList->IASetIndexBuffer(&ibView);
 }
 
-void CommandList::SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ID3D12DescriptorHeap* heap)
+void CommandList::SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHeap& descriptorHeap)
 {
-	if (m_DescriptorHeaps[type] != heap)
+	ID3D12DescriptorHeap* d3d12DescriptorHeap = descriptorHeap.GetD3D12DescriptorHeap().Get();
+	if (m_DescriptorHeaps[type] != d3d12DescriptorHeap)
 	{
-		m_DescriptorHeaps[type] = heap;
+		m_DescriptorHeaps[type] = d3d12DescriptorHeap;
 
 		uint32_t numDescriptorHeaps = 0;
 		ID3D12DescriptorHeap* descriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {};
@@ -113,19 +107,17 @@ void CommandList::SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ID3D12Descr
 	}
 }
 
+void CommandList::SetRootDescriptorTable(uint32_t rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor)
+{
+	m_d3d12CommandList->SetGraphicsRootDescriptorTable(rootParameterIndex, baseDescriptor);
+}
+
 void CommandList::SetRootConstantBufferView(uint32_t rootParameterIndex, Buffer& buffer, D3D12_RESOURCE_STATES stateAfter)
 {
 	//auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(buffer.GetD3D12Resource().Get(), D3D12_RESOURCE_STATE_COMMON, stateAfter, 0);
 	//m_d3d12CommandList->ResourceBarrier(1, &barrier);
 
 	m_d3d12CommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, buffer.GetD3D12Resource()->GetGPUVirtualAddress());
-	TrackObject(buffer.GetD3D12Resource());
-}
-
-void CommandList::SetConstantBufferView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Buffer& buffer,
-	D3D12_RESOURCE_STATES stateAfter)
-{
-	m_DynamicDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->StageDescriptors(rootParameterIndex, descriptorOffset, 1, buffer.GetDescriptorHandle());
 	TrackObject(buffer.GetD3D12Resource());
 }
 
@@ -138,29 +130,13 @@ void CommandList::SetRootShaderResourceView(uint32_t rootParameterIndex, Texture
 	TrackObject(texture.GetD3D12Resource());
 }
 
-void CommandList::SetShaderResourceView(uint32_t rootParameterIndex, uint32_t descriptorOffset, Texture& texture,
-	D3D12_RESOURCE_STATES stateAfter)
-{
-	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(texture.GetD3D12Resource().Get(), D3D12_RESOURCE_STATE_COMMON, stateAfter, 0);
-	m_d3d12CommandList->ResourceBarrier(1, &barrier);
-
-	m_DynamicDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->StageDescriptors(rootParameterIndex, descriptorOffset, 1, texture.GetShaderResourceView());
-	TrackObject(texture.GetD3D12Resource());
-}
-
 void CommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance)
 {
-	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-		m_DynamicDescriptorHeaps[i]->CommitStagedDescriptors(*this);
-
 	m_d3d12CommandList->DrawInstanced(vertexCount, instanceCount, startVertex, startInstance);
 }
 
 void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex, int32_t baseVertex, uint32_t startInstance)
 {
-	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-		m_DynamicDescriptorHeaps[i]->CommitStagedDescriptors(*this);
-
 	m_d3d12CommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndex, baseVertex, startInstance);
 }
 
@@ -256,6 +232,5 @@ void CommandList::Reset()
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
 	{
 		m_DescriptorHeaps[i] = nullptr;
-		m_DynamicDescriptorHeaps[i]->Reset();
 	}
 }
