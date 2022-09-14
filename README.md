@@ -4,7 +4,7 @@ A 3D rendering project written in C++17, using DirectX 12 as the graphics API.
 
 ## Features
 - GLTF model/scene loading
-- Bindful rendering
+- Bindless/bindful rendering
 - Instancing
 - Directional light/spotlights/pointlights (ambient and diffuse lighting)
 - Geometric view frustum culling with points, spheres, and AABBs
@@ -13,7 +13,6 @@ A 3D rendering project written in C++17, using DirectX 12 as the graphics API.
 - GPU validation
 
 ## Planned features
-- Bindless rendering
 - Material system
 - Full PBR
 - Mipmap generation
