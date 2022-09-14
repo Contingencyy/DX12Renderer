@@ -16,7 +16,9 @@ DescriptorHeap::DescriptorHeap(std::shared_ptr<Device> device, D3D12_DESCRIPTOR_
     m_DescriptorHandleIncrementSize = m_Device->GetDescriptorIncrementSize(type);
 
     m_CPUBaseDescriptor = m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-    m_GPUBaseDescriptor = m_d3d12DescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+
+    if (heapDesc.Flags == D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
+        m_GPUBaseDescriptor = m_d3d12DescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 }
 
 DescriptorHeap::~DescriptorHeap()
