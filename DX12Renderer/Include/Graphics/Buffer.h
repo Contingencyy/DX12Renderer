@@ -33,7 +33,8 @@ public:
 	void SetBufferData(const void* data, std::size_t byteSize = 0);
 
 	BufferDesc GetBufferDesc() const { return m_BufferDesc; }
-	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle();
+	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle() const;
+	uint32_t GetCBVIndex() const;
 	std::size_t GetByteSize() const { return m_ByteSize; }
 
 	std::string GetName() const { return m_Name; }
@@ -43,10 +44,11 @@ public:
 
 private:
 	void Create();
+	void CreateViews();
 
 private:
 	BufferDesc m_BufferDesc = {};
-	DescriptorAllocation m_DescriptorAllocation = {};
+	DescriptorAllocation m_ConstantBufferViewDescriptor = {};
 
 	std::size_t m_ByteSize = 0;
 	std::string m_Name = "";

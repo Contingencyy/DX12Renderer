@@ -81,7 +81,6 @@ void RenderBackend::Resize(uint32_t width, uint32_t height)
 
 	Flush();
 
-	m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->Reset();
 	m_SwapChain->Resize(width, height);
 }
 

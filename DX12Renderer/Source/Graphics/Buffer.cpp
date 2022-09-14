@@ -7,6 +7,7 @@ Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc, const void
 	: m_BufferDesc(bufferDesc)
 {
 	Create();
+	CreateViews();
 	SetName(name);
 	SetBufferData(data);
 }
@@ -15,6 +16,7 @@ Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc)
 	: m_BufferDesc(bufferDesc)
 {
 	Create();
+	CreateViews();
 	SetName(name);
 }
 
@@ -38,20 +40,14 @@ void Buffer::SetBufferData(const void* data, std::size_t byteSize)
 	}
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Buffer::GetDescriptorHandle()
+D3D12_CPU_DESCRIPTOR_HANDLE Buffer::GetDescriptorHandle() const
 {
-	if (m_DescriptorAllocation.IsNull())
-	{
-		m_DescriptorAllocation = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	return m_ConstantBufferViewDescriptor.GetCPUDescriptorHandle();
+}
 
-		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-		cbvDesc.BufferLocation = m_d3d12Resource->GetGPUVirtualAddress();
-		cbvDesc.SizeInBytes = m_ByteSize;
-
-		RenderBackend::Get().GetDevice()->CreateConstantBufferView(*this, cbvDesc, m_DescriptorAllocation.GetCPUDescriptorHandle());
-	}
-
-	return m_DescriptorAllocation.GetCPUDescriptorHandle();
+uint32_t Buffer::GetCBVIndex() const
+{
+	return m_ConstantBufferViewDescriptor.GetDescriptorHeapOffset();
 }
 
 void Buffer::SetName(const std::string& name)
@@ -88,5 +84,24 @@ void Buffer::Create()
 	if (m_BufferDesc.Usage == BufferUsage::BUFFER_USAGE_CONSTANT || m_BufferDesc.Usage == BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
 		m_d3d12Resource->Map(0, nullptr, &m_CPUPtr);
+	}
+}
+
+void Buffer::CreateViews()
+{
+	switch (m_BufferDesc.Usage)
+	{
+	case BufferUsage::BUFFER_USAGE_CONSTANT:
+	{
+		if (m_ConstantBufferViewDescriptor.IsNull())
+			m_ConstantBufferViewDescriptor = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+		cbvDesc.BufferLocation = m_d3d12Resource->GetGPUVirtualAddress();
+		cbvDesc.SizeInBytes = m_ByteSize;
+
+		RenderBackend::Get().GetDevice()->CreateConstantBufferView(*this, cbvDesc, m_ConstantBufferViewDescriptor.GetCPUDescriptorHandle());
+		break;
+	}
 	}
 }

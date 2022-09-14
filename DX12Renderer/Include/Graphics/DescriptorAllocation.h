@@ -9,7 +9,7 @@ public:
 	DescriptorAllocation(D3D12_CPU_DESCRIPTOR_HANDLE descriptor, uint32_t offset, uint32_t numDescriptors, uint32_t descriptorSize);
 	~DescriptorAllocation();
 
-	D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(uint32_t offset = 0);
+	D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(uint32_t offset = 0) const;
 	uint32_t GetDescriptorHeapOffset() const { return m_OffsetInDescriptorHeap; }
 
 	bool IsNull();

@@ -17,7 +17,7 @@ DescriptorAllocation::~DescriptorAllocation()
 	Free();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE DescriptorAllocation::GetCPUDescriptorHandle(uint32_t offset)
+D3D12_CPU_DESCRIPTOR_HANDLE DescriptorAllocation::GetCPUDescriptorHandle(uint32_t offset) const
 {
 	ASSERT(offset < m_NumDescriptors, "Offset is bigger than the total number of descriptors in descriptor allocation");
 	return { m_CPUDescriptorHandle.ptr + (m_DescriptorHandleIncrementSize * offset) };
