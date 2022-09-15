@@ -25,7 +25,8 @@ A 3D rendering project written in C++17, using DirectX 12 as the graphics API.
 ## Camera controls
 - Forward/backward: W/S
 - Left/right: A/D
-- Up/down: LSHIFT/LCTRL
+- Up/down: SPACEBAR/LCTRL
+- Faster movement: LSHIFT
 - Rotate (yaw/pitch): Hold right mouse button + drag
 
 ## Images
