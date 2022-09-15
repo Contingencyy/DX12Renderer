@@ -18,15 +18,14 @@ public:
 	void Finalize();
 
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
+	void CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
 	void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
 
 	void Resize(uint32_t width, uint32_t height);
 	void Flush();
 
 	std::shared_ptr<Device> GetDevice() const { return m_Device; }
-
-	void ResolveToBackBuffer(const Texture& texture);
-	void SwapBuffers(bool vSync);
+	std::shared_ptr<SwapChain> GetSwapChain() const { return m_SwapChain; }
 
 	DescriptorAllocation AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors = 1);
 	std::shared_ptr<DescriptorHeap> GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
@@ -41,7 +40,7 @@ private:
 
 private:
 	std::shared_ptr<Device> m_Device;
-	std::unique_ptr<SwapChain> m_SwapChain;
+	std::shared_ptr<SwapChain> m_SwapChain;
 	std::shared_ptr<DescriptorHeap> m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 
 	std::shared_ptr<CommandQueue> m_CommandQueueDirect;

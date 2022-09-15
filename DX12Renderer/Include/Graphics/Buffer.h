@@ -31,6 +31,7 @@ public:
 	// This should not be called every frame, since it allocates another heap/buffer for upload in this function
 	// Might be a good idea to have a larger upload heap on the command list to suballocate from for copying/staging.
 	void SetBufferData(const void* data, std::size_t byteSize = 0);
+	void SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::size_t offset);
 
 	BufferDesc GetBufferDesc() const { return m_BufferDesc; }
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle() const;

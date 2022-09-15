@@ -40,6 +40,19 @@ void Buffer::SetBufferData(const void* data, std::size_t byteSize)
 	}
 }
 
+void Buffer::SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::size_t offset)
+{
+	if (m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_CONSTANT && m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_UPLOAD)
+	{
+		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, byteSize));
+		RenderBackend::Get().CopyBufferRegion(uploadBuffer, 0, *this, offset, byteSize);
+	}
+	else
+	{
+		memcpy(static_cast<unsigned char*>(m_CPUPtr) + offset, data, byteSize);
+	}
+}
+
 D3D12_CPU_DESCRIPTOR_HANDLE Buffer::GetDescriptorHandle() const
 {
 	return m_ConstantBufferViewDescriptor.GetCPUDescriptorHandle();

@@ -61,6 +61,7 @@ void Renderer::Render()
     SCOPED_TIMER("Renderer::Render");
 
     auto& descriptorHeap = *RenderBackend::Get().GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).get();
+    PrepareInstanceBuffer();
 
     {
         /* Default render pass (lighting) */
@@ -111,6 +112,10 @@ void Renderer::Render()
         // Set root descriptor table for bindless CBV_SRV_UAV descriptor array
         commandList->SetRootDescriptorTable(4, descriptorHeap.GetGPUBaseDescriptor());
 
+        // Set instance buffer
+        commandList->SetVertexBuffers(3, 1, *s_Instance->m_MeshInstanceBuffer);
+        uint32_t startInstance = RenderBackend::Get().GetSwapChain()->GetCurrentBackBufferIndex() * s_Instance->m_RenderSettings.MaxInstancesPerDraw;
+
         for (auto& [meshHash, meshDrawData] : s_Instance->m_MeshDrawData)
         {
             auto& mesh = meshDrawData.Mesh;
@@ -121,16 +126,13 @@ void Renderer::Render()
             auto vertexNormalBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_NORMAL);
             auto indexBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_INDEX);
 
-            auto& instanceBuffer = s_Instance->m_MeshInstanceBuffers.at(meshHash);
-            instanceBuffer->SetBufferData(&meshInstanceData[0], meshInstanceData.size() * sizeof(MeshInstanceData));
-
             commandList->SetVertexBuffers(0, 1, *vertexPositionsBuffer);
             commandList->SetVertexBuffers(1, 1, *vertexTexCoordBuffer);
             commandList->SetVertexBuffers(2, 1, *vertexNormalBuffer);
-            commandList->SetVertexBuffers(3, 1, *instanceBuffer);
             commandList->SetIndexBuffer(*indexBuffer);
 
-            commandList->DrawIndexed(indexBuffer->GetBufferDesc().NumElements, meshInstanceData.size());
+            commandList->DrawIndexed(indexBuffer->GetBufferDesc().NumElements, meshInstanceData.size(), 0, 0, startInstance);
+            startInstance += meshInstanceData.size();
 
             s_Instance->m_RenderStatistics.DrawCallCount++;
             s_Instance->m_RenderStatistics.TriangleCount += (indexBuffer->GetBufferDesc().NumElements / 3) * meshInstanceData.size();
@@ -190,6 +192,7 @@ void Renderer::OnImGuiRender()
     ImGui::Text("Point light count: %u", s_Instance->m_RenderStatistics.PointLightCount);
     ImGui::Text("Spot light count: %u", s_Instance->m_RenderStatistics.SpotLightCount);
     ImGui::Text("Max model instances: %u", s_Instance->m_RenderSettings.MaxModelInstances);
+    ImGui::Text("Max instances per draw: %u", s_Instance->m_RenderSettings.MaxInstancesPerDraw);
     ImGui::Text("Max directional lights: %u", s_Instance->m_RenderSettings.MaxDirectionalLights);
     ImGui::Text("Max point lights: %u", s_Instance->m_RenderSettings.MaxPointLights);
     ImGui::Text("Max spot lights: %u", s_Instance->m_RenderSettings.MaxSpotLights);
@@ -217,8 +220,8 @@ void Renderer::EndScene()
 {
     SCOPED_TIMER("Renderer::EndScene");
 
-    RenderBackend::Get().ResolveToBackBuffer(s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
-    RenderBackend::Get().SwapBuffers(s_Instance->m_RenderSettings.VSync);
+    RenderBackend::Get().GetSwapChain()->ResolveToBackBuffer(s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
+    RenderBackend::Get().GetSwapChain()->SwapBuffers(s_Instance->m_RenderSettings.VSync);
 
     s_Instance->m_MeshDrawData.clear();
     s_Instance->m_DirectionalLightDrawData.clear();
@@ -245,14 +248,6 @@ void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transf
         s_Instance->m_MeshDrawData.emplace(std::pair<std::size_t, MeshDrawData>(mesh->GetHash(), mesh));
         s_Instance->m_MeshDrawData.at(mesh->GetHash()).MeshInstanceData.push_back(MeshInstanceData(transform, glm::vec4(1.0f),
             baseColorTexIndex, normalTexIndex));
-    }
-
-    auto instanceBufferIter = s_Instance->m_MeshInstanceBuffers.find(mesh->GetHash());
-
-    if (instanceBufferIter == s_Instance->m_MeshInstanceBuffers.end())
-    {
-        s_Instance->m_MeshInstanceBuffers.emplace(std::pair<std::size_t, std::unique_ptr<Buffer>>(mesh->GetHash(),
-            std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1000, sizeof(MeshInstanceData)))));
     }
 }
 
@@ -389,6 +384,9 @@ void Renderer::MakeRenderPasses()
 
 void Renderer::MakeBuffers()
 {
+    s_Instance->m_MeshInstanceBuffer = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD,
+        s_Instance->m_RenderSettings.MaxInstancesPerDraw * RenderBackend::Get().GetSwapChain()->GetBackBufferCount(), sizeof(MeshInstanceData)));
+
     s_Instance->m_DirectionalLightBuffer = std::make_unique<Buffer>("Directional light constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxDirectionalLights, sizeof(DirectionalLightData)));
     s_Instance->m_PointLightBuffer = std::make_unique<Buffer>("Pointlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxPointLights, sizeof(PointLightData)));
     s_Instance->m_SpotLightBuffer = std::make_unique<Buffer>("Spotlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxSpotLights, sizeof(SpotLightData)));
@@ -409,6 +407,19 @@ void Renderer::MakeBuffers()
     s_Instance->m_ToneMapIndexBuffer = std::make_unique<Buffer>("Tonemap index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, 6, sizeof(WORD)), &toneMappingIndices[0]);
 
     s_Instance->m_SceneDataConstantBuffer = std::make_unique<Buffer>("Scene data constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(SceneData)));
+}
+
+void Renderer::PrepareInstanceBuffer()
+{
+    uint32_t currentBackBufferIndex = RenderBackend::Get().GetSwapChain()->GetCurrentBackBufferIndex();
+    std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * s_Instance->m_RenderSettings.MaxInstancesPerDraw) * sizeof(MeshInstanceData);
+
+    for (auto& [meshHash, meshDrawData] : s_Instance->m_MeshDrawData)
+    {
+        std::size_t numBytes = meshDrawData.MeshInstanceData.size() * sizeof(MeshInstanceData);
+        s_Instance->m_MeshInstanceBuffer->SetBufferDataAtOffset(&meshDrawData.MeshInstanceData[0], numBytes, currentByteOffset);
+        currentByteOffset += numBytes;
+    }
 }
 
 std::string Renderer::TonemapTypeToString(TonemapType type)

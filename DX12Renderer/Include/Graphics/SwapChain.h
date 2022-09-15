@@ -14,6 +14,7 @@ public:
 	void Resize(uint32_t width, uint32_t height);
 
 	uint32_t GetBackBufferCount() const { return s_BackBufferCount; }
+	uint32_t GetCurrentBackBufferIndex() const { return m_CurrentBackBufferIndex; }
 
 private:
 	void CreateBackBufferTextures();

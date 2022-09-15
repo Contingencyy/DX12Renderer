@@ -35,6 +35,7 @@ public:
 	void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0);
 
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
+	void CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
 	void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
 	void ResolveTexture(const Texture& srcTexture, const Texture& destTexture);
 

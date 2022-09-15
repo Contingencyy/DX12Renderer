@@ -33,7 +33,7 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 	m_CommandQueueCompute = std::make_unique<CommandQueue>(m_Device, D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	m_CommandQueueCopy = std::make_unique<CommandQueue>(m_Device, D3D12_COMMAND_LIST_TYPE_COPY);
 
-	m_SwapChain = std::make_unique<SwapChain>(hWnd, m_CommandQueueDirect, width, height);
+	m_SwapChain = std::make_shared<SwapChain>(hWnd, m_CommandQueueDirect, width, height);
 
 	m_ProcessInFlightCommandLists = true;
 	m_ProcessInFlightCommandListsThread = std::thread([this]() {
@@ -66,6 +66,14 @@ void RenderBackend::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, c
 	m_CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
 
+void RenderBackend::CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes)
+{
+	auto commandList = m_CommandQueueCopy->GetCommandList();
+	commandList->CopyBufferRegion(intermediateBuffer, intermediateOffset, destBuffer, destOffset, numBytes);
+	uint64_t fenceValue = m_CommandQueueCopy->ExecuteCommandList(commandList);
+	m_CommandQueueCopy->WaitForFenceValue(fenceValue);
+}
+
 void RenderBackend::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData)
 {
 	auto commandList = m_CommandQueueCopy->GetCommandList();
@@ -89,16 +97,6 @@ void RenderBackend::Flush()
 	m_CommandQueueDirect->Flush();
 	m_CommandQueueCompute->Flush();
 	m_CommandQueueCopy->Flush();
-}
-
-void RenderBackend::ResolveToBackBuffer(const Texture& texture)
-{
-	m_SwapChain->ResolveToBackBuffer(texture);
-}
-
-void RenderBackend::SwapBuffers(bool vSync)
-{
-	m_SwapChain->SwapBuffers(vSync);
 }
 
 DescriptorAllocation RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)

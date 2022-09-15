@@ -167,6 +167,28 @@ void CommandList::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, con
 	}
 }
 
+void CommandList::CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes)
+{
+	ASSERT(intermediateOffset + numBytes <= intermediateBuffer.GetByteSize(), "Intermediate offset is bigger than the intermediate buffer byte size");
+	ASSERT(destOffset + numBytes <= destBuffer.GetByteSize(), "Destination offset is bigger than the destination buffer byte size");
+
+	if (numBytes > 0)
+	{
+		CD3DX12_RESOURCE_BARRIER copyDestBarrier = CD3DX12_RESOURCE_BARRIER::Transition(destBuffer.GetD3D12Resource().Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		ResourceBarrier(1, &copyDestBarrier);
+
+		m_d3d12CommandList->CopyBufferRegion(destBuffer.GetD3D12Resource().Get(), destOffset, intermediateBuffer.GetD3D12Resource().Get(), intermediateOffset, numBytes);
+
+		CD3DX12_RESOURCE_BARRIER commonBarrier = CD3DX12_RESOURCE_BARRIER::Transition(destBuffer.GetD3D12Resource().Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
+		ResourceBarrier(1, &commonBarrier);
+
+		TrackObject(intermediateBuffer.GetD3D12Resource());
+		TrackObject(destBuffer.GetD3D12Resource());
+	}
+}
+
 void CommandList::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData)
 {
 	TextureDesc textureDesc = destTexture.GetTextureDesc();
