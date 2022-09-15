@@ -8,6 +8,9 @@
 
 ResourceManager::ResourceManager()
 {
+	uint32_t whiteTextureData = 0xFFFFFFFF;
+	m_Textures.insert(std::pair<std::string, std::shared_ptr<Texture>>("WhiteTexture", std::make_shared<Texture>("WhiteTexture", TextureDesc(
+		TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM, 1, 1), &whiteTextureData)));
 }
 
 ResourceManager::~ResourceManager()
@@ -53,8 +56,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		else
 		{
 			uint32_t whiteImageData = 0xFFFFFFFF;
-			textures[matIndex].push_back(std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				1, 1), &whiteImageData));
+			textures[matIndex].push_back(m_Textures.at("WhiteTexture"));
 		}
 
 		if (normalTextureIndex >= 0)
@@ -66,8 +68,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		else
 		{
 			uint32_t whiteImageData = 0xFFFFFFFF;
-			textures[matIndex].push_back(std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				1, 1), &whiteImageData));
+			textures[matIndex].push_back(m_Textures.at("WhiteTexture"));
 		}
 	}
 

@@ -20,7 +20,7 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
     if (!s_Instance)
         s_Instance = new Renderer();
 
-    RenderBackend::Get().Initialize(hWnd, width, height);
+    RenderBackend::Initialize(hWnd, width, height);
 
     s_Instance->m_RenderSettings.Resolution.x = width;
     s_Instance->m_RenderSettings.Resolution.y = height;
@@ -34,7 +34,7 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 
 void Renderer::Finalize()
 {
-    RenderBackend::Get().Finalize();
+    RenderBackend::Finalize();
     delete s_Instance;
 }
 
@@ -48,24 +48,24 @@ void Renderer::BeginScene(const Camera& sceneCamera, const glm::vec3& ambient)
     s_Instance->m_TonemapSettings.Exposure = sceneCamera.GetExposure();
     s_Instance->m_TonemapSettings.Gamma = sceneCamera.GetGamma();
 
-    auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+    auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
     for (auto& renderPass : s_Instance->m_RenderPasses)
         renderPass->ClearViews(commandList);
 
-    RenderBackend::Get().ExecuteCommandList(commandList);
+    RenderBackend::ExecuteCommandList(commandList);
 }
 
 void Renderer::Render()
 {
     SCOPED_TIMER("Renderer::Render");
 
-    auto& descriptorHeap = *RenderBackend::Get().GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).get();
+    auto& descriptorHeap = *RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).get();
     PrepareInstanceBuffer();
 
     {
         /* Default render pass (lighting) */
-        auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+        auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
         auto& defaultColorTarget = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment();
         auto& defaultDepthBuffer = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetDepthAttachment();
@@ -80,9 +80,10 @@ void Renderer::Render()
 
         commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
 
-        // Set pipeline state, root signature, and scene data constant buffer
+        // Set the pipeline state along with the root signature
         commandList->SetPipelineState(s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetPipelineState());
 
+        // Update scene data constant buffer with data for this frame
         s_Instance->m_SceneData.NumDirLights = s_Instance->m_DirectionalLightDrawData.size();
         s_Instance->m_SceneData.NumPointLights = s_Instance->m_PointLightDrawData.size();
         s_Instance->m_SceneData.NumSpotLights = s_Instance->m_SpotLightDrawData.size();
@@ -90,7 +91,7 @@ void Renderer::Render()
         s_Instance->m_SceneDataConstantBuffer->SetBufferData(&s_Instance->m_SceneData);
         commandList->SetRootConstantBufferView(0, *s_Instance->m_SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
 
-        // Set constant buffer data for lights
+        // Set constant buffer data for directional lights/pointlights/spotlights
         if (s_Instance->m_SceneData.NumDirLights > 0)
             s_Instance->m_DirectionalLightBuffer->SetBufferData(&s_Instance->m_DirectionalLightDrawData[0], s_Instance->m_DirectionalLightDrawData.size() * sizeof(DirectionalLightData));
 
@@ -114,7 +115,7 @@ void Renderer::Render()
 
         // Set instance buffer
         commandList->SetVertexBuffers(3, 1, *s_Instance->m_MeshInstanceBuffer);
-        uint32_t startInstance = RenderBackend::Get().GetSwapChain()->GetCurrentBackBufferIndex() * s_Instance->m_RenderSettings.MaxInstancesPerDraw;
+        uint32_t startInstance = RenderBackend::GetSwapChain()->GetCurrentBackBufferIndex() * s_Instance->m_RenderSettings.MaxInstancesPerDraw;
 
         for (auto& [meshHash, meshDrawData] : s_Instance->m_MeshDrawData)
         {
@@ -139,12 +140,12 @@ void Renderer::Render()
             s_Instance->m_RenderStatistics.MeshCount += meshInstanceData.size();
         }
 
-        RenderBackend::Get().ExecuteCommandList(commandList);
+        RenderBackend::ExecuteCommandList(commandList);
     }
 
     {
         /* Tone mapping render pass */
-        auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+        auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
         auto& tmColorTarget = s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
         auto& tmDepthBuffer = s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetDepthAttachment();
@@ -176,7 +177,7 @@ void Renderer::Render()
 
         commandList->DrawIndexed(s_Instance->m_ToneMapIndexBuffer->GetBufferDesc().NumElements, 1);
 
-        RenderBackend::Get().ExecuteCommandList(commandList);
+        RenderBackend::ExecuteCommandList(commandList);
     }
 }
 
@@ -220,8 +221,8 @@ void Renderer::EndScene()
 {
     SCOPED_TIMER("Renderer::EndScene");
 
-    RenderBackend::Get().GetSwapChain()->ResolveToBackBuffer(s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
-    RenderBackend::Get().GetSwapChain()->SwapBuffers(s_Instance->m_RenderSettings.VSync);
+    RenderBackend::GetSwapChain()->ResolveToBackBuffer(s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
+    RenderBackend::GetSwapChain()->SwapBuffers(s_Instance->m_RenderSettings.VSync);
 
     s_Instance->m_MeshDrawData.clear();
     s_Instance->m_DirectionalLightDrawData.clear();
@@ -279,7 +280,7 @@ void Renderer::Resize(uint32_t width, uint32_t height)
         s_Instance->m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Instance->m_RenderSettings.Resolution.x),
             static_cast<float>(s_Instance->m_RenderSettings.Resolution.y), 0.0f, 1.0f);
 
-        RenderBackend::Get().Resize(width, height);
+        RenderBackend::Resize(width, height);
 
         for (auto& renderPass : s_Instance->m_RenderPasses)
             renderPass->Resize(s_Instance->m_RenderSettings.Resolution.x, s_Instance->m_RenderSettings.Resolution.y);
@@ -385,7 +386,7 @@ void Renderer::MakeRenderPasses()
 void Renderer::MakeBuffers()
 {
     s_Instance->m_MeshInstanceBuffer = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD,
-        s_Instance->m_RenderSettings.MaxInstancesPerDraw * RenderBackend::Get().GetSwapChain()->GetBackBufferCount(), sizeof(MeshInstanceData)));
+        s_Instance->m_RenderSettings.MaxInstancesPerDraw * RenderBackend::GetSwapChain()->GetBackBufferCount(), sizeof(MeshInstanceData)));
 
     s_Instance->m_DirectionalLightBuffer = std::make_unique<Buffer>("Directional light constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxDirectionalLights, sizeof(DirectionalLightData)));
     s_Instance->m_PointLightBuffer = std::make_unique<Buffer>("Pointlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxPointLights, sizeof(PointLightData)));
@@ -411,7 +412,7 @@ void Renderer::MakeBuffers()
 
 void Renderer::PrepareInstanceBuffer()
 {
-    uint32_t currentBackBufferIndex = RenderBackend::Get().GetSwapChain()->GetCurrentBackBufferIndex();
+    uint32_t currentBackBufferIndex = RenderBackend::GetSwapChain()->GetCurrentBackBufferIndex();
     std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * s_Instance->m_RenderSettings.MaxInstancesPerDraw) * sizeof(MeshInstanceData);
 
     for (auto& [meshHash, meshDrawData] : s_Instance->m_MeshDrawData)

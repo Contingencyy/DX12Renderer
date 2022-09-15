@@ -55,7 +55,7 @@ void PipelineState::Create(const std::string& name, const RenderPassDesc& render
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.pRootSignature = m_RootSignature->GetD3D12RootSignature().Get();
 
-	RenderBackend::Get().GetDevice()->CreatePipelineState(psoDesc, m_d3d12PipelineState);
+	RenderBackend::GetDevice()->CreatePipelineState(psoDesc, m_d3d12PipelineState);
 	m_d3d12PipelineState->SetName(StringHelper::StringToWString(name + " pipeline state").c_str());
 
 	m_d3d12PrimitiveToplogy = renderPassDesc.Topology;

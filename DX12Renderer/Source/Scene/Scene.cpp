@@ -16,19 +16,6 @@ Scene::Scene()
 	Renderer::RenderSettings renderSettings = Renderer::GetSettings();
 	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f), 60.0f, static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
 	m_AmbientLight = glm::vec3(0.01f);
-	
-	/*glm::vec3 position = glm::vec3(0.0f);
-	for (float y = -9.5f; y <= 9.5f; y += 1.0f)
-	{
-		for (float x = -9.5f; x <= 9.5f; x += 1.0f)
-		{
-			position.x = x * 20.0f;
-			position.y = y * 20.0f;
-
-			m_SceneObjects.push_back(std::make_unique<MeshObject>(Application::Get().GetResourceManager()->GetModel("DamagedHelmet")->GetMeshes(),
-				"DamagedHelmet", position, glm::vec3(glm::radians(-90.0f), 0.0f, glm::radians(180.0f)), glm::vec3(10.0f)));
-		}
-	}*/
 
 	// Directional light
 	DirectionalLightData dirLightData(glm::normalize(glm::vec3(5.0f, -50.0f, 0.0f)), glm::vec3(0.0025f), glm::vec3(0.25f));
@@ -55,6 +42,28 @@ Scene::Scene()
 
 	m_SceneObjects.push_back(std::make_unique<MeshObject>(Application::Get().GetResourceManager()->GetModel("SponzaOld")->GetMeshes(),
 		"SponzaOld", glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f)));
+
+	/*for (float z = -5.0f; z <= 5.0f; z += 1.0f)
+	{
+		for (float x = -5.0f; x <= 5.0f; x += 1.0f)
+		{
+			m_SceneObjects.push_back(std::make_unique<MeshObject>(Application::Get().GetResourceManager()->GetModel("SponzaOld")->GetMeshes(),
+				"SponzaOld", glm::vec3(x * 4000.0f, 0.0f, z * 2500.0f), glm::vec3(0.0f), glm::vec3(1.0f)));
+		}
+	}*/
+	
+	/*glm::vec3 position = glm::vec3(0.0f);
+	for (float y = -9.5f; y <= 9.5f; y += 1.0f)
+	{
+		for (float x = -9.5f; x <= 9.5f; x += 1.0f)
+		{
+			position.x = x * 20.0f;
+			position.y = y * 20.0f;
+
+			m_SceneObjects.push_back(std::make_unique<MeshObject>(Application::Get().GetResourceManager()->GetModel("DamagedHelmet")->GetMeshes(),
+				"DamagedHelmet", position, glm::vec3(glm::radians(-90.0f), 0.0f, glm::radians(180.0f)), glm::vec3(10.0f)));
+		}
+	}*/
 }
 
 Scene::~Scene()

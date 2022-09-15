@@ -4,7 +4,7 @@ enum class KeyCode : uint32_t
 {
 	LEFT_MOUSE, MIDDLE_MOUSE, RIGHT_MOUSE,
 	W, A, S, D,
-	SHIFT, CTRL,
+	SHIFT, CTRL, SPACEBAR,
 	Q, E
 };
 

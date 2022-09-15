@@ -36,6 +36,8 @@ KeyCode InputHandler::WParamToKeyCode(WPARAM wParam)
 		return KeyCode::MIDDLE_MOUSE;
 	case VK_RBUTTON:
 		return KeyCode::RIGHT_MOUSE;
+	case VK_SPACE:
+		return KeyCode::SPACEBAR;
 	case 0x57:
 		return KeyCode::W;
 	case 0x41:

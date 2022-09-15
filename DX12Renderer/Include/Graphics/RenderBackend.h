@@ -12,32 +12,26 @@ class Buffer;
 class RenderBackend
 {
 public:
-	static RenderBackend& Get();
+	static void Initialize(HWND hWnd, uint32_t width, uint32_t height);
+	static void Finalize();
 
-	void Initialize(HWND hWnd, uint32_t width, uint32_t height);
-	void Finalize();
+	static void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
+	static void CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
+	static void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
 
-	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
-	void CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
-	void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
+	static void Resize(uint32_t width, uint32_t height);
+	static void Flush();
 
-	void Resize(uint32_t width, uint32_t height);
-	void Flush();
+	static std::shared_ptr<Device> GetDevice();
+	static std::shared_ptr<SwapChain> GetSwapChain();
 
-	std::shared_ptr<Device> GetDevice() const { return m_Device; }
-	std::shared_ptr<SwapChain> GetSwapChain() const { return m_SwapChain; }
+	static DescriptorAllocation AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors = 1);
+	static std::shared_ptr<DescriptorHeap> GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type);
 
-	DescriptorAllocation AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors = 1);
-	std::shared_ptr<DescriptorHeap> GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
-
-	std::shared_ptr<CommandList> GetCommandList(D3D12_COMMAND_LIST_TYPE type);
-	void ExecuteCommandList(std::shared_ptr<CommandList> commandList);
-	void ExecuteCommandListAndWait(std::shared_ptr<CommandList> commandList);
+	static std::shared_ptr<CommandList> GetCommandList(D3D12_COMMAND_LIST_TYPE type);
+	static void ExecuteCommandList(std::shared_ptr<CommandList> commandList);
+	static void ExecuteCommandListAndWait(std::shared_ptr<CommandList> commandList);
 	
-private:
-	RenderBackend();
-	~RenderBackend();
-
 private:
 	std::shared_ptr<Device> m_Device;
 	std::shared_ptr<SwapChain> m_SwapChain;

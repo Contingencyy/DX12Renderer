@@ -46,7 +46,7 @@ void GUI::Initialize(HWND hWnd)
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	heapDesc.NodeMask = 0;
 
-	auto device = RenderBackend::Get().GetDevice();
+	auto device = RenderBackend::GetDevice();
 	device->CreateDescriptorHeap(heapDesc, m_d3d12DescriptorHeap);
 
 	ImGui_ImplWin32_Init(hWnd);
@@ -73,7 +73,7 @@ void GUI::EndFrame()
 {
 	ImGui::Render();
 
-	auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+	auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	
 	auto& colorTarget = Renderer::GetFinalColorOutput();
 	auto& depthBuffer = Renderer::GetFinalDepthOutput();
@@ -93,7 +93,7 @@ void GUI::EndFrame()
 		ImGui::RenderPlatformWindowsDefault(NULL, (void*)commandList->GetGraphicsCommandList().Get());
 	}*/
 
-	RenderBackend::Get().ExecuteCommandListAndWait(commandList);
+	RenderBackend::ExecuteCommandListAndWait(commandList);
 }
 
 void GUI::Finalize()

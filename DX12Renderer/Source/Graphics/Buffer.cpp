@@ -32,7 +32,7 @@ void Buffer::SetBufferData(const void* data, std::size_t byteSize)
 	if (m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_CONSTANT && m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
 		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, dataByteSize));
-		RenderBackend::Get().CopyBuffer(uploadBuffer, *this, data);
+		RenderBackend::CopyBuffer(uploadBuffer, *this, data);
 	}
 	else
 	{
@@ -40,16 +40,16 @@ void Buffer::SetBufferData(const void* data, std::size_t byteSize)
 	}
 }
 
-void Buffer::SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::size_t offset)
+void Buffer::SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::size_t byteOffset)
 {
 	if (m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_CONSTANT && m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
 		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, byteSize));
-		RenderBackend::Get().CopyBufferRegion(uploadBuffer, 0, *this, offset, byteSize);
+		RenderBackend::CopyBufferRegion(uploadBuffer, 0, *this, byteOffset, byteSize);
 	}
 	else
 	{
-		memcpy(static_cast<unsigned char*>(m_CPUPtr) + offset, data, byteSize);
+		memcpy(static_cast<unsigned char*>(m_CPUPtr) + byteOffset, data, byteSize);
 	}
 }
 
@@ -71,7 +71,7 @@ void Buffer::SetName(const std::string& name)
 
 void Buffer::Create()
 {
-	auto device = RenderBackend::Get().GetDevice();
+	auto device = RenderBackend::GetDevice();
 	D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
 	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
 
@@ -107,13 +107,13 @@ void Buffer::CreateViews()
 	case BufferUsage::BUFFER_USAGE_CONSTANT:
 	{
 		if (m_ConstantBufferViewDescriptor.IsNull())
-			m_ConstantBufferViewDescriptor = RenderBackend::Get().AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			m_ConstantBufferViewDescriptor = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
 		cbvDesc.BufferLocation = m_d3d12Resource->GetGPUVirtualAddress();
 		cbvDesc.SizeInBytes = m_ByteSize;
 
-		RenderBackend::Get().GetDevice()->CreateConstantBufferView(*this, cbvDesc, m_ConstantBufferViewDescriptor.GetCPUDescriptorHandle());
+		RenderBackend::GetDevice()->CreateConstantBufferView(*this, cbvDesc, m_ConstantBufferViewDescriptor.GetCPUDescriptorHandle());
 		break;
 	}
 	}

@@ -38,6 +38,6 @@ void RootSignature::Create(const std::string& name, const std::vector<CD3DX12_RO
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC versionedRootSignatureDesc = {};
 	versionedRootSignatureDesc.Init_1_1(rootParameters.size(), &rootParameters[0], _countof(staticSamplers), &staticSamplers[0], rootSignatureFlags);
 
-	RenderBackend::Get().GetDevice()->CreateRootSignature(versionedRootSignatureDesc, m_d3d12RootSignature);
+	RenderBackend::GetDevice()->CreateRootSignature(versionedRootSignatureDesc, m_d3d12RootSignature);
 	m_d3d12RootSignature->SetName(StringHelper::StringToWString(name + " root signature").c_str());
 }

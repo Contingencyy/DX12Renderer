@@ -32,9 +32,9 @@ void DebugRenderer::BeginScene(const Camera& sceneCamera)
 
     s_Instance->m_CameraViewProjection = sceneCamera.GetViewProjection();
 
-    auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+    auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
     s_Instance->m_RenderPass->ClearViews(commandList);
-    RenderBackend::Get().ExecuteCommandList(commandList);
+    RenderBackend::ExecuteCommandList(commandList);
 }
 
 void DebugRenderer::Render()
@@ -44,7 +44,7 @@ void DebugRenderer::Render()
     if (!s_Instance->m_DebugRenderSettings.DrawLines || s_Instance->m_LineVertexData.size() == 0)
         return;
 
-    auto commandList = RenderBackend::Get().GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+    auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
     auto& colorAttachment = Renderer::GetFinalColorOutput();
     auto& depthAttachment = Renderer::GetFinalDepthOutput();
 
@@ -69,7 +69,7 @@ void DebugRenderer::Render()
     s_Instance->m_DebugRenderStatistics.DrawCallCount++;
     s_Instance->m_DebugRenderStatistics.LineCount += s_Instance->m_LineVertexData.size() / 2;
 
-    RenderBackend::Get().ExecuteCommandList(commandList);
+    RenderBackend::ExecuteCommandList(commandList);
 }
 
 void DebugRenderer::OnImGuiRender()
