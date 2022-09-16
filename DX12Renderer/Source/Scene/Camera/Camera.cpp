@@ -71,7 +71,7 @@ bool Camera::UpdateMovement(float deltaTime)
 
 	float speedMultiplier = InputHandler::IsKeyPressed(KeyCode::SHIFT) ? 10.0f : 1.0f;
 
-	if (velocity.x != 0.0f || velocity.y != 0.0f || velocity.z != 0.0f)
+	if (glm::length(velocity) > 0.0f)
 	{
 		velocity = glm::normalize(velocity);
 		m_Transform.Translate(velocity * m_Speed * speedMultiplier * deltaTime);
