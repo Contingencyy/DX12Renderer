@@ -17,8 +17,8 @@ PipelineState::~PipelineState()
 
 void PipelineState::Create(const std::string& name, const RenderPassDesc& renderPassDesc, const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout)
 {
-	m_VertexShader = std::make_unique<Shader>(StringHelper::StringToWString(renderPassDesc.VertexShaderPath), "main", "vs_5_1");
-	m_PixelShader = std::make_unique<Shader>(StringHelper::StringToWString(renderPassDesc.PixelShaderPath), "main", "ps_5_1");
+	m_VertexShader = std::make_unique<Shader>(StringHelper::StringToWString(renderPassDesc.VertexShaderPath), "main", "vs_6_0");
+	m_PixelShader = std::make_unique<Shader>(StringHelper::StringToWString(renderPassDesc.PixelShaderPath), "main", "ps_6_0");
 
 	D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
 	rtBlendDesc.BlendEnable = TRUE;

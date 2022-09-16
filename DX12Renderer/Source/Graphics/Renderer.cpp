@@ -186,34 +186,41 @@ void Renderer::OnImGuiRender()
     ImGui::Text("Renderer");
     ImGui::Text("Resolution: %ux%u", s_Instance->m_RenderSettings.Resolution.x, s_Instance->m_RenderSettings.Resolution.y);
     ImGui::Text("VSync: %s", s_Instance->m_RenderSettings.VSync ? "On" : "Off");
-    ImGui::Text("Draw calls: %u", s_Instance->m_RenderStatistics.DrawCallCount);
-    ImGui::Text("Triangle count: %u", s_Instance->m_RenderStatistics.TriangleCount);
-    ImGui::Text("Mesh count: %u", s_Instance->m_RenderStatistics.MeshCount);
-    ImGui::Text("Directional light count: %u", s_Instance->m_RenderStatistics.DirectionalLightCount);
-    ImGui::Text("Point light count: %u", s_Instance->m_RenderStatistics.PointLightCount);
-    ImGui::Text("Spot light count: %u", s_Instance->m_RenderStatistics.SpotLightCount);
     ImGui::Text("Max model instances: %u", s_Instance->m_RenderSettings.MaxModelInstances);
     ImGui::Text("Max instances per draw: %u", s_Instance->m_RenderSettings.MaxInstancesPerDraw);
     ImGui::Text("Max directional lights: %u", s_Instance->m_RenderSettings.MaxDirectionalLights);
     ImGui::Text("Max point lights: %u", s_Instance->m_RenderSettings.MaxPointLights);
     ImGui::Text("Max spot lights: %u", s_Instance->m_RenderSettings.MaxSpotLights);
 
-    ImGui::Text("Tonemapping type");
-    std::string previewValue = TonemapTypeToString(s_Instance->m_TonemapSettings.Type);
-    if (ImGui::BeginCombo("##TonemapType", previewValue.c_str()))
+    if (ImGui::CollapsingHeader("Stats"))
     {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(TonemapType::NUM_TYPES); ++i)
+        ImGui::Text("Draw calls: %u", s_Instance->m_RenderStatistics.DrawCallCount);
+        ImGui::Text("Triangle count: %u", s_Instance->m_RenderStatistics.TriangleCount);
+        ImGui::Text("Mesh count: %u", s_Instance->m_RenderStatistics.MeshCount);
+        ImGui::Text("Directional light count: %u", s_Instance->m_RenderStatistics.DirectionalLightCount);
+        ImGui::Text("Point light count: %u", s_Instance->m_RenderStatistics.PointLightCount);
+        ImGui::Text("Spot light count: %u", s_Instance->m_RenderStatistics.SpotLightCount);
+    }
+
+    if (ImGui::CollapsingHeader("Tonemapping"))
+    {
+        ImGui::Text("Tonemapping type");
+        std::string previewValue = TonemapTypeToString(s_Instance->m_TonemapSettings.Type);
+        if (ImGui::BeginCombo("##TonemapType", previewValue.c_str()))
         {
-            std::string tonemapName = TonemapTypeToString(static_cast<TonemapType>(i)).c_str();
-            bool isSelected = previewValue == tonemapName;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(TonemapType::NUM_TYPES); ++i)
+            {
+                std::string tonemapName = TonemapTypeToString(static_cast<TonemapType>(i)).c_str();
+                bool isSelected = previewValue == tonemapName;
 
-            if (ImGui::Selectable(tonemapName.c_str(), isSelected))
-                s_Instance->m_TonemapSettings.Type = static_cast<TonemapType>(i);
-            if (isSelected)
-                ImGui::SetItemDefaultFocus();
+                if (ImGui::Selectable(tonemapName.c_str(), isSelected))
+                    s_Instance->m_TonemapSettings.Type = static_cast<TonemapType>(i);
+                if (isSelected)
+                    ImGui::SetItemDefaultFocus();
+            }
+
+            ImGui::EndCombo();
         }
-
-        ImGui::EndCombo();
     }
 }
 

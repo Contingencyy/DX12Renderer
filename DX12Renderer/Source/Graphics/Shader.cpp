@@ -13,24 +13,57 @@ Shader::~Shader()
 
 void Shader::Compile(const std::wstring& filepath, const std::string& entryPoint, const std::string& target)
 {
-    UINT compileFlags = D3DCOMPILE_ENABLE_UNBOUNDED_DESCRIPTOR_TABLES;
+    std::vector<LPCWSTR> args;
+    //args.emplace_back(DXC_ARG_SKIP_VALIDATION);
+
 #ifdef _DEBUG
-    compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+    args.emplace_back(DXC_ARG_DEBUG);
+    args.emplace_back(DXC_ARG_SKIP_OPTIMIZATIONS);
 #endif
 
-    ComPtr<ID3DBlob> errorBlob;
+    ComPtr<IDxcLibrary> library;
+    DX_CALL(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&library)));
 
-    std::string filepathStr = StringHelper::WStringToString(filepath);
-    std::string shaderCode = ResourceLoader::LoadShader(filepathStr);
+    ComPtr<IDxcCompiler> compiler;
+    DX_CALL(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler)));
 
-    HRESULT hr = D3DCompile(&shaderCode[0], shaderCode.length(), filepathStr.c_str(), nullptr, nullptr,
-        entryPoint.c_str(), target.c_str(), compileFlags, 0, &m_ShaderBlob, &errorBlob);
+    uint32_t codePage = CP_UTF8;
+    ComPtr<IDxcBlobEncoding> sourceBlob;
+    DX_CALL(library->CreateBlobFromFile(filepath.c_str(), &codePage, &sourceBlob));
 
-    if (!SUCCEEDED(hr) || errorBlob)
+    ComPtr<IDxcOperationResult> result;
+    HRESULT hr = compiler->Compile(
+        sourceBlob.Get(),
+        filepath.c_str(),
+        StringHelper::StringToWString(entryPoint).c_str(),
+        StringHelper::StringToWString(target).c_str(),
+        args.data(), args.size(),
+        NULL, 0,
+        NULL,
+        &result
+    );
+
+    if (!SUCCEEDED(hr))
     {
-        LOG_ERR(static_cast<const char*>(errorBlob->GetBufferPointer()));
-        errorBlob->Release();
+        if (result)
+        {
+            ComPtr<IDxcBlobEncoding> errorBlob;
+            hr = result->GetErrorBuffer(&errorBlob);
+
+            if (SUCCEEDED(hr) && errorBlob)
+            {
+                LOG_ERR(static_cast<const char*>(errorBlob->GetBufferPointer()));
+                errorBlob->Release();
+            }
+        }
+    }
+    else
+    {
+        result->GetStatus(&hr);
     }
 
-    m_ShaderByteCode = CD3DX12_SHADER_BYTECODE(m_ShaderBlob.Get());
+    result->GetResult(&m_ShaderByteBlob);
+
+    m_ShaderByteCode.pShaderBytecode = m_ShaderByteBlob->GetBufferPointer();
+    m_ShaderByteCode.BytecodeLength = m_ShaderByteBlob->GetBufferSize();
 }

@@ -1,6 +1,3 @@
-Texture2D Tex2DHeap[] : register(t0, space0);
-SamplerState samp2D : register(s0);
-
 struct PixelShaderInput
 {
 	float4 Position : SV_POSITION;
@@ -16,6 +13,8 @@ struct TonemapSettings
 };
 
 ConstantBuffer<TonemapSettings> TonemapCB : register(b0);
+Texture2D Tex2DHeap[] : register(t0, space0);
+SamplerState samp2D : register(s0);
 
 float3 LinearToneMapping(float3 color);
 float3 ReinhardToneMapping(float3 color);

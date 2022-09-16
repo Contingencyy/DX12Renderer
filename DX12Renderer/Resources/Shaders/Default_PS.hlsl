@@ -1,6 +1,3 @@
-Texture2D Tex2DHeap[] : register(t0, space0);
-SamplerState samp2D : register(s0);
-
 struct PixelShaderInput
 {
 	float4 Position : SV_POSITION;
@@ -20,8 +17,6 @@ struct SceneData
 	uint NumSpotLights;
 };
 
-ConstantBuffer<SceneData> SceneDataCB : register(b0);
-
 struct DirectionalLight
 {
 	float3 Direction;
@@ -33,8 +28,6 @@ struct DirectionalLightBuffer
 {
 	DirectionalLight DirLights[5];
 };
-
-ConstantBuffer<DirectionalLightBuffer> DirLightCB : register(b1);
 
 struct PointLight
 {
@@ -49,8 +42,6 @@ struct PointLightBuffer
 {
 	PointLight PointLights[50];
 };
-
-ConstantBuffer<PointLightBuffer> PointLightCB : register(b2);
 
 struct SpotLight
 {
@@ -69,7 +60,14 @@ struct SpotLightBuffer
 	SpotLight SpotLights[50];
 };
 
+
+ConstantBuffer<SceneData> SceneDataCB : register(b0);
+ConstantBuffer<DirectionalLightBuffer> DirLightCB : register(b1);
+ConstantBuffer<PointLightBuffer> PointLightCB : register(b2);
 ConstantBuffer<SpotLightBuffer> SpotLightCB : register(b3);
+Texture2D Tex2DHeap[] : register(t0, space0);
+SamplerState samp2D : register(s0);
+
 
 float3 CalculateDirectionalLight(float3 fragPos, float3 fragNormal, float3 diffuseColor, DirectionalLight dirLight);
 float3 CalculatePointLight(float3 fragPos, float3 fragNormal, float3 diffuseColor, PointLight pointLight);

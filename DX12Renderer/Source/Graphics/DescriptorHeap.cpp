@@ -6,7 +6,7 @@ DescriptorHeap::DescriptorHeap(std::shared_ptr<Device> device, D3D12_DESCRIPTOR_
     : m_Device(device), m_Type(type), m_NumDescriptors(numDescriptors)
 {
     D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-    heapDesc.NumDescriptors = numDescriptors;
+    heapDesc.NumDescriptors = m_NumDescriptors;
     heapDesc.Type = type;
 
     // Set the flag to shader visible if the descriptor heap is of type CBV_SRV_UAV for bindless rendering
