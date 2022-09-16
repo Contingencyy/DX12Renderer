@@ -178,7 +178,7 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>dxcompiler.lib;d3d12.lib;dxgi.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Extern/DXC/lib/x64/</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Extern/DXC/lib/</AdditionalLibraryDirectories>
     </Link>
     <FxCompile>
       <ShaderModel>6.0</ShaderModel>
