@@ -1,6 +1,6 @@
 # DX12Renderer
 ## Description
-A 3D rendering project written in C++17, using DirectX 12 as the graphics API.
+A 3D rendering project written in C++17, using DirectX 12 as the graphics API. The renderer currently works with bindless textures, while using constant buffers with root constants and root descriptors. The bindless descriptor implementation is pre SM 6.6, using descriptor table ranges.
 
 ## Features
 - GLTF model/scene loading
