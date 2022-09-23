@@ -6,6 +6,7 @@ The project builds and runs on both Windows 10 and Windows 11.
 ## Features
 - GLTF model/scene loading
 - Bindless/bindful rendering
+- Forward rendering
 - Instancing
 - Directional light/spotlights/pointlights (ambient and diffuse lighting)
 - Geometric view frustum culling with points, spheres, and AABBs
@@ -15,6 +16,7 @@ The project builds and runs on both Windows 10 and Windows 11.
 
 ## Planned features
 - Material system
+- Deferred rendering
 - Full PBR
 - Mipmap generation
 - MSAA
