@@ -1,12 +1,11 @@
 #pragma once
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
-#include "Graphics/PipelineState.h"
-#include "Graphics/RootSignature.h"
 
 class DescriptorHeap;
 class DynamicDescriptorHeap;
 class Device;
+class PipelineState;
 
 class CommandList
 {

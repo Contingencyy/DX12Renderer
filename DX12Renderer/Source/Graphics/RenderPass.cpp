@@ -1,7 +1,7 @@
 #include "Pch.h"
 #include "Graphics/RenderPass.h"
-#include "Graphics/PipelineState.h"
-#include "Graphics/CommandList.h"
+#include "Graphics/Backend/PipelineState.h"
+#include "Graphics/Backend/CommandList.h"
 
 RenderPass::RenderPass(const std::string& name, const RenderPassDesc& desc)
 	: m_Name(name), m_Desc(desc)

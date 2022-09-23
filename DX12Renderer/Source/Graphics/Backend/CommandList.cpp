@@ -1,10 +1,10 @@
 #include "Pch.h"
-#include "Graphics/CommandList.h"
+#include "Graphics/Backend/CommandList.h"
 #include "Graphics/Buffer.h"
-#include "Application.h"
-#include "Graphics/Renderer.h"
-#include "Graphics/Device.h"
-#include "Graphics/DescriptorHeap.h"
+#include "Graphics/Backend/Device.h"
+#include "Graphics/Backend/DescriptorHeap.h"
+#include "Graphics/Backend/PipelineState.h"
+#include "Graphics/Backend/RootSignature.h"
 
 CommandList::CommandList(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE type)
 	: m_d3d12CommandListType(type), m_Device(device)

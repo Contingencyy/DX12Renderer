@@ -1,8 +1,8 @@
 #pragma once
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
-#include "Graphics/CommandQueue.h"
-#include "Graphics/CommandList.h"
+#include "Graphics/Backend/CommandQueue.h"
+#include "Graphics/Backend/CommandList.h"
 
 class Device
 {

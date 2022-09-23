@@ -1,7 +1,7 @@
 #include "Pch.h"
-#include "Graphics/Device.h"
 #include "Graphics/Texture.h"
-#include "Graphics/RenderBackend.h"
+#include "Graphics/Backend/Device.h"
+#include "Graphics/Backend/RenderBackend.h"
 
 DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format)
 {
@@ -51,17 +51,17 @@ void Texture::Resize(uint32_t width, uint32_t height)
 	CreateViews();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetRenderTargetDepthStencilView()
+D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetRenderTargetDepthStencilView() const
 {
 	return m_RenderTargetDepthStencilDescriptor.GetCPUDescriptorHandle();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetShaderResourceView()
+D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetShaderResourceView() const
 {
 	return m_ShaderResourceViewDescriptor.GetCPUDescriptorHandle();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetUnorderedAccessView()
+D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetUnorderedAccessView() const
 {
 	return m_UnorderedAccessViewDescriptor.GetCPUDescriptorHandle();
 }

@@ -33,10 +33,10 @@
     <ClCompile Include="Source\Graphics\Buffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\CommandQueue.cpp">
+    <ClCompile Include="Source\Graphics\Backend\CommandQueue.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\CommandList.cpp">
+    <ClCompile Include="Source\Graphics\Backend\CommandList.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\GUI.cpp">
@@ -87,22 +87,22 @@
     <ClCompile Include="Source\Resource\ResourceLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\SwapChain.cpp">
+    <ClCompile Include="Source\Graphics\Backend\SwapChain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\Device.cpp">
+    <ClCompile Include="Source\Graphics\Backend\Device.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\DescriptorHeap.cpp">
+    <ClCompile Include="Source\Graphics\Backend\DescriptorHeap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\DescriptorAllocation.cpp">
+    <ClCompile Include="Source\Graphics\Backend\DescriptorAllocation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\PipelineState.cpp">
+    <ClCompile Include="Source\Graphics\Backend\PipelineState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\RootSignature.cpp">
+    <ClCompile Include="Source\Graphics\Backend\RootSignature.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Util\Logger.cpp">
@@ -141,7 +141,7 @@
     <ClCompile Include="Source\Graphics\RenderPass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\RenderBackend.cpp">
+    <ClCompile Include="Source\Graphics\Backend\RenderBackend.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\DebugRenderer.cpp">
@@ -179,10 +179,10 @@
     <ClInclude Include="Include\Util\MathHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\CommandQueue.h">
+    <ClInclude Include="Include\Graphics\Backend\CommandQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\CommandList.h">
+    <ClInclude Include="Include\Graphics\Backend\CommandList.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\GUI.h">
@@ -230,22 +230,22 @@
     <ClInclude Include="Include\Resource\Model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\SwapChain.h">
+    <ClInclude Include="Include\Graphics\Backend\SwapChain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\Device.h">
+    <ClInclude Include="Include\Graphics\Backend\Device.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\DescriptorHeap.h">
+    <ClInclude Include="Include\Graphics\Backend\DescriptorHeap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\DescriptorAllocation.h">
+    <ClInclude Include="Include\Graphics\Backend\DescriptorAllocation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\PipelineState.h">
+    <ClInclude Include="Include\Graphics\Backend\PipelineState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\RootSignature.h">
+    <ClInclude Include="Include\Graphics\Backend\RootSignature.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Scene\SceneObject.h">
@@ -275,7 +275,7 @@
     <ClInclude Include="Include\Util\ThreadSafeQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\RenderBackend.h">
+    <ClInclude Include="Include\Graphics\Backend\RenderBackend.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DebugRenderer.h">

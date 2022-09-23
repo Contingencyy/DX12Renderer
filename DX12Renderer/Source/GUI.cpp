@@ -1,11 +1,11 @@
 #include "Pch.h"
 #include "GUI.h"
-#include "Graphics/Device.h"
-#include "Graphics/CommandQueue.h"
-#include "Graphics/CommandList.h"
-#include "Graphics/SwapChain.h"
-#include "Graphics/RenderBackend.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/Backend/Device.h"
+#include "Graphics/Backend/CommandQueue.h"
+#include "Graphics/Backend/CommandList.h"
+#include "Graphics/Backend/SwapChain.h"
+#include "Graphics/Backend/RenderBackend.h"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_win32.h>

@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics/DescriptorAllocation.h"
+#include "Graphics/Backend/DescriptorAllocation.h"
 
 enum class TextureUsage
 {
@@ -42,9 +42,9 @@ public:
 
 	void Resize(uint32_t width, uint32_t height);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE GetRenderTargetDepthStencilView();
-	D3D12_CPU_DESCRIPTOR_HANDLE GetShaderResourceView();
-	D3D12_CPU_DESCRIPTOR_HANDLE GetUnorderedAccessView();
+	D3D12_CPU_DESCRIPTOR_HANDLE GetRenderTargetDepthStencilView() const;
+	D3D12_CPU_DESCRIPTOR_HANDLE GetShaderResourceView() const;
+	D3D12_CPU_DESCRIPTOR_HANDLE GetUnorderedAccessView() const;
 
 	uint32_t GetSRVIndex() const;
 	uint32_t GetUAVIndex() const;
