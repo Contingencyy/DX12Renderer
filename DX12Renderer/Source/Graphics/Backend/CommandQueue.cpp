@@ -1,7 +1,7 @@
 #include "Pch.h"
-#include "Graphics/CommandQueue.h"
-#include "Graphics/CommandList.h"
-#include "Graphics/Device.h"
+#include "Graphics/Backend/CommandQueue.h"
+#include "Graphics/Backend/CommandList.h"
+#include "Graphics/Backend/Device.h"
 
 CommandQueue::CommandQueue(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_QUEUE_PRIORITY priority)
     : m_d3d12CommandListType(type), m_Device(device)

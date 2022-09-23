@@ -1,10 +1,10 @@
 #include "Pch.h"
-#include "Graphics/SwapChain.h"
+#include "Graphics/Backend/SwapChain.h"
 #include "Graphics/Texture.h"
-#include "Graphics/Device.h"
-#include "Graphics/CommandQueue.h"
-#include "Graphics/CommandList.h"
-#include "Graphics/RenderBackend.h"
+#include "Graphics/Backend/Device.h"
+#include "Graphics/Backend/CommandQueue.h"
+#include "Graphics/Backend/CommandList.h"
+#include "Graphics/Backend/RenderBackend.h"
 
 SwapChain::SwapChain(HWND hWnd, std::shared_ptr<CommandQueue> commandQueue, uint32_t width, uint32_t height)
     : m_CommandQueueDirect(commandQueue)

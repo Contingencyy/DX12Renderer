@@ -1,6 +1,6 @@
 #include "Pch.h"
-#include "Graphics/DescriptorAllocation.h"
-#include "Graphics/DescriptorHeap.h"
+#include "Graphics/Backend/DescriptorAllocation.h"
+#include "Graphics/Backend/DescriptorHeap.h"
 
 DescriptorAllocation::DescriptorAllocation()
 	: m_CPUDescriptorHandle(CD3DX12_CPU_DESCRIPTOR_HANDLE(D3D12_DEFAULT)), m_OffsetInDescriptorHeap(0), m_NumDescriptors(0), m_DescriptorHandleIncrementSize(0)

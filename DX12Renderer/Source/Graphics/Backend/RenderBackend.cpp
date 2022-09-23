@@ -1,9 +1,9 @@
 #include "Pch.h"
-#include "Graphics/RenderBackend.h"
-#include "Graphics/Device.h"
-#include "Graphics/SwapChain.h"
-#include "Graphics/DescriptorHeap.h"
-#include "Graphics/CommandQueue.h"
+#include "Graphics/Backend/RenderBackend.h"
+#include "Graphics/Backend/Device.h"
+#include "Graphics/Backend/SwapChain.h"
+#include "Graphics/Backend/DescriptorHeap.h"
+#include "Graphics/Backend/CommandQueue.h"
 
 static RenderBackend* s_Instance = nullptr;
 

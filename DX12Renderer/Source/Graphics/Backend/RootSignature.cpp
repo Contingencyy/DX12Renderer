@@ -1,7 +1,7 @@
 #include "Pch.h"
-#include "Graphics/RootSignature.h"
-#include "Graphics/Device.h"
-#include "Graphics/RenderBackend.h"
+#include "Graphics/Backend/RootSignature.h"
+#include "Graphics/Backend/Device.h"
+#include "Graphics/Backend/RenderBackend.h"
 
 RootSignature::RootSignature(const std::string& name, const std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters)
 {

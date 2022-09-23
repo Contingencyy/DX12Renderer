@@ -1,7 +1,7 @@
 #include "Pch.h"
-#include "Graphics/Device.h"
 #include "Graphics/Buffer.h"
-#include "Graphics/RenderBackend.h"
+#include "Graphics/Backend/Device.h"
+#include "Graphics/Backend/RenderBackend.h"
 
 Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc, const void* data)
 	: m_BufferDesc(bufferDesc)

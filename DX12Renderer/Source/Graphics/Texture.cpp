@@ -139,17 +139,17 @@ void Texture::CreateViews()
 		RenderBackend::GetDevice()->CreateShaderResourceView(*this, srvDesc, m_ShaderResourceViewDescriptor.GetCPUDescriptorHandle());
 
 		// Create unordered access view (read/write)
-		//if (m_UnorderedAccessViewDescriptor.IsNull())
-		//	  m_UnorderedAccessViewDescriptor = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		if (m_UnorderedAccessViewDescriptor.IsNull())
+			  m_UnorderedAccessViewDescriptor = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-		//D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-		//uavDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
-		//uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-		///*uavDesc.Buffer.FirstElement = 0;
-		//uavDesc.Buffer.NumElements = 1;
-		//uavDesc.Buffer.CounterOffsetInBytes = 0;*/
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+		uavDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+		uavDesc.Buffer.FirstElement = 0;
+		uavDesc.Buffer.NumElements = 1;
+		uavDesc.Buffer.CounterOffsetInBytes = 0;
 
-		//RenderBackend::GetDevice()->CreateUnorderedAccessView(*this, uavDesc, m_UnorderedAccessViewDescriptor.GetCPUDescriptorHandle());
+		RenderBackend::GetDevice()->CreateUnorderedAccessView(*this, uavDesc, m_UnorderedAccessViewDescriptor.GetCPUDescriptorHandle());
 		break;
 	}
 	case TextureUsage::TEXTURE_USAGE_RENDER_TARGET:

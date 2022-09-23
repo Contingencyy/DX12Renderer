@@ -1,6 +1,6 @@
 #include "Pch.h"
-#include "Graphics/DescriptorHeap.h"
-#include "Graphics/Device.h"
+#include "Graphics/Backend/DescriptorHeap.h"
+#include "Graphics/Backend/Device.h"
 
 DescriptorHeap::DescriptorHeap(std::shared_ptr<Device> device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
     : m_Device(device), m_Type(type), m_NumDescriptors(numDescriptors)
