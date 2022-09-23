@@ -60,7 +60,7 @@ void Renderer::Render()
 {
     SCOPED_TIMER("Renderer::Render");
 
-    auto& descriptorHeap = *RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).get();
+    auto& descriptorHeap = RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     PrepareInstanceBuffer();
 
     {
@@ -115,7 +115,7 @@ void Renderer::Render()
 
         // Set instance buffer
         commandList->SetVertexBuffers(3, 1, *s_Instance->m_MeshInstanceBuffer);
-        uint32_t startInstance = RenderBackend::GetSwapChain()->GetCurrentBackBufferIndex() * s_Instance->m_RenderSettings.MaxInstancesPerDraw;
+        uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Instance->m_RenderSettings.MaxInstancesPerDraw;
 
         for (auto& [meshHash, meshDrawData] : s_Instance->m_MeshDrawData)
         {
@@ -228,8 +228,8 @@ void Renderer::EndScene()
 {
     SCOPED_TIMER("Renderer::EndScene");
 
-    RenderBackend::GetSwapChain()->ResolveToBackBuffer(s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
-    RenderBackend::GetSwapChain()->SwapBuffers(s_Instance->m_RenderSettings.VSync);
+    RenderBackend::GetSwapChain().ResolveToBackBuffer(s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
+    RenderBackend::GetSwapChain().SwapBuffers(s_Instance->m_RenderSettings.VSync);
 
     s_Instance->m_MeshDrawData.clear();
     s_Instance->m_DirectionalLightDrawData.clear();
@@ -339,7 +339,7 @@ void Renderer::MakeRenderPasses()
 
         // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
         CD3DX12_DESCRIPTOR_RANGE1 ranges[1] = {};
-        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 256, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE, 0);
+        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 256, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
 
         desc.RootParameters.resize(5);
         desc.RootParameters[0].InitAsConstantBufferView(0);
@@ -377,7 +377,7 @@ void Renderer::MakeRenderPasses()
 
         // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
         CD3DX12_DESCRIPTOR_RANGE1 ranges[1] = {};
-        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 256, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE, 0);
+        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 256, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
 
         desc.RootParameters.resize(2);
         desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE, D3D12_SHADER_VISIBILITY_PIXEL);
@@ -393,7 +393,7 @@ void Renderer::MakeRenderPasses()
 void Renderer::MakeBuffers()
 {
     s_Instance->m_MeshInstanceBuffer = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD,
-        s_Instance->m_RenderSettings.MaxInstancesPerDraw * RenderBackend::GetSwapChain()->GetBackBufferCount(), sizeof(MeshInstanceData)));
+        s_Instance->m_RenderSettings.MaxInstancesPerDraw * RenderBackend::GetSwapChain().GetBackBufferCount(), sizeof(MeshInstanceData)));
 
     s_Instance->m_DirectionalLightBuffer = std::make_unique<Buffer>("Directional light constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxDirectionalLights, sizeof(DirectionalLightData)));
     s_Instance->m_PointLightBuffer = std::make_unique<Buffer>("Pointlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxPointLights, sizeof(PointLightData)));
@@ -419,7 +419,7 @@ void Renderer::MakeBuffers()
 
 void Renderer::PrepareInstanceBuffer()
 {
-    uint32_t currentBackBufferIndex = RenderBackend::GetSwapChain()->GetCurrentBackBufferIndex();
+    uint32_t currentBackBufferIndex = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex();
     std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * s_Instance->m_RenderSettings.MaxInstancesPerDraw) * sizeof(MeshInstanceData);
 
     for (auto& [meshHash, meshDrawData] : s_Instance->m_MeshDrawData)

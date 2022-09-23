@@ -13,7 +13,8 @@ struct TonemapSettings
 };
 
 ConstantBuffer<TonemapSettings> TonemapCB : register(b0);
-Texture2D Tex2DHeap[] : register(t0, space0);
+
+Texture2D Texture2DTable[] : register(t0, space0);
 SamplerState samp2D : register(s0);
 
 float3 LinearToneMapping(float3 color);
@@ -24,7 +25,7 @@ float3 ACESFilmicToneMapping(float3 color);
 
 float4 main(PixelShaderInput IN) : SV_TARGET
 {
-	float4 sampled = Tex2DHeap[TonemapCB.HDRTargetIndex].Sample(samp2D, IN.TexCoord);
+	float4 sampled = Texture2DTable[TonemapCB.HDRTargetIndex].Sample(samp2D, IN.TexCoord);
 
 	switch (TonemapCB.Type)
 	{

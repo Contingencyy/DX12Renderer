@@ -15,13 +15,13 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 	s_Instance->m_Device = std::make_shared<Device>();
 	
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-		s_Instance->m_DescriptorHeaps[i] = std::make_shared<DescriptorHeap>(s_Instance->m_Device, static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+		s_Instance->m_DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(s_Instance->m_Device, static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
 
 	s_Instance->m_CommandQueueDirect = std::make_shared<CommandQueue>(s_Instance->m_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
 	s_Instance->m_CommandQueueCompute = std::make_unique<CommandQueue>(s_Instance->m_Device, D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	s_Instance->m_CommandQueueCopy = std::make_unique<CommandQueue>(s_Instance->m_Device, D3D12_COMMAND_LIST_TYPE_COPY);
 
-	s_Instance->m_SwapChain = std::make_shared<SwapChain>(hWnd, s_Instance->m_CommandQueueDirect, width, height);
+	s_Instance->m_SwapChain = std::make_unique<SwapChain>(hWnd, s_Instance->m_CommandQueueDirect, width, height);
 
 	s_Instance->m_ProcessInFlightCommandLists = true;
 	s_Instance->m_ProcessInFlightCommandListsThread = std::thread([]() {
@@ -92,9 +92,9 @@ std::shared_ptr<Device> RenderBackend::GetDevice()
 	return s_Instance->m_Device;
 }
 
-std::shared_ptr<SwapChain> RenderBackend::GetSwapChain()
+SwapChain& RenderBackend::GetSwapChain()
 {
-	return s_Instance->m_SwapChain;
+	return *s_Instance->m_SwapChain.get();
 }
 
 DescriptorAllocation RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
@@ -102,9 +102,9 @@ DescriptorAllocation RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TY
 	return s_Instance->m_DescriptorHeaps[type]->Allocate(numDescriptors);
 }
 
-std::shared_ptr<DescriptorHeap> RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type)
+DescriptorHeap& RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
-	return s_Instance->m_DescriptorHeaps[type];
+	return *s_Instance->m_DescriptorHeaps[type].get();
 }
 
 std::shared_ptr<CommandList> RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE type)

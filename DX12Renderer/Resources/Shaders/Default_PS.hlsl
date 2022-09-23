@@ -65,7 +65,8 @@ ConstantBuffer<SceneData> SceneDataCB : register(b0);
 ConstantBuffer<DirectionalLightBuffer> DirLightCB : register(b1);
 ConstantBuffer<PointLightBuffer> PointLightCB : register(b2);
 ConstantBuffer<SpotLightBuffer> SpotLightCB : register(b3);
-Texture2D Tex2DHeap[] : register(t0, space0);
+
+Texture2D Texture2DTable[] : register(t0, space0);
 SamplerState samp2D : register(s0);
 
 
@@ -75,8 +76,8 @@ float3 CalculateSpotLight(float3 fragPos, float3 fragNormal, float3 diffuseColor
 
 float4 main(PixelShaderInput IN) : SV_TARGET
 {
-	float4 diffuseColor = IN.Color * Tex2DHeap[IN.TexIndices.x].Sample(samp2D, IN.TexCoord);
-	float4 textureNormal = Tex2DHeap[IN.TexIndices.y].Sample(samp2D, IN.TexCoord);
+	float4 diffuseColor = IN.Color * Texture2DTable[IN.TexIndices.x].Sample(samp2D, IN.TexCoord);
+	float4 textureNormal = Texture2DTable[IN.TexIndices.y].Sample(samp2D, IN.TexCoord);
 	float3 finalColor = float3(0.0f, 0.0f, 0.0f);
 
 	finalColor += diffuseColor.xyz * SceneDataCB.Ambient;

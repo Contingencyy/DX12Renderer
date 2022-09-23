@@ -68,7 +68,6 @@ private:
 	static void MakeRenderPasses();
 	static void MakeBuffers();
 	static void PrepareInstanceBuffer();
-	static void PrepareLightBuffers();
 
 private:
 	struct RendererStatistics

@@ -22,6 +22,8 @@ void ResourceManager::LoadTexture(const std::string& filepath, const std::string
 	ImageInfo imageInfo = ResourceLoader::LoadImage(filepath);
 
 	TextureDesc textureDesc = {};
+	textureDesc.Usage = TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE;
+	textureDesc.Format = TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM;
 	textureDesc.Width = imageInfo.Width;
 	textureDesc.Height = imageInfo.Height;
 	m_Textures.insert(std::pair<std::string, std::shared_ptr<Texture>>(name, std::make_shared<Texture>(name, textureDesc)));

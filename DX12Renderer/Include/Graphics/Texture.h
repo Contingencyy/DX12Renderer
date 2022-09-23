@@ -3,6 +3,7 @@
 
 enum class TextureUsage
 {
+	TEXTURE_USAGE_NONE,
 	TEXTURE_USAGE_SHADER_RESOURCE,
 	TEXTURE_USAGE_BACK_BUFFER,
 	TEXTURE_USAGE_RENDER_TARGET,
@@ -11,6 +12,7 @@ enum class TextureUsage
 
 enum class TextureFormat
 {
+	TEXTURE_FORMAT_UNSPECIFIED,
 	TEXTURE_FORMAT_RGBA8_UNORM,
 	TEXTURE_FORMAT_RGBA16_FLOAT,
 	TEXTURE_FORMAT_DEPTH32
@@ -22,11 +24,11 @@ struct TextureDesc
 	TextureDesc(TextureUsage usage, TextureFormat format, uint32_t width, uint32_t height)
 		: Usage(usage), Format(format), Width(width), Height(height) {}
 
-	TextureUsage Usage = TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE;
-	TextureFormat Format = TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM;
+	TextureUsage Usage = TextureUsage::TEXTURE_USAGE_NONE;
+	TextureFormat Format = TextureFormat::TEXTURE_FORMAT_UNSPECIFIED;
 
-	uint32_t Width = 1280;
-	uint32_t Height = 720;
+	uint32_t Width = 1;
+	uint32_t Height = 1;
 };
 
 DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format);
