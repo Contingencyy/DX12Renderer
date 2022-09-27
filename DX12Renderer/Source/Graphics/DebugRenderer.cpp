@@ -48,8 +48,8 @@ void DebugRenderer::Render()
     auto& colorAttachment = Renderer::GetFinalColorOutput();
     auto& depthAttachment = Renderer::GetFinalDepthOutput();
 
-    auto rtv = colorAttachment.GetRenderTargetDepthStencilView();
-    auto dsv = depthAttachment.GetRenderTargetDepthStencilView();
+    auto rtv = colorAttachment.GetDescriptorHandle(DescriptorType::RTV);
+    auto dsv = depthAttachment.GetDescriptorHandle(DescriptorType::DSV);
 
     // Set viewports, scissor rects and render targets
     commandList->SetViewports(1, &s_Instance->m_Viewport);
@@ -114,7 +114,7 @@ void DebugRenderer::MakeRenderPasses()
         RenderPassDesc desc;
         desc.VertexShaderPath = "Resources/Shaders/DebugLine_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/DebugLine_PS.hlsl";
-        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
             renderSettings.Resolution.x, renderSettings.Resolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
             renderSettings.Resolution.x, renderSettings.Resolution.y);

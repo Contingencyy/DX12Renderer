@@ -70,8 +70,8 @@ void Renderer::Render()
         auto& defaultColorTarget = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment();
         auto& defaultDepthBuffer = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetDepthAttachment();
 
-        auto rtv = defaultColorTarget.GetRenderTargetDepthStencilView();
-        auto dsv = defaultDepthBuffer.GetRenderTargetDepthStencilView();
+        auto rtv = defaultColorTarget.GetDescriptorHandle(DescriptorType::RTV);
+        auto dsv = defaultDepthBuffer.GetDescriptorHandle(DescriptorType::DSV);
 
         // Set viewports, scissor rects and render targets
         commandList->SetViewports(1, &s_Instance->m_Viewport);
@@ -150,8 +150,8 @@ void Renderer::Render()
         auto& tmColorTarget = s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
         auto& tmDepthBuffer = s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetDepthAttachment();
 
-        auto tmRtv = tmColorTarget.GetRenderTargetDepthStencilView();
-        auto tmDsv = tmDepthBuffer.GetRenderTargetDepthStencilView();
+        auto tmRtv = tmColorTarget.GetDescriptorHandle(DescriptorType::RTV);
+        auto tmDsv = tmDepthBuffer.GetDescriptorHandle(DescriptorType::DSV);
 
         // Set viewports, scissor rects and render targets
         commandList->SetViewports(1, &s_Instance->m_Viewport);
@@ -163,7 +163,7 @@ void Renderer::Render()
         // Set pipeline state and root signature
         commandList->SetPipelineState(s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetPipelineState());
 
-        uint32_t pbrColorTargetIndex = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment().GetSRVIndex();
+        uint32_t pbrColorTargetIndex = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment().GetDescriptorIndex(DescriptorType::SRV);
         s_Instance->m_TonemapSettings.HDRTargetIndex = pbrColorTargetIndex;
         s_Instance->m_TonemapConstantBuffer->SetBufferData(&s_Instance->m_TonemapSettings);
         commandList->SetRootConstantBufferView(0, *s_Instance->m_TonemapConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -241,8 +241,8 @@ void Renderer::EndScene()
 
 void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform)
 {
-    uint32_t baseColorTexIndex = mesh->GetTexture(MeshTextureType::TEX_BASE_COLOR)->GetSRVIndex();
-    uint32_t normalTexIndex = mesh->GetTexture(MeshTextureType::TEX_NORMAL)->GetSRVIndex();
+    uint32_t baseColorTexIndex = mesh->GetTexture(MeshTextureType::TEX_BASE_COLOR)->GetDescriptorIndex(DescriptorType::SRV);
+    uint32_t normalTexIndex = mesh->GetTexture(MeshTextureType::TEX_NORMAL)->GetDescriptorIndex(DescriptorType::SRV);
 
     auto iter = s_Instance->m_MeshDrawData.find(mesh->GetHash());
 
@@ -328,7 +328,7 @@ void Renderer::MakeRenderPasses()
         RenderPassDesc desc;
         desc.VertexShaderPath = "Resources/Shaders/Default_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/Default_PS.hlsl";
-        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
+        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
             s_Instance->m_RenderSettings.Resolution.x, s_Instance->m_RenderSettings.Resolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
             s_Instance->m_RenderSettings.Resolution.x, s_Instance->m_RenderSettings.Resolution.y);
@@ -366,7 +366,7 @@ void Renderer::MakeRenderPasses()
         RenderPassDesc desc;
         desc.VertexShaderPath = "Resources/Shaders/ToneMapping_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/ToneMapping_PS.hlsl";
-        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
             s_Instance->m_RenderSettings.Resolution.x, s_Instance->m_RenderSettings.Resolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
             s_Instance->m_RenderSettings.Resolution.x, s_Instance->m_RenderSettings.Resolution.y);

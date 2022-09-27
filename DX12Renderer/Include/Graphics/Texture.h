@@ -1,18 +1,28 @@
 #pragma once
 #include "Graphics/Backend/DescriptorAllocation.h"
 
-enum class TextureUsage
+enum class TextureUsage : uint32_t
 {
-	TEXTURE_USAGE_NONE,
-	TEXTURE_USAGE_SHADER_RESOURCE,
-	TEXTURE_USAGE_BACK_BUFFER,
-	TEXTURE_USAGE_RENDER_TARGET,
-	TEXTURE_USAGE_DEPTH
+	TEXTURE_USAGE_NONE = 0,
+	TEXTURE_USAGE_READ = (1 << 0),
+	TEXTURE_USAGE_WRITE = (1 << 1),
+	TEXTURE_USAGE_RENDER_TARGET = (1 << 2),
+	TEXTURE_USAGE_DEPTH = (1 << 3)
 };
 
-enum class TextureFormat
+inline bool operator&(TextureUsage lhs, TextureUsage rhs)
 {
-	TEXTURE_FORMAT_UNSPECIFIED,
+	return static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs);
+}
+
+inline TextureUsage operator|(TextureUsage lhs, TextureUsage rhs)
+{
+	return static_cast<TextureUsage>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+}
+
+enum class TextureFormat : uint32_t
+{
+	TEXTURE_FORMAT_UNSPECIFIED = 0,
 	TEXTURE_FORMAT_RGBA8_UNORM,
 	TEXTURE_FORMAT_RGBA16_FLOAT,
 	TEXTURE_FORMAT_DEPTH32
@@ -32,6 +42,7 @@ struct TextureDesc
 };
 
 DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format);
+D3D12_RESOURCE_STATES TextureUsageToDXGIResourceState(TextureUsage usage);
 
 class Texture
 {
@@ -41,19 +52,16 @@ public:
 	~Texture();
 
 	void Resize(uint32_t width, uint32_t height);
+	bool IsValid() const;
 
-	D3D12_CPU_DESCRIPTOR_HANDLE GetRenderTargetDepthStencilView() const;
-	D3D12_CPU_DESCRIPTOR_HANDLE GetShaderResourceView() const;
-	D3D12_CPU_DESCRIPTOR_HANDLE GetUnorderedAccessView() const;
-
-	uint32_t GetSRVIndex() const;
-	uint32_t GetUAVIndex() const;
+	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle(DescriptorType type) const;
+	uint32_t GetDescriptorIndex(DescriptorType type) const;
 
 	TextureDesc GetTextureDesc() const { return m_TextureDesc; }
 	std::size_t GetByteSize() const { return m_ByteSize; }
-
 	std::string GetName() const { return m_Name; }
 	void SetName(const std::string& name);
+
 	ComPtr<ID3D12Resource> GetD3D12Resource() const { return m_d3d12Resource; }
 	void SetD3D12Resource(ComPtr<ID3D12Resource> resource) { m_d3d12Resource = resource; }
 
@@ -66,9 +74,7 @@ private:
 	std::string m_Name = "";
 	ComPtr<ID3D12Resource> m_d3d12Resource;
 
-	DescriptorAllocation m_RenderTargetDepthStencilDescriptor = {};
-	DescriptorAllocation m_ShaderResourceViewDescriptor = {};
-	DescriptorAllocation m_UnorderedAccessViewDescriptor = {};
+	DescriptorAllocation m_DescriptorAllocations[DescriptorType::NUM_DESCRIPTOR_TYPES] = {};
 
 	std::size_t m_ByteSize = 0;
 

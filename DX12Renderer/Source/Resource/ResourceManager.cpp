@@ -10,7 +10,7 @@ ResourceManager::ResourceManager()
 {
 	uint32_t whiteTextureData = 0xFFFFFFFF;
 	m_Textures.insert(std::pair<std::string, std::shared_ptr<Texture>>("WhiteTexture", std::make_shared<Texture>("WhiteTexture", TextureDesc(
-		TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM, 1, 1), &whiteTextureData)));
+		TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM, 1, 1), &whiteTextureData)));
 }
 
 ResourceManager::~ResourceManager()
@@ -22,7 +22,7 @@ void ResourceManager::LoadTexture(const std::string& filepath, const std::string
 	ImageInfo imageInfo = ResourceLoader::LoadImage(filepath);
 
 	TextureDesc textureDesc = {};
-	textureDesc.Usage = TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE;
+	textureDesc.Usage = TextureUsage::TEXTURE_USAGE_READ;
 	textureDesc.Format = TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM;
 	textureDesc.Width = imageInfo.Width;
 	textureDesc.Height = imageInfo.Height;
@@ -52,7 +52,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		if (baseColorTextureIndex >= 0)
 		{
 			uint32_t baseColorImageIndex = glTFModel.textures[baseColorTextureIndex].source;
-			textures[matIndex].push_back(std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+			textures[matIndex].push_back(std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
 				glTFModel.images[baseColorImageIndex].width, glTFModel.images[baseColorImageIndex].height), &glTFModel.images[baseColorImageIndex].image[0]));
 		}
 		else
@@ -64,7 +64,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		if (normalTextureIndex >= 0)
 		{
 			uint32_t normalImageIndex = glTFModel.textures[normalTextureIndex].source;
-			textures[matIndex].push_back(std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_SHADER_RESOURCE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+			textures[matIndex].push_back(std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
 				glTFModel.images[normalImageIndex].width, glTFModel.images[normalImageIndex].height), &glTFModel.images[normalImageIndex].image[0]));
 		}
 		else

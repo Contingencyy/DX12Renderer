@@ -78,8 +78,8 @@ void GUI::EndFrame()
 	auto& colorTarget = Renderer::GetFinalColorOutput();
 	auto& depthBuffer = Renderer::GetFinalDepthOutput();
 
-	auto rtv = colorTarget.GetRenderTargetDepthStencilView();
-	auto dsv = depthBuffer.GetRenderTargetDepthStencilView();
+	auto rtv = colorTarget.GetDescriptorHandle(DescriptorType::RTV);
+	auto dsv = depthBuffer.GetDescriptorHandle(DescriptorType::DSV);
 
 	commandList->SetRenderTargets(1, &rtv, &dsv);
 	ID3D12DescriptorHeap* descriptorHeap = m_d3d12DescriptorHeap.Get();

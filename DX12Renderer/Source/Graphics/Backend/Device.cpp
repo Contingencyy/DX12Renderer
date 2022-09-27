@@ -113,9 +113,19 @@ void Device::CreateConstantBufferView(Buffer& buffer, const D3D12_CONSTANT_BUFFE
     m_d3d12Device->CreateConstantBufferView(&cbvDesc, descriptor);
 }
 
+void Device::CreateShaderResourceView(Buffer& buffer, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor)
+{
+    m_d3d12Device->CreateShaderResourceView(buffer.GetD3D12Resource().Get(), &srvDesc, descriptor);
+}
+
 void Device::CreateShaderResourceView(Texture& texture, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor)
 {
     m_d3d12Device->CreateShaderResourceView(texture.GetD3D12Resource().Get(), &srvDesc, descriptor);
+}
+
+void Device::CreateUnorderedAccessView(Buffer& buffer, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor)
+{
+    m_d3d12Device->CreateUnorderedAccessView(buffer.GetD3D12Resource().Get(), nullptr, &uavDesc, descriptor);
 }
 
 void Device::CreateUnorderedAccessView(Texture& texture, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor)
