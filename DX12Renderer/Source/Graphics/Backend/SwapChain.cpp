@@ -7,7 +7,7 @@
 #include "Graphics/Backend/RenderBackend.h"
 
 SwapChain::SwapChain(HWND hWnd, std::shared_ptr<CommandQueue> commandQueue, uint32_t width, uint32_t height)
-    : m_CommandQueueDirect(commandQueue)
+    : CommandQueueDirect(commandQueue)
 {
     ComPtr<IDXGIFactory> dxgiFactory;
     ComPtr<IDXGIFactory5> dxgiFactory5;
@@ -35,7 +35,7 @@ SwapChain::SwapChain(HWND hWnd, std::shared_ptr<CommandQueue> commandQueue, uint
     swapChainDesc.Flags = m_TearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
     ComPtr<IDXGISwapChain1> dxgiSwapChain1;
-    DX_CALL(dxgiFactory5->CreateSwapChainForHwnd(m_CommandQueueDirect->GetD3D12CommandQueue().Get(),
+    DX_CALL(dxgiFactory5->CreateSwapChainForHwnd(CommandQueueDirect->GetD3D12CommandQueue().Get(),
         hWnd, &swapChainDesc, nullptr, nullptr, &dxgiSwapChain1));
     DX_CALL(dxgiSwapChain1.As(&m_dxgiSwapChain));
 
@@ -54,7 +54,7 @@ void SwapChain::ResolveToBackBuffer(const Texture& texture)
 {
     SCOPED_TIMER("SwapChain::ResolveToBackBuffer");
 
-    auto commandList = m_CommandQueueDirect->GetCommandList();
+    auto commandList = CommandQueueDirect->GetCommandList();
     auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
 
     CD3DX12_RESOURCE_BARRIER copyBarriers[] = {
@@ -75,7 +75,7 @@ void SwapChain::ResolveToBackBuffer(const Texture& texture)
     };
     commandList->ResourceBarrier(2, renderBarriers);
 
-    m_CommandQueueDirect->ExecuteCommandList(commandList);
+    CommandQueueDirect->ExecuteCommandList(commandList);
 }
 
 void SwapChain::SwapBuffers(bool vSync)
@@ -86,10 +86,10 @@ void SwapChain::SwapBuffers(bool vSync)
     unsigned int presentFlags = m_TearingSupported && !vSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
     DX_CALL(m_dxgiSwapChain->Present(syncInterval, presentFlags));
 
-    m_FenceValues[m_CurrentBackBufferIndex] = m_CommandQueueDirect->Signal();
+    m_FenceValues[m_CurrentBackBufferIndex] = CommandQueueDirect->Signal();
 
     m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
-    m_CommandQueueDirect->WaitForFenceValue(m_FenceValues[m_CurrentBackBufferIndex]);
+    CommandQueueDirect->WaitForFenceValue(m_FenceValues[m_CurrentBackBufferIndex]);
 }
 
 void SwapChain::Resize(uint32_t width, uint32_t height)

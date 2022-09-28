@@ -31,17 +31,5 @@ public:
 	static std::shared_ptr<CommandList> GetCommandList(D3D12_COMMAND_LIST_TYPE type);
 	static void ExecuteCommandList(std::shared_ptr<CommandList> commandList);
 	static void ExecuteCommandListAndWait(std::shared_ptr<CommandList> commandList);
-	
-private:
-	std::shared_ptr<Device> m_Device;
-	std::unique_ptr<SwapChain> m_SwapChain;
-	std::unique_ptr<DescriptorHeap> m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
-
-	std::shared_ptr<CommandQueue> m_CommandQueueDirect;
-	std::unique_ptr<CommandQueue> m_CommandQueueCompute;
-	std::unique_ptr<CommandQueue> m_CommandQueueCopy;
-
-	std::thread m_ProcessInFlightCommandListsThread;
-	std::atomic_bool m_ProcessInFlightCommandLists;
 
 };

@@ -20,46 +20,6 @@ public:
 private:
 	static void MakeRenderPasses();
 	static void MakeBuffers();
-
-private:
-	struct DebugRendererSettings
-	{
-		bool DrawLines = false;
-	};
-
-	struct DebugRendererStatistics
-	{
-		uint32_t DrawCallCount;
-		uint32_t LineCount;
-
-		void Reset()
-		{
-			DrawCallCount = 0;
-			LineCount = 0;
-		}
-	};
-
-private:
-	std::unique_ptr<RenderPass> m_RenderPass;
-
-	DebugRendererSettings m_DebugRenderSettings;
-	DebugRendererStatistics m_DebugRenderStatistics;
-
-	D3D12_VIEWPORT m_Viewport = D3D12_VIEWPORT();
-	D3D12_RECT m_ScissorRect = D3D12_RECT();
-
-	struct LineVertex
-	{
-		LineVertex(const glm::vec3& position, const glm::vec4& color)
-			: Position(position), Color(color) {}
-
-		glm::vec3 Position;
-		glm::vec4 Color;
-	};
-
-	std::vector<LineVertex> m_LineVertexData;
-	std::unique_ptr<Buffer> m_LineBuffer;
-
-	glm::mat4 m_CameraViewProjection;
+	
 
 };

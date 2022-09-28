@@ -63,16 +63,15 @@ void Device::CreateRootSignature(const CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC& ro
         serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
 }
 
-void Device::CreateBuffer(Buffer& buffer, D3D12_HEAP_TYPE bufferType, D3D12_RESOURCE_STATES initialState, std::size_t size)
+void Device::CreateBuffer(Buffer& buffer, D3D12_HEAP_TYPE bufferType, const D3D12_RESOURCE_DESC& bufferDesc, D3D12_RESOURCE_STATES initialState, std::size_t size)
 {
     CD3DX12_HEAP_PROPERTIES heapProps(bufferType);
-    CD3DX12_RESOURCE_DESC heapDesc(CD3DX12_RESOURCE_DESC::Buffer(size));
 
     ComPtr<ID3D12Resource> d3d12Resource;
     DX_CALL(m_d3d12Device->CreateCommittedResource(
         &heapProps,
         D3D12_HEAP_FLAG_NONE,
-        &heapDesc,
+        &bufferDesc,
         initialState,
         nullptr,
         IID_PPV_ARGS(&d3d12Resource)

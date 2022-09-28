@@ -7,15 +7,54 @@
 
 #include <imgui/imgui.h>
 
-static DebugRenderer* s_Instance = nullptr;
+struct DebugRendererSettings
+{
+    bool DrawLines = false;
+};
+
+struct DebugRendererStatistics
+{
+    uint32_t DrawCallCount;
+    uint32_t LineCount;
+
+    void Reset()
+    {
+        DrawCallCount = 0;
+        LineCount = 0;
+    }
+};
+
+struct LineVertex
+{
+    LineVertex(const glm::vec3& position, const glm::vec4& color)
+        : Position(position), Color(color) {}
+
+    glm::vec3 Position;
+    glm::vec4 Color;
+};
+
+struct InternalDebugRendererData
+{
+    std::unique_ptr<RenderPass> RenderPass;
+
+    DebugRendererSettings DebugRenderSettings;
+    DebugRendererStatistics DebugRenderStatistics;
+
+    D3D12_VIEWPORT Viewport = D3D12_VIEWPORT();
+    D3D12_RECT ScissorRect = D3D12_RECT();
+
+    std::vector<LineVertex> LineVertexData;
+    std::unique_ptr<Buffer> LineBuffer;
+
+    glm::mat4 CameraViewProjection;
+};
+
+static InternalDebugRendererData s_Data;
 
 void DebugRenderer::Initialize(uint32_t width, uint32_t height)
 {
-    if (!s_Instance)
-        s_Instance = new DebugRenderer();
-
-    s_Instance->m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f);
-    s_Instance->m_ScissorRect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
+    s_Data.Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f);
+    s_Data.ScissorRect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
 
     MakeRenderPasses();
     MakeBuffers();
@@ -23,17 +62,16 @@ void DebugRenderer::Initialize(uint32_t width, uint32_t height)
 
 void DebugRenderer::Finalize()
 {
-    delete s_Instance;
 }
 
 void DebugRenderer::BeginScene(const Camera& sceneCamera)
 {
     SCOPED_TIMER("DebugRenderer::BeginFrame");
 
-    s_Instance->m_CameraViewProjection = sceneCamera.GetViewProjection();
+    s_Data.CameraViewProjection = sceneCamera.GetViewProjection();
 
     auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-    s_Instance->m_RenderPass->ClearViews(commandList);
+    s_Data.RenderPass->ClearViews(commandList);
     RenderBackend::ExecuteCommandList(commandList);
 }
 
@@ -41,7 +79,7 @@ void DebugRenderer::Render()
 {
     SCOPED_TIMER("DebugRenderer::Render");
 
-    if (!s_Instance->m_DebugRenderSettings.DrawLines || s_Instance->m_LineVertexData.size() == 0)
+    if (!s_Data.DebugRenderSettings.DrawLines || s_Data.LineVertexData.size() == 0)
         return;
 
     auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
@@ -52,22 +90,22 @@ void DebugRenderer::Render()
     auto dsv = depthAttachment.GetDescriptorHandle(DescriptorType::DSV);
 
     // Set viewports, scissor rects and render targets
-    commandList->SetViewports(1, &s_Instance->m_Viewport);
-    commandList->SetScissorRects(1, &s_Instance->m_ScissorRect);
+    commandList->SetViewports(1, &s_Data.Viewport);
+    commandList->SetScissorRects(1, &s_Data.ScissorRect);
     commandList->SetRenderTargets(1, &rtv, &dsv);
 
     // Set pipeline state and root signature
-    commandList->SetPipelineState(s_Instance->m_RenderPass->GetPipelineState());
+    commandList->SetPipelineState(s_Data.RenderPass->GetPipelineState());
 
-    commandList->SetRootConstants(0, 16, &s_Instance->m_CameraViewProjection, 0);
+    commandList->SetRootConstants(0, 16, &s_Data.CameraViewProjection, 0);
 
-    s_Instance->m_LineBuffer->SetBufferData(&s_Instance->m_LineVertexData[0], sizeof(LineVertex) * s_Instance->m_LineVertexData.size());
-    commandList->SetVertexBuffers(0, 1, *s_Instance->m_LineBuffer);
+    s_Data.LineBuffer->SetBufferData(&s_Data.LineVertexData[0], sizeof(LineVertex) * s_Data.LineVertexData.size());
+    commandList->SetVertexBuffers(0, 1, *s_Data.LineBuffer);
 
-    commandList->Draw(s_Instance->m_LineVertexData.size(), 1);
+    commandList->Draw(s_Data.LineVertexData.size(), 1);
 
-    s_Instance->m_DebugRenderStatistics.DrawCallCount++;
-    s_Instance->m_DebugRenderStatistics.LineCount += s_Instance->m_LineVertexData.size() / 2;
+    s_Data.DebugRenderStatistics.DrawCallCount++;
+    s_Data.DebugRenderStatistics.LineCount += s_Data.LineVertexData.size() / 2;
 
     RenderBackend::ExecuteCommandList(commandList);
 }
@@ -75,34 +113,34 @@ void DebugRenderer::Render()
 void DebugRenderer::OnImGuiRender()
 {
     ImGui::Text("Debug renderer");
-    ImGui::Text("Draw calls: %u", s_Instance->m_DebugRenderStatistics.DrawCallCount);
-    ImGui::Text("Line count: %u", s_Instance->m_DebugRenderStatistics.LineCount);
-    ImGui::Checkbox("Draw lines", &s_Instance->m_DebugRenderSettings.DrawLines);
+    ImGui::Text("Draw calls: %u", s_Data.DebugRenderStatistics.DrawCallCount);
+    ImGui::Text("Line count: %u", s_Data.DebugRenderStatistics.LineCount);
+    ImGui::Checkbox("Draw lines", &s_Data.DebugRenderSettings.DrawLines);
 }
 
 void DebugRenderer::EndScene()
 {
     SCOPED_TIMER("DebugRenderer::EndFrame");
 
-    s_Instance->m_LineVertexData.clear();
+    s_Data.LineVertexData.clear();
 
-    s_Instance->m_DebugRenderStatistics.Reset();
+    s_Data.DebugRenderStatistics.Reset();
 }
 
 void DebugRenderer::Submit(const glm::vec3& lineStart, const glm::vec3& lineEnd, const glm::vec4& color)
 {
-    s_Instance->m_LineVertexData.emplace_back(lineStart, color);
-    s_Instance->m_LineVertexData.emplace_back(lineEnd, color);
+    s_Data.LineVertexData.emplace_back(lineStart, color);
+    s_Data.LineVertexData.emplace_back(lineEnd, color);
 }
 
 void DebugRenderer::Resize(uint32_t width, uint32_t height)
 {
     const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
 
-    s_Instance->m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(renderSettings.Resolution.x),
+    s_Data.Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(renderSettings.Resolution.x),
         static_cast<float>(renderSettings.Resolution.y), 0.0f, 1.0f);
 
-    s_Instance->m_RenderPass->Resize(static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
+    s_Data.RenderPass->Resize(static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
 }
 
 void DebugRenderer::MakeRenderPasses()
@@ -129,11 +167,11 @@ void DebugRenderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 
-        s_Instance->m_RenderPass = std::make_unique<RenderPass>("Debug line", desc);
+        s_Data.RenderPass = std::make_unique<RenderPass>("Debug line", desc);
     }
 }
 
 void DebugRenderer::MakeBuffers()
 {
-    s_Instance->m_LineBuffer = std::make_unique<Buffer>("Line vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 10000, sizeof(LineVertex)));
+    s_Data.LineBuffer = std::make_unique<Buffer>("Line vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 10000, sizeof(LineVertex)));
 }

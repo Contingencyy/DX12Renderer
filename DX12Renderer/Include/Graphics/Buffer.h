@@ -34,8 +34,6 @@ struct BufferDesc
 	std::size_t ElementSize = 0;
 };
 
-D3D12_RESOURCE_STATES BufferUsageToD3DResourceState(BufferUsage usage);
-
 class Buffer
 {
 public:

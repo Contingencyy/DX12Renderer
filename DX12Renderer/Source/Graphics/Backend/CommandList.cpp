@@ -14,7 +14,7 @@ CommandList::CommandList(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE
 	m_RootSignature = nullptr;
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
 	{
-		m_DescriptorHeaps[i] = nullptr;
+		DescriptorHeaps[i] = nullptr;
 	}
 }
 
@@ -89,16 +89,16 @@ void CommandList::SetIndexBuffer(const Buffer& indexBuffer)
 void CommandList::SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, const DescriptorHeap& descriptorHeap)
 {
 	ID3D12DescriptorHeap* d3d12DescriptorHeap = descriptorHeap.GetD3D12DescriptorHeap().Get();
-	if (m_DescriptorHeaps[type] != d3d12DescriptorHeap)
+	if (DescriptorHeaps[type] != d3d12DescriptorHeap)
 	{
-		m_DescriptorHeaps[type] = d3d12DescriptorHeap;
+		DescriptorHeaps[type] = d3d12DescriptorHeap;
 
 		uint32_t numDescriptorHeaps = 0;
 		ID3D12DescriptorHeap* descriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {};
 
 		for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
 		{
-			ID3D12DescriptorHeap* descriptorHeap = m_DescriptorHeaps[i];
+			ID3D12DescriptorHeap* descriptorHeap = DescriptorHeaps[i];
 			if (descriptorHeap)
 				descriptorHeaps[numDescriptorHeaps++] = descriptorHeap;
 		}
@@ -253,6 +253,6 @@ void CommandList::Reset()
 
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
 	{
-		m_DescriptorHeaps[i] = nullptr;
+		DescriptorHeaps[i] = nullptr;
 	}
 }

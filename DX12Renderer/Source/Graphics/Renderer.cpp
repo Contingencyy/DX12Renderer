@@ -13,20 +13,137 @@
 
 #include <imgui/imgui.h>
 
-static Renderer* s_Instance = nullptr;
+struct SceneData
+{
+    SceneData() = default;
+
+    glm::mat4 ViewProjection = glm::identity<glm::mat4>();
+    glm::vec3 Ambient = glm::vec3(0.0f);
+
+    uint32_t NumDirLights = 0;
+    uint32_t NumPointLights = 0;
+    uint32_t NumSpotLights = 0;
+};
+
+struct RendererStatistics
+{
+    void Reset()
+    {
+        DrawCallCount = 0;
+        TriangleCount = 0;
+        MeshCount = 0;
+        DirectionalLightCount = 0;
+        PointLightCount = 0;
+        SpotLightCount = 0;
+    }
+
+    uint32_t DrawCallCount = 0;
+    uint32_t TriangleCount = 0;
+    uint32_t MeshCount = 0;
+    uint32_t DirectionalLightCount = 0;
+    uint32_t PointLightCount = 0;
+    uint32_t SpotLightCount = 0;
+};
+
+enum RenderPassType : uint32_t
+{
+    DEFAULT,
+    TONE_MAPPING,
+    NUM_RENDER_PASSES = (TONE_MAPPING + 1)
+};
+
+struct MeshInstanceData
+{
+    MeshInstanceData(const glm::mat4& transform, const glm::vec4& color, uint32_t baseColorTexIndex, uint32_t normalTexIndex)
+        : Transform(transform), Color(color), BaseColorTexIndex(baseColorTexIndex), NormalTexIndex(normalTexIndex) {}
+
+    glm::mat4 Transform = glm::identity<glm::mat4>();
+    glm::vec4 Color = glm::vec4(1.0f);
+    uint32_t BaseColorTexIndex = 0;
+    uint32_t NormalTexIndex = 0;
+};
+
+struct MeshDrawData
+{
+    MeshDrawData(const std::shared_ptr<Mesh>& mesh)
+        : Mesh(mesh) {}
+
+    std::shared_ptr<Mesh> Mesh;
+    std::vector<MeshInstanceData> MeshInstanceData;
+};
+
+enum class TonemapType : uint32_t
+{
+    LINEAR, REINHARD, UNCHARTED2, FILMIC, ACES_FILMIC,
+    NUM_TYPES = 5
+};
+
+struct TonemapSettings
+{
+    uint32_t HDRTargetIndex = 0;
+    float Exposure = 1.5f;
+    float Gamma = 2.2f;
+    TonemapType Type = TonemapType::REINHARD;
+};
+
+std::string TonemapTypeToString(TonemapType type)
+{
+    switch (type)
+    {
+    case TonemapType::LINEAR:
+        return std::string("Linear");
+    case TonemapType::REINHARD:
+        return std::string("Reinhard");
+    case TonemapType::UNCHARTED2:
+        return std::string("Uncharted2");
+    case TonemapType::FILMIC:
+        return std::string("Filmic");
+    case TonemapType::ACES_FILMIC:
+        return std::string("ACES Filmic");
+    default:
+        return std::string("Unknown");
+    }
+}
+
+struct InternalRendererData
+{
+    std::unique_ptr<RenderPass> RenderPasses[RenderPassType::NUM_RENDER_PASSES];
+
+    D3D12_VIEWPORT Viewport = D3D12_VIEWPORT();
+    D3D12_RECT ScissorRect = D3D12_RECT();
+
+    Renderer::RenderSettings RenderSettings;
+    RendererStatistics RenderStatistics;
+
+    TonemapSettings TonemapSettings;
+    std::unique_ptr<Buffer> TonemapConstantBuffer;
+    std::unique_ptr<Buffer> TonemapVertexBuffer;
+    std::unique_ptr<Buffer> TonemapIndexBuffer;
+
+    SceneData SceneData;
+    std::unique_ptr<Buffer> SceneDataConstantBuffer;
+    std::unordered_map<std::size_t, MeshDrawData> MeshDrawData;
+    std::unique_ptr<Buffer> MeshInstanceBuffer;
+
+    std::vector<DirectionalLightData> DirectionalLightDrawData;
+    std::unique_ptr<Buffer> DirectionalLightBuffer;
+    std::vector<PointLightData> PointLightDrawData;
+    std::unique_ptr<Buffer> PointLightBuffer;
+    std::vector<SpotLightData> SpotLightDrawData;
+    std::unique_ptr<Buffer> SpotLightBuffer;
+};
+
+static InternalRendererData s_Data;
 
 void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 {
-    if (!s_Instance)
-        s_Instance = new Renderer();
-
     RenderBackend::Initialize(hWnd, width, height);
 
-    s_Instance->m_RenderSettings.Resolution.x = width;
-    s_Instance->m_RenderSettings.Resolution.y = height;
+    s_Data.RenderSettings.Resolution.x = width;
+    s_Data.RenderSettings.Resolution.y = height;
 
-    s_Instance->m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Instance->m_RenderSettings.Resolution.x), static_cast<float>(s_Instance->m_RenderSettings.Resolution.y), 0.0f, 1.0f);
-    s_Instance->m_ScissorRect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
+    s_Data.Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.Resolution.x), static_cast<float>(s_Data.RenderSettings.Resolution.y), 0.0f, 1.0f);
+    s_Data.ScissorRect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
 
     MakeRenderPasses();
     MakeBuffers();
@@ -35,22 +152,21 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 void Renderer::Finalize()
 {
     RenderBackend::Finalize();
-    delete s_Instance;
 }
 
 void Renderer::BeginScene(const Camera& sceneCamera, const glm::vec3& ambient)
 {
     SCOPED_TIMER("Renderer::BeginScene");
     
-    s_Instance->m_SceneData.ViewProjection = sceneCamera.GetViewProjection();
-    s_Instance->m_SceneData.Ambient = ambient;
+    s_Data.SceneData.ViewProjection = sceneCamera.GetViewProjection();
+    s_Data.SceneData.Ambient = ambient;
 
-    s_Instance->m_TonemapSettings.Exposure = sceneCamera.GetExposure();
-    s_Instance->m_TonemapSettings.Gamma = sceneCamera.GetGamma();
+    s_Data.TonemapSettings.Exposure = sceneCamera.GetExposure();
+    s_Data.TonemapSettings.Gamma = sceneCamera.GetGamma();
 
     auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-    for (auto& renderPass : s_Instance->m_RenderPasses)
+    for (auto& renderPass : s_Data.RenderPasses)
         renderPass->ClearViews(commandList);
 
     RenderBackend::ExecuteCommandList(commandList);
@@ -67,57 +183,57 @@ void Renderer::Render()
         /* Default render pass (lighting) */
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-        auto& defaultColorTarget = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment();
-        auto& defaultDepthBuffer = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetDepthAttachment();
+        auto& defaultColorTarget = s_Data.RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment();
+        auto& defaultDepthBuffer = s_Data.RenderPasses[RenderPassType::DEFAULT]->GetDepthAttachment();
 
         auto rtv = defaultColorTarget.GetDescriptorHandle(DescriptorType::RTV);
         auto dsv = defaultDepthBuffer.GetDescriptorHandle(DescriptorType::DSV);
 
         // Set viewports, scissor rects and render targets
-        commandList->SetViewports(1, &s_Instance->m_Viewport);
-        commandList->SetScissorRects(1, &s_Instance->m_ScissorRect);
+        commandList->SetViewports(1, &s_Data.Viewport);
+        commandList->SetScissorRects(1, &s_Data.ScissorRect);
         commandList->SetRenderTargets(1, &rtv, &dsv);
 
         commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
 
         // Set the pipeline state along with the root signature
-        commandList->SetPipelineState(s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetPipelineState());
+        commandList->SetPipelineState(s_Data.RenderPasses[RenderPassType::DEFAULT]->GetPipelineState());
 
         // Update scene data constant buffer with data for this frame
-        s_Instance->m_SceneData.NumDirLights = s_Instance->m_DirectionalLightDrawData.size();
-        s_Instance->m_SceneData.NumPointLights = s_Instance->m_PointLightDrawData.size();
-        s_Instance->m_SceneData.NumSpotLights = s_Instance->m_SpotLightDrawData.size();
+        s_Data.SceneData.NumDirLights = s_Data.DirectionalLightDrawData.size();
+        s_Data.SceneData.NumPointLights = s_Data.PointLightDrawData.size();
+        s_Data.SceneData.NumSpotLights = s_Data.SpotLightDrawData.size();
 
-        s_Instance->m_SceneDataConstantBuffer->SetBufferData(&s_Instance->m_SceneData);
-        commandList->SetRootConstantBufferView(0, *s_Instance->m_SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
+        s_Data.SceneDataConstantBuffer->SetBufferData(&s_Data.SceneData);
+        commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
 
         // Set constant buffer data for directional lights/pointlights/spotlights
-        if (s_Instance->m_SceneData.NumDirLights > 0)
-            s_Instance->m_DirectionalLightBuffer->SetBufferData(&s_Instance->m_DirectionalLightDrawData[0], s_Instance->m_DirectionalLightDrawData.size() * sizeof(DirectionalLightData));
+        if (s_Data.SceneData.NumDirLights > 0)
+            s_Data.DirectionalLightBuffer->SetBufferData(&s_Data.DirectionalLightDrawData[0], s_Data.DirectionalLightDrawData.size() * sizeof(DirectionalLightData));
 
-        commandList->SetRootConstantBufferView(1, *s_Instance->m_DirectionalLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
-        s_Instance->m_RenderStatistics.DirectionalLightCount += s_Instance->m_DirectionalLightDrawData.size();
+        commandList->SetRootConstantBufferView(1, *s_Data.DirectionalLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+        s_Data.RenderStatistics.DirectionalLightCount += s_Data.DirectionalLightDrawData.size();
 
-        if (s_Instance->m_SceneData.NumPointLights > 0)
-            s_Instance->m_PointLightBuffer->SetBufferData(&s_Instance->m_PointLightDrawData[0], s_Instance->m_PointLightDrawData.size() * sizeof(PointLightData));
+        if (s_Data.SceneData.NumPointLights > 0)
+            s_Data.PointLightBuffer->SetBufferData(&s_Data.PointLightDrawData[0], s_Data.PointLightDrawData.size() * sizeof(PointLightData));
 
-        commandList->SetRootConstantBufferView(2, *s_Instance->m_PointLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
-        s_Instance->m_RenderStatistics.PointLightCount += s_Instance->m_PointLightDrawData.size();
+        commandList->SetRootConstantBufferView(2, *s_Data.PointLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+        s_Data.RenderStatistics.PointLightCount += s_Data.PointLightDrawData.size();
 
-        if (s_Instance->m_SceneData.NumSpotLights > 0)
-            s_Instance->m_SpotLightBuffer->SetBufferData(&s_Instance->m_SpotLightDrawData[0], s_Instance->m_SpotLightDrawData.size() * sizeof(SpotLightData));
+        if (s_Data.SceneData.NumSpotLights > 0)
+            s_Data.SpotLightBuffer->SetBufferData(&s_Data.SpotLightDrawData[0], s_Data.SpotLightDrawData.size() * sizeof(SpotLightData));
 
-        commandList->SetRootConstantBufferView(3,*s_Instance->m_SpotLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
-        s_Instance->m_RenderStatistics.SpotLightCount += s_Instance->m_SpotLightDrawData.size();
+        commandList->SetRootConstantBufferView(3,*s_Data.SpotLightBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+        s_Data.RenderStatistics.SpotLightCount += s_Data.SpotLightDrawData.size();
 
         // Set root descriptor table for bindless CBV_SRV_UAV descriptor array
         commandList->SetRootDescriptorTable(4, descriptorHeap.GetGPUBaseDescriptor());
 
         // Set instance buffer
-        commandList->SetVertexBuffers(3, 1, *s_Instance->m_MeshInstanceBuffer);
-        uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Instance->m_RenderSettings.MaxInstancesPerDraw;
+        commandList->SetVertexBuffers(3, 1, *s_Data.MeshInstanceBuffer);
+        uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Data.RenderSettings.MaxInstancesPerDraw;
 
-        for (auto& [meshHash, meshDrawData] : s_Instance->m_MeshDrawData)
+        for (auto& [meshHash, meshDrawData] : s_Data.MeshDrawData)
         {
             auto& mesh = meshDrawData.Mesh;
             auto& meshInstanceData = meshDrawData.MeshInstanceData;
@@ -135,9 +251,9 @@ void Renderer::Render()
             commandList->DrawIndexed(indexBuffer->GetBufferDesc().NumElements, meshInstanceData.size(), 0, 0, startInstance);
             startInstance += meshInstanceData.size();
 
-            s_Instance->m_RenderStatistics.DrawCallCount++;
-            s_Instance->m_RenderStatistics.TriangleCount += (indexBuffer->GetBufferDesc().NumElements / 3) * meshInstanceData.size();
-            s_Instance->m_RenderStatistics.MeshCount += meshInstanceData.size();
+            s_Data.RenderStatistics.DrawCallCount++;
+            s_Data.RenderStatistics.TriangleCount += (indexBuffer->GetBufferDesc().NumElements / 3) * meshInstanceData.size();
+            s_Data.RenderStatistics.MeshCount += meshInstanceData.size();
         }
 
         RenderBackend::ExecuteCommandList(commandList);
@@ -147,35 +263,35 @@ void Renderer::Render()
         /* Tone mapping render pass */
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-        auto& tmColorTarget = s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
-        auto& tmDepthBuffer = s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetDepthAttachment();
+        auto& tmColorTarget = s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
+        auto& tmDepthBuffer = s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetDepthAttachment();
 
         auto tmRtv = tmColorTarget.GetDescriptorHandle(DescriptorType::RTV);
         auto tmDsv = tmDepthBuffer.GetDescriptorHandle(DescriptorType::DSV);
 
         // Set viewports, scissor rects and render targets
-        commandList->SetViewports(1, &s_Instance->m_Viewport);
-        commandList->SetScissorRects(1, &s_Instance->m_ScissorRect);
+        commandList->SetViewports(1, &s_Data.Viewport);
+        commandList->SetScissorRects(1, &s_Data.ScissorRect);
         commandList->SetRenderTargets(1, &tmRtv, &tmDsv);
 
         commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
 
         // Set pipeline state and root signature
-        commandList->SetPipelineState(s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetPipelineState());
+        commandList->SetPipelineState(s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetPipelineState());
 
-        uint32_t pbrColorTargetIndex = s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment().GetDescriptorIndex(DescriptorType::SRV);
-        s_Instance->m_TonemapSettings.HDRTargetIndex = pbrColorTargetIndex;
-        s_Instance->m_TonemapConstantBuffer->SetBufferData(&s_Instance->m_TonemapSettings);
-        commandList->SetRootConstantBufferView(0, *s_Instance->m_TonemapConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+        uint32_t pbrColorTargetIndex = s_Data.RenderPasses[RenderPassType::DEFAULT]->GetColorAttachment().GetDescriptorIndex(DescriptorType::SRV);
+        s_Data.TonemapSettings.HDRTargetIndex = pbrColorTargetIndex;
+        s_Data.TonemapConstantBuffer->SetBufferData(&s_Data.TonemapSettings);
+        commandList->SetRootConstantBufferView(0, *s_Data.TonemapConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
 
         // Set root descriptor table for bindless CBV_SRV_UAV descriptor array
         commandList->SetRootDescriptorTable(1, descriptorHeap.GetGPUBaseDescriptor());
 
         // Set tone mapping vertex buffer
-        commandList->SetVertexBuffers(0, 1, *s_Instance->m_ToneMapVertexBuffer.get());
-        commandList->SetIndexBuffer(*s_Instance->m_ToneMapIndexBuffer.get());
+        commandList->SetVertexBuffers(0, 1, *s_Data.TonemapVertexBuffer.get());
+        commandList->SetIndexBuffer(*s_Data.TonemapIndexBuffer.get());
 
-        commandList->DrawIndexed(s_Instance->m_ToneMapIndexBuffer->GetBufferDesc().NumElements, 1);
+        commandList->DrawIndexed(s_Data.TonemapIndexBuffer->GetBufferDesc().NumElements, 1);
 
         RenderBackend::ExecuteCommandList(commandList);
     }
@@ -184,28 +300,28 @@ void Renderer::Render()
 void Renderer::OnImGuiRender()
 {
     ImGui::Text("Renderer");
-    ImGui::Text("Resolution: %ux%u", s_Instance->m_RenderSettings.Resolution.x, s_Instance->m_RenderSettings.Resolution.y);
-    ImGui::Text("VSync: %s", s_Instance->m_RenderSettings.VSync ? "On" : "Off");
-    ImGui::Text("Max model instances: %u", s_Instance->m_RenderSettings.MaxModelInstances);
-    ImGui::Text("Max instances per draw: %u", s_Instance->m_RenderSettings.MaxInstancesPerDraw);
-    ImGui::Text("Max directional lights: %u", s_Instance->m_RenderSettings.MaxDirectionalLights);
-    ImGui::Text("Max point lights: %u", s_Instance->m_RenderSettings.MaxPointLights);
-    ImGui::Text("Max spot lights: %u", s_Instance->m_RenderSettings.MaxSpotLights);
+    ImGui::Text("Resolution: %ux%u", s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
+    ImGui::Text("VSync: %s", s_Data.RenderSettings.VSync ? "On" : "Off");
+    ImGui::Text("Max model instances: %u", s_Data.RenderSettings.MaxModelInstances);
+    ImGui::Text("Max instances per draw: %u", s_Data.RenderSettings.MaxInstancesPerDraw);
+    ImGui::Text("Max directional lights: %u", s_Data.RenderSettings.MaxDirectionalLights);
+    ImGui::Text("Max point lights: %u", s_Data.RenderSettings.MaxPointLights);
+    ImGui::Text("Max spot lights: %u", s_Data.RenderSettings.MaxSpotLights);
 
     if (ImGui::CollapsingHeader("Stats"))
     {
-        ImGui::Text("Draw calls: %u", s_Instance->m_RenderStatistics.DrawCallCount);
-        ImGui::Text("Triangle count: %u", s_Instance->m_RenderStatistics.TriangleCount);
-        ImGui::Text("Mesh count: %u", s_Instance->m_RenderStatistics.MeshCount);
-        ImGui::Text("Directional light count: %u", s_Instance->m_RenderStatistics.DirectionalLightCount);
-        ImGui::Text("Point light count: %u", s_Instance->m_RenderStatistics.PointLightCount);
-        ImGui::Text("Spot light count: %u", s_Instance->m_RenderStatistics.SpotLightCount);
+        ImGui::Text("Draw calls: %u", s_Data.RenderStatistics.DrawCallCount);
+        ImGui::Text("Triangle count: %u", s_Data.RenderStatistics.TriangleCount);
+        ImGui::Text("Mesh count: %u", s_Data.RenderStatistics.MeshCount);
+        ImGui::Text("Directional light count: %u", s_Data.RenderStatistics.DirectionalLightCount);
+        ImGui::Text("Point light count: %u", s_Data.RenderStatistics.PointLightCount);
+        ImGui::Text("Spot light count: %u", s_Data.RenderStatistics.SpotLightCount);
     }
 
     if (ImGui::CollapsingHeader("Tonemapping"))
     {
         ImGui::Text("Tonemapping type");
-        std::string previewValue = TonemapTypeToString(s_Instance->m_TonemapSettings.Type);
+        std::string previewValue = TonemapTypeToString(s_Data.TonemapSettings.Type);
         if (ImGui::BeginCombo("##TonemapType", previewValue.c_str()))
         {
             for (uint32_t i = 0; i < static_cast<uint32_t>(TonemapType::NUM_TYPES); ++i)
@@ -214,7 +330,7 @@ void Renderer::OnImGuiRender()
                 bool isSelected = previewValue == tonemapName;
 
                 if (ImGui::Selectable(tonemapName.c_str(), isSelected))
-                    s_Instance->m_TonemapSettings.Type = static_cast<TonemapType>(i);
+                    s_Data.TonemapSettings.Type = static_cast<TonemapType>(i);
                 if (isSelected)
                     ImGui::SetItemDefaultFocus();
             }
@@ -228,15 +344,15 @@ void Renderer::EndScene()
 {
     SCOPED_TIMER("Renderer::EndScene");
 
-    RenderBackend::GetSwapChain().ResolveToBackBuffer(s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
-    RenderBackend::GetSwapChain().SwapBuffers(s_Instance->m_RenderSettings.VSync);
+    RenderBackend::GetSwapChain().ResolveToBackBuffer(s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
+    RenderBackend::GetSwapChain().SwapBuffers(s_Data.RenderSettings.VSync);
 
-    s_Instance->m_MeshDrawData.clear();
-    s_Instance->m_DirectionalLightDrawData.clear();
-    s_Instance->m_PointLightDrawData.clear();
-    s_Instance->m_SpotLightDrawData.clear();
+    s_Data.MeshDrawData.clear();
+    s_Data.DirectionalLightDrawData.clear();
+    s_Data.PointLightDrawData.clear();
+    s_Data.SpotLightDrawData.clear();
 
-    s_Instance->m_RenderStatistics.Reset();
+    s_Data.RenderStatistics.Reset();
 }
 
 void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform)
@@ -244,81 +360,81 @@ void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transf
     uint32_t baseColorTexIndex = mesh->GetTexture(MeshTextureType::TEX_BASE_COLOR)->GetDescriptorIndex(DescriptorType::SRV);
     uint32_t normalTexIndex = mesh->GetTexture(MeshTextureType::TEX_NORMAL)->GetDescriptorIndex(DescriptorType::SRV);
 
-    auto iter = s_Instance->m_MeshDrawData.find(mesh->GetHash());
+    auto iter = s_Data.MeshDrawData.find(mesh->GetHash());
 
-    if (iter != s_Instance->m_MeshDrawData.end())
+    if (iter != s_Data.MeshDrawData.end())
     {
         iter->second.MeshInstanceData.push_back(MeshInstanceData(transform, glm::vec4(1.0f),
             baseColorTexIndex, normalTexIndex));
     }
     else
     {
-        s_Instance->m_MeshDrawData.emplace(std::pair<std::size_t, MeshDrawData>(mesh->GetHash(), mesh));
-        s_Instance->m_MeshDrawData.at(mesh->GetHash()).MeshInstanceData.push_back(MeshInstanceData(transform, glm::vec4(1.0f),
+        s_Data.MeshDrawData.emplace(std::pair<std::size_t, MeshDrawData>(mesh->GetHash(), mesh));
+        s_Data.MeshDrawData.at(mesh->GetHash()).MeshInstanceData.push_back(MeshInstanceData(transform, glm::vec4(1.0f),
             baseColorTexIndex, normalTexIndex));
     }
 }
 
 void Renderer::Submit(const DirectionalLightData& dirLightData)
 {
-    s_Instance->m_DirectionalLightDrawData.push_back(dirLightData);
-    ASSERT(s_Instance->m_DirectionalLightDrawData.size() <= s_Instance->m_RenderSettings.MaxDirectionalLights, "Exceeded the maximum amount of directional lights");
+    s_Data.DirectionalLightDrawData.push_back(dirLightData);
+    ASSERT(s_Data.DirectionalLightDrawData.size() <= s_Data.RenderSettings.MaxDirectionalLights, "Exceeded the maximum amount of directional lights");
 }
 
 void Renderer::Submit(const PointLightData& pointlightData)
 {
-    s_Instance->m_PointLightDrawData.push_back(pointlightData);
-    ASSERT(s_Instance->m_PointLightDrawData.size() <= s_Instance->m_RenderSettings.MaxPointLights, "Exceeded the maximum amount of point lights");
+    s_Data.PointLightDrawData.push_back(pointlightData);
+    ASSERT(s_Data.PointLightDrawData.size() <= s_Data.RenderSettings.MaxPointLights, "Exceeded the maximum amount of point lights");
 }
 
 void Renderer::Submit(const SpotLightData& spotLightData)
 {
-    s_Instance->m_SpotLightDrawData.push_back(spotLightData);
-    ASSERT(s_Instance->m_SpotLightDrawData.size() <= s_Instance->m_RenderSettings.MaxSpotLights, "Exceeded the maximum amount of spot lights");
+    s_Data.SpotLightDrawData.push_back(spotLightData);
+    ASSERT(s_Data.SpotLightDrawData.size() <= s_Data.RenderSettings.MaxSpotLights, "Exceeded the maximum amount of spot lights");
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)
 {
-    if (s_Instance->m_RenderSettings.Resolution.x != width || s_Instance->m_RenderSettings.Resolution.y != height)
+    if (s_Data.RenderSettings.Resolution.x != width || s_Data.RenderSettings.Resolution.y != height)
     {
-        s_Instance->m_RenderSettings.Resolution.x = std::max(1u, width);
-        s_Instance->m_RenderSettings.Resolution.y = std::max(1u, height);
+        s_Data.RenderSettings.Resolution.x = std::max(1u, width);
+        s_Data.RenderSettings.Resolution.y = std::max(1u, height);
 
-        s_Instance->m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Instance->m_RenderSettings.Resolution.x),
-            static_cast<float>(s_Instance->m_RenderSettings.Resolution.y), 0.0f, 1.0f);
+        s_Data.Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.Resolution.x),
+            static_cast<float>(s_Data.RenderSettings.Resolution.y), 0.0f, 1.0f);
 
         RenderBackend::Resize(width, height);
 
-        for (auto& renderPass : s_Instance->m_RenderPasses)
-            renderPass->Resize(s_Instance->m_RenderSettings.Resolution.x, s_Instance->m_RenderSettings.Resolution.y);
+        for (auto& renderPass : s_Data.RenderPasses)
+            renderPass->Resize(s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
     }
 }
 
 void Renderer::ToggleVSync()
 {
-    s_Instance->m_RenderSettings.VSync = !s_Instance->m_RenderSettings.VSync;
+    s_Data.RenderSettings.VSync = !s_Data.RenderSettings.VSync;
 }
 
 bool Renderer::IsVSyncEnabled()
 {
-    return s_Instance->m_RenderSettings.VSync;
+    return s_Data.RenderSettings.VSync;
 }
 
 const Renderer::RenderSettings& Renderer::GetSettings()
 {
-    return s_Instance->m_RenderSettings;
+    return s_Data.RenderSettings;
 }
 
 // Temp
 Texture& Renderer::GetFinalColorOutput()
 {
-    return s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
+    return s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
 }
 
 // Temp
 Texture& Renderer::GetFinalDepthOutput()
 {
-    return s_Instance->m_RenderPasses[RenderPassType::DEFAULT]->GetDepthAttachment();
+    return s_Data.RenderPasses[RenderPassType::DEFAULT]->GetDepthAttachment();
 }
 
 void Renderer::MakeRenderPasses()
@@ -329,9 +445,9 @@ void Renderer::MakeRenderPasses()
         desc.VertexShaderPath = "Resources/Shaders/Default_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/Default_PS.hlsl";
         desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
-            s_Instance->m_RenderSettings.Resolution.x, s_Instance->m_RenderSettings.Resolution.y);
+            s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            s_Instance->m_RenderSettings.Resolution.x, s_Instance->m_RenderSettings.Resolution.y);
+            s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
         desc.ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
         desc.DepthEnabled = true;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -358,7 +474,7 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "TEX_INDICES", 0, DXGI_FORMAT_R32G32_UINT, 3, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
-        s_Instance->m_RenderPasses[RenderPassType::DEFAULT] = std::make_unique<RenderPass>("PBR", desc);
+        s_Data.RenderPasses[RenderPassType::DEFAULT] = std::make_unique<RenderPass>("PBR", desc);
     }
 
     {
@@ -367,9 +483,9 @@ void Renderer::MakeRenderPasses()
         desc.VertexShaderPath = "Resources/Shaders/ToneMapping_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/ToneMapping_PS.hlsl";
         desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-            s_Instance->m_RenderSettings.Resolution.x, s_Instance->m_RenderSettings.Resolution.y);
+            s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            s_Instance->m_RenderSettings.Resolution.x, s_Instance->m_RenderSettings.Resolution.y);
+            s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
         desc.ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
         desc.DepthEnabled = false;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -386,18 +502,18 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 
-        s_Instance->m_RenderPasses[RenderPassType::TONE_MAPPING] = std::make_unique<RenderPass>("Tonemapping", desc);
+        s_Data.RenderPasses[RenderPassType::TONE_MAPPING] = std::make_unique<RenderPass>("Tonemapping", desc);
     }
 }
 
 void Renderer::MakeBuffers()
 {
-    s_Instance->m_MeshInstanceBuffer = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD,
-        s_Instance->m_RenderSettings.MaxInstancesPerDraw * RenderBackend::GetSwapChain().GetBackBufferCount(), sizeof(MeshInstanceData)));
+    s_Data.MeshInstanceBuffer = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD,
+        s_Data.RenderSettings.MaxInstancesPerDraw * RenderBackend::GetSwapChain().GetBackBufferCount(), sizeof(MeshInstanceData)));
 
-    s_Instance->m_DirectionalLightBuffer = std::make_unique<Buffer>("Directional light constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxDirectionalLights, sizeof(DirectionalLightData)));
-    s_Instance->m_PointLightBuffer = std::make_unique<Buffer>("Pointlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxPointLights, sizeof(PointLightData)));
-    s_Instance->m_SpotLightBuffer = std::make_unique<Buffer>("Spotlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Instance->m_RenderSettings.MaxSpotLights, sizeof(SpotLightData)));
+    s_Data.DirectionalLightBuffer = std::make_unique<Buffer>("Directional light constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Data.RenderSettings.MaxDirectionalLights, sizeof(DirectionalLightData)));
+    s_Data.PointLightBuffer = std::make_unique<Buffer>("Pointlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Data.RenderSettings.MaxPointLights, sizeof(PointLightData)));
+    s_Data.SpotLightBuffer = std::make_unique<Buffer>("Spotlight constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Data.RenderSettings.MaxSpotLights, sizeof(SpotLightData)));
 
     // Tone mapping vertices, positions are in normalized device coordinates
     std::vector<float> toneMappingVertices = {
@@ -410,41 +526,22 @@ void Renderer::MakeBuffers()
         0, 1, 2,
         2, 3, 0
     };
-    s_Instance->m_TonemapConstantBuffer = std::make_unique<Buffer>("Tonemap constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(TonemapSettings)));
-    s_Instance->m_ToneMapVertexBuffer = std::make_unique<Buffer>("Tonemap vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, 4, sizeof(float) * 4), &toneMappingVertices[0]);
-    s_Instance->m_ToneMapIndexBuffer = std::make_unique<Buffer>("Tonemap index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, 6, sizeof(WORD)), &toneMappingIndices[0]);
+    s_Data.TonemapConstantBuffer = std::make_unique<Buffer>("Tonemap constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(TonemapSettings)));
+    s_Data.TonemapVertexBuffer = std::make_unique<Buffer>("Tonemap vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, 4, sizeof(float) * 4), &toneMappingVertices[0]);
+    s_Data.TonemapIndexBuffer = std::make_unique<Buffer>("Tonemap index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, 6, sizeof(WORD)), &toneMappingIndices[0]);
 
-    s_Instance->m_SceneDataConstantBuffer = std::make_unique<Buffer>("Scene data constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(SceneData)));
+    s_Data.SceneDataConstantBuffer = std::make_unique<Buffer>("Scene data constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(SceneData)));
 }
 
 void Renderer::PrepareInstanceBuffer()
 {
     uint32_t currentBackBufferIndex = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex();
-    std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * s_Instance->m_RenderSettings.MaxInstancesPerDraw) * sizeof(MeshInstanceData);
+    std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * s_Data.RenderSettings.MaxInstancesPerDraw) * sizeof(MeshInstanceData);
 
-    for (auto& [meshHash, meshDrawData] : s_Instance->m_MeshDrawData)
+    for (auto& [meshHash, meshDrawData] : s_Data.MeshDrawData)
     {
         std::size_t numBytes = meshDrawData.MeshInstanceData.size() * sizeof(MeshInstanceData);
-        s_Instance->m_MeshInstanceBuffer->SetBufferDataAtOffset(&meshDrawData.MeshInstanceData[0], numBytes, currentByteOffset);
+        s_Data.MeshInstanceBuffer->SetBufferDataAtOffset(&meshDrawData.MeshInstanceData[0], numBytes, currentByteOffset);
         currentByteOffset += numBytes;
-    }
-}
-
-std::string Renderer::TonemapTypeToString(TonemapType type)
-{
-    switch (type)
-    {
-    case TonemapType::LINEAR:
-        return std::string("Linear");
-    case TonemapType::REINHARD:
-        return std::string("Reinhard");
-    case TonemapType::UNCHARTED2:
-        return std::string("Uncharted2");
-    case TonemapType::FILMIC:
-        return std::string("Filmic");
-    case TonemapType::ACES_FILMIC:
-        return std::string("ACES Filmic");
-    default:
-        return std::string("Unknown");
     }
 }

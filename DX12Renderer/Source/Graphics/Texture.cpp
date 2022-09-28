@@ -19,24 +19,6 @@ DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format)
 	return DXGI_FORMAT_R8G8B8A8_UNORM;
 }
 
-D3D12_RESOURCE_STATES TextureUsageToDXGIResourceState(TextureUsage usage)
-{
-	switch (usage)
-	{
-	case TextureUsage::TEXTURE_USAGE_READ:
-		return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-	case TextureUsage::TEXTURE_USAGE_WRITE:
-		return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-	case TextureUsage::TEXTURE_USAGE_RENDER_TARGET:
-		return D3D12_RESOURCE_STATE_RENDER_TARGET;
-	case TextureUsage::TEXTURE_USAGE_DEPTH:
-		return D3D12_RESOURCE_STATE_DEPTH_WRITE;
-	}
-
-	LOG_ERR("Texture usage is not supported");
-	return D3D12_RESOURCE_STATE_COMMON;
-}
-
 Texture::Texture(const std::string& name, const TextureDesc& textureDesc, const void* data)
 	: m_TextureDesc(textureDesc)
 {
@@ -108,13 +90,12 @@ void Texture::Create()
 	d3d12ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	
 	d3d12ResourceDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
-	//D3D12_RESOURCE_STATES initialState = TextureUsageToD3DResourceState(m_TextureDesc.Usage);
 	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
 
 	D3D12_CLEAR_VALUE clearValue = {};
 	bool hasClearValue = false;
 
-	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_WRITE)
+	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_READ)
 	{
 		// No special flags have to be set for SRVs
 	}

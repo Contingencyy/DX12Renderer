@@ -3,28 +3,6 @@
 #include "Graphics/Backend/Device.h"
 #include "Graphics/Backend/RenderBackend.h"
 
-D3D12_RESOURCE_STATES BufferUsageToD3DResourceState(BufferUsage usage)
-{
-	switch (usage)
-	{
-	case BufferUsage::BUFFER_USAGE_VERTEX:
-		return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-	case BufferUsage::BUFFER_USAGE_INDEX:
-		return D3D12_RESOURCE_STATE_INDEX_BUFFER;
-	case BufferUsage::BUFFER_USAGE_READ:
-		return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-	case BufferUsage::BUFFER_USAGE_WRITE:
-		return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-	case BufferUsage::BUFFER_USAGE_CONSTANT:
-		return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER | D3D12_RESOURCE_STATE_GENERIC_READ;
-	case BufferUsage::BUFFER_USAGE_UPLOAD:
-		return D3D12_RESOURCE_STATE_GENERIC_READ;
-	}
-
-	LOG_ERR("Buffer usage is not supported");
-	return D3D12_RESOURCE_STATE_COMMON;
-}
-
 Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc, const void* data)
 	: m_BufferDesc(bufferDesc)
 {
@@ -104,32 +82,35 @@ void Buffer::SetName(const std::string& name)
 
 void Buffer::Create()
 {
-	auto device = RenderBackend::GetDevice();
 	D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
-	//D3D12_RESOURCE_STATES initialState = BufferUsageToD3DResourceState(m_BufferDesc.Usage);
 	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
 
-	switch (m_BufferDesc.Usage)
+	uint32_t alignment = m_BufferDesc.ElementSize;
+
+	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT)
 	{
-	case BufferUsage::BUFFER_USAGE_VERTEX:
-	case BufferUsage::BUFFER_USAGE_INDEX:
-	case BufferUsage::BUFFER_USAGE_READ:
-	case BufferUsage::BUFFER_USAGE_WRITE:
-		m_ByteSize = MathHelper::AlignUp(m_BufferDesc.NumElements * m_BufferDesc.ElementSize, m_BufferDesc.ElementSize);
-		break;
-	case BufferUsage::BUFFER_USAGE_CONSTANT:
-		m_ByteSize = MathHelper::AlignUp(m_BufferDesc.NumElements * m_BufferDesc.ElementSize, 256);
-		heapType = D3D12_HEAP_TYPE_UPLOAD;
-		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
-		break;
-	case BufferUsage::BUFFER_USAGE_UPLOAD:
-		m_ByteSize = MathHelper::AlignUp(m_BufferDesc.NumElements * m_BufferDesc.ElementSize, m_BufferDesc.ElementSize);
-		heapType = D3D12_HEAP_TYPE_UPLOAD;
-		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
-		break;
+		alignment = 256;
 	}
 
-	device->CreateBuffer(*this, heapType, initialState, m_ByteSize);
+	m_ByteSize = MathHelper::AlignUp(m_BufferDesc.NumElements * m_BufferDesc.ElementSize, 256);
+
+	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT || m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_UPLOAD)
+	{
+		heapType = D3D12_HEAP_TYPE_UPLOAD;
+		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+	}
+
+	D3D12_RESOURCE_DESC d3d12ResourceDesc = {};
+	d3d12ResourceDesc.MipLevels = 1;
+	d3d12ResourceDesc.Width = m_ByteSize;
+	d3d12ResourceDesc.Height = 1;
+	d3d12ResourceDesc.DepthOrArraySize = 1;
+	d3d12ResourceDesc.SampleDesc.Count = 1;
+	d3d12ResourceDesc.SampleDesc.Quality = 0;
+	d3d12ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	d3d12ResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+	RenderBackend::GetDevice()->CreateBuffer(*this, heapType, d3d12ResourceDesc, initialState, m_ByteSize);
 
 	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT || m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_UPLOAD)
 	{

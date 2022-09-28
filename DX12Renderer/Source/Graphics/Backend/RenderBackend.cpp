@@ -5,31 +5,42 @@
 #include "Graphics/Backend/DescriptorHeap.h"
 #include "Graphics/Backend/CommandQueue.h"
 
-static RenderBackend* s_Instance = nullptr;
+struct InternalRenderBackendData
+{
+	std::shared_ptr<Device> Device;
+	std::unique_ptr<SwapChain> SwapChain;
+	std::unique_ptr<DescriptorHeap> DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+
+	std::shared_ptr<CommandQueue> CommandQueueDirect;
+	std::unique_ptr<CommandQueue> CommandQueueCompute;
+	std::unique_ptr<CommandQueue> CommandQueueCopy;
+
+	std::thread ProcessInFlightCommandListsThread;
+	std::atomic_bool ProcessInFlightCommandLists;
+};
+
+static InternalRenderBackendData s_Data;
 
 void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 {
-	if (!s_Instance)
-		s_Instance = new RenderBackend();
-
-	s_Instance->m_Device = std::make_shared<Device>();
+	s_Data.Device = std::make_shared<Device>();
 	
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-		s_Instance->m_DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(s_Instance->m_Device, static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+		s_Data.DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(s_Data.Device, static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
 
-	s_Instance->m_CommandQueueDirect = std::make_shared<CommandQueue>(s_Instance->m_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
-	s_Instance->m_CommandQueueCompute = std::make_unique<CommandQueue>(s_Instance->m_Device, D3D12_COMMAND_LIST_TYPE_COMPUTE);
-	s_Instance->m_CommandQueueCopy = std::make_unique<CommandQueue>(s_Instance->m_Device, D3D12_COMMAND_LIST_TYPE_COPY);
+	s_Data.CommandQueueDirect = std::make_shared<CommandQueue>(s_Data.Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
+	s_Data.CommandQueueCompute = std::make_unique<CommandQueue>(s_Data.Device, D3D12_COMMAND_LIST_TYPE_COMPUTE);
+	s_Data.CommandQueueCopy = std::make_unique<CommandQueue>(s_Data.Device, D3D12_COMMAND_LIST_TYPE_COPY);
 
-	s_Instance->m_SwapChain = std::make_unique<SwapChain>(hWnd, s_Instance->m_CommandQueueDirect, width, height);
+	s_Data.SwapChain = std::make_unique<SwapChain>(hWnd, s_Data.CommandQueueDirect, width, height);
 
-	s_Instance->m_ProcessInFlightCommandLists = true;
-	s_Instance->m_ProcessInFlightCommandListsThread = std::thread([]() {
-		while (s_Instance->m_ProcessInFlightCommandLists)
+	s_Data.ProcessInFlightCommandLists = true;
+	s_Data.ProcessInFlightCommandListsThread = std::thread([]() {
+		while (s_Data.ProcessInFlightCommandLists)
 		{
-			s_Instance->m_CommandQueueDirect->ResetCommandLists();
-			s_Instance->m_CommandQueueCompute->ResetCommandLists();
-			s_Instance->m_CommandQueueCopy->ResetCommandLists();
+			s_Data.CommandQueueDirect->ResetCommandLists();
+			s_Data.CommandQueueCompute->ResetCommandLists();
+			s_Data.CommandQueueCopy->ResetCommandLists();
 
 			std::this_thread::yield();
 		}
@@ -40,34 +51,34 @@ void RenderBackend::Finalize()
 {
 	Flush();
 
-	s_Instance->m_ProcessInFlightCommandLists = false;
+	s_Data.ProcessInFlightCommandLists = false;
 
-	if (s_Instance->m_ProcessInFlightCommandListsThread.joinable())
-		s_Instance->m_ProcessInFlightCommandListsThread.join();
+	if (s_Data.ProcessInFlightCommandListsThread.joinable())
+		s_Data.ProcessInFlightCommandListsThread.join();
 }
 
 void RenderBackend::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData)
 {
-	auto commandList = s_Instance->m_CommandQueueCopy->GetCommandList();
+	auto commandList = s_Data.CommandQueueCopy->GetCommandList();
 	commandList->CopyBuffer(intermediateBuffer, destBuffer, bufferData);
-	uint64_t fenceValue = s_Instance->m_CommandQueueCopy->ExecuteCommandList(commandList);
-	s_Instance->m_CommandQueueCopy->WaitForFenceValue(fenceValue);
+	uint64_t fenceValue = s_Data.CommandQueueCopy->ExecuteCommandList(commandList);
+	s_Data.CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
 
 void RenderBackend::CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes)
 {
-	auto commandList = s_Instance->m_CommandQueueCopy->GetCommandList();
+	auto commandList = s_Data.CommandQueueCopy->GetCommandList();
 	commandList->CopyBufferRegion(intermediateBuffer, intermediateOffset, destBuffer, destOffset, numBytes);
-	uint64_t fenceValue = s_Instance->m_CommandQueueCopy->ExecuteCommandList(commandList);
-	s_Instance->m_CommandQueueCopy->WaitForFenceValue(fenceValue);
+	uint64_t fenceValue = s_Data.CommandQueueCopy->ExecuteCommandList(commandList);
+	s_Data.CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
 
 void RenderBackend::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData)
 {
-	auto commandList = s_Instance->m_CommandQueueCopy->GetCommandList();
+	auto commandList = s_Data.CommandQueueCopy->GetCommandList();
 	commandList->CopyTexture(intermediateBuffer, destTexture, textureData);
-	uint64_t fenceValue = s_Instance->m_CommandQueueCopy->ExecuteCommandList(commandList);
-	s_Instance->m_CommandQueueCopy->WaitForFenceValue(fenceValue);
+	uint64_t fenceValue = s_Data.CommandQueueCopy->ExecuteCommandList(commandList);
+	s_Data.CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
 
 void RenderBackend::Resize(uint32_t width, uint32_t height)
@@ -77,34 +88,34 @@ void RenderBackend::Resize(uint32_t width, uint32_t height)
 
 	Flush();
 
-	s_Instance->m_SwapChain->Resize(width, height);
+	s_Data.SwapChain->Resize(width, height);
 }
 
 void RenderBackend::Flush()
 {
-	s_Instance->m_CommandQueueDirect->Flush();
-	s_Instance->m_CommandQueueCompute->Flush();
-	s_Instance->m_CommandQueueCopy->Flush();
+	s_Data.CommandQueueDirect->Flush();
+	s_Data.CommandQueueCompute->Flush();
+	s_Data.CommandQueueCopy->Flush();
 }
 
 std::shared_ptr<Device> RenderBackend::GetDevice()
 {
-	return s_Instance->m_Device;
+	return s_Data.Device;
 }
 
 SwapChain& RenderBackend::GetSwapChain()
 {
-	return *s_Instance->m_SwapChain.get();
+	return *s_Data.SwapChain.get();
 }
 
 DescriptorAllocation RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
 {
-	return s_Instance->m_DescriptorHeaps[type]->Allocate(numDescriptors);
+	return s_Data.DescriptorHeaps[type]->Allocate(numDescriptors);
 }
 
 DescriptorHeap& RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
-	return *s_Instance->m_DescriptorHeaps[type].get();
+	return *s_Data.DescriptorHeaps[type].get();
 }
 
 std::shared_ptr<CommandList> RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE type)
@@ -112,11 +123,11 @@ std::shared_ptr<CommandList> RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TY
 	switch (type)
 	{
 	case D3D12_COMMAND_LIST_TYPE_DIRECT:
-		return s_Instance->m_CommandQueueDirect->GetCommandList();
+		return s_Data.CommandQueueDirect->GetCommandList();
 	case D3D12_COMMAND_LIST_TYPE_COMPUTE:
-		return s_Instance->m_CommandQueueCompute->GetCommandList();
+		return s_Data.CommandQueueCompute->GetCommandList();
 	case D3D12_COMMAND_LIST_TYPE_COPY:
-		return s_Instance->m_CommandQueueCopy->GetCommandList();
+		return s_Data.CommandQueueCopy->GetCommandList();
 	}
 
 	ASSERT(false, "Tried to retrieve command list from a command queue type that is not supported.");
@@ -128,13 +139,13 @@ void RenderBackend::ExecuteCommandList(std::shared_ptr<CommandList> commandList)
 	switch (commandList->GetCommandListType())
 	{
 	case D3D12_COMMAND_LIST_TYPE_DIRECT:
-		s_Instance->m_CommandQueueDirect->ExecuteCommandList(commandList);
+		s_Data.CommandQueueDirect->ExecuteCommandList(commandList);
 		return;
 	case D3D12_COMMAND_LIST_TYPE_COMPUTE:
-		s_Instance->m_CommandQueueCompute->ExecuteCommandList(commandList);
+		s_Data.CommandQueueCompute->ExecuteCommandList(commandList);
 		return;
 	case D3D12_COMMAND_LIST_TYPE_COPY:
-		s_Instance->m_CommandQueueCopy->ExecuteCommandList(commandList);
+		s_Data.CommandQueueCopy->ExecuteCommandList(commandList);
 		return;
 	}
 
@@ -148,16 +159,16 @@ void RenderBackend::ExecuteCommandListAndWait(std::shared_ptr<CommandList> comma
 	switch (commandList->GetCommandListType())
 	{
 	case D3D12_COMMAND_LIST_TYPE_DIRECT:
-		fenceValue = s_Instance->m_CommandQueueDirect->ExecuteCommandList(commandList);
-		s_Instance->m_CommandQueueDirect->WaitForFenceValue(fenceValue);
+		fenceValue = s_Data.CommandQueueDirect->ExecuteCommandList(commandList);
+		s_Data.CommandQueueDirect->WaitForFenceValue(fenceValue);
 		return;
 	case D3D12_COMMAND_LIST_TYPE_COMPUTE:
-		fenceValue = s_Instance->m_CommandQueueCompute->ExecuteCommandList(commandList);
-		s_Instance->m_CommandQueueCompute->WaitForFenceValue(fenceValue);
+		fenceValue = s_Data.CommandQueueCompute->ExecuteCommandList(commandList);
+		s_Data.CommandQueueCompute->WaitForFenceValue(fenceValue);
 		return;
 	case D3D12_COMMAND_LIST_TYPE_COPY:
-		fenceValue = s_Instance->m_CommandQueueCopy->ExecuteCommandList(commandList);
-		s_Instance->m_CommandQueueCopy->WaitForFenceValue(fenceValue);
+		fenceValue = s_Data.CommandQueueCopy->ExecuteCommandList(commandList);
+		s_Data.CommandQueueCopy->WaitForFenceValue(fenceValue);
 		return;
 	}
 

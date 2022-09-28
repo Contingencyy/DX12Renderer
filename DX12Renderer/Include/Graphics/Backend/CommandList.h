@@ -61,6 +61,6 @@ private:
 	std::vector<ComPtr<ID3D12Object>> m_TrackedObjects;
 
 	ID3D12RootSignature* m_RootSignature;
-	ID3D12DescriptorHeap* m_DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+	ID3D12DescriptorHeap* DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 
 };

@@ -25,7 +25,7 @@ private:
 
 	ComPtr<IDXGISwapChain4> m_dxgiSwapChain;
 
-	std::shared_ptr<CommandQueue> m_CommandQueueDirect;
+	std::shared_ptr<CommandQueue> CommandQueueDirect;
 	std::unique_ptr<Texture> m_BackBuffers[s_BackBufferCount];
 
 	uint32_t m_CurrentBackBufferIndex = 0;

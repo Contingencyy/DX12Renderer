@@ -12,7 +12,7 @@ CommandQueue::CommandQueue(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TY
     queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     queueDesc.NodeMask = 0;
 
-    device->CreateCommandQueue(*this, queueDesc);
+    m_Device->CreateCommandQueue(*this, queueDesc);
 }
 
 CommandQueue::~CommandQueue()

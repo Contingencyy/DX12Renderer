@@ -42,7 +42,6 @@ struct TextureDesc
 };
 
 DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format);
-D3D12_RESOURCE_STATES TextureUsageToDXGIResourceState(TextureUsage usage);
 
 class Texture
 {
