@@ -230,29 +230,35 @@ void Renderer::Render()
         commandList->SetRootDescriptorTable(4, descriptorHeap.GetGPUBaseDescriptor());
 
         // Set instance buffer
-        commandList->SetVertexBuffers(3, 1, *s_Data.MeshInstanceBuffer);
+        commandList->SetVertexBuffers(1, 1, *s_Data.MeshInstanceBuffer);
         uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Data.RenderSettings.MaxInstancesPerDraw;
+
+        std::shared_ptr<Buffer> currentVertexBuffer = nullptr, currentIndexBuffer = nullptr;
 
         for (auto& [meshHash, meshDrawData] : s_Data.MeshDrawData)
         {
             auto& mesh = meshDrawData.Mesh;
             auto& meshInstanceData = meshDrawData.MeshInstanceData;
 
-            auto vertexPositionsBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_POSITION);
-            auto vertexTexCoordBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_TEX_COORD);
-            auto vertexNormalBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_NORMAL);
-            auto indexBuffer = mesh->GetBuffer(MeshBufferAttributeType::ATTRIB_INDEX);
+            auto vb = mesh->GetVertexBuffer();
+            auto ib = mesh->GetIndexBuffer();
 
-            commandList->SetVertexBuffers(0, 1, *vertexPositionsBuffer);
-            commandList->SetVertexBuffers(1, 1, *vertexTexCoordBuffer);
-            commandList->SetVertexBuffers(2, 1, *vertexNormalBuffer);
-            commandList->SetIndexBuffer(*indexBuffer);
+            if (mesh->GetVertexBuffer() != currentVertexBuffer)
+            {
+                commandList->SetVertexBuffers(0, 1, *vb);
+                currentVertexBuffer = vb;
+            }
+            if (mesh->GetIndexBuffer() != currentIndexBuffer)
+            {
+                commandList->SetIndexBuffer(*ib);
+                currentIndexBuffer = ib;
+            }
 
-            commandList->DrawIndexed(indexBuffer->GetBufferDesc().NumElements, meshInstanceData.size(), 0, 0, startInstance);
+            commandList->DrawIndexed(mesh->GetNumIndices(), meshInstanceData.size(), mesh->GetStartIndex(), mesh->GetStartVertex(), startInstance);
             startInstance += meshInstanceData.size();
 
             s_Data.RenderStatistics.DrawCallCount++;
-            s_Data.RenderStatistics.TriangleCount += (indexBuffer->GetBufferDesc().NumElements / 3) * meshInstanceData.size();
+            s_Data.RenderStatistics.TriangleCount += (mesh->GetNumIndices() / 3) * meshInstanceData.size();
             s_Data.RenderStatistics.MeshCount += meshInstanceData.size();
         }
 
@@ -465,14 +471,14 @@ void Renderer::MakeRenderPasses()
         desc.RootParameters[4].InitAsDescriptorTable(_countof(ranges), &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
 
         desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 1, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        desc.ShaderInputLayout.push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 2, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "TEX_INDICES", 0, DXGI_FORMAT_R32G32_UINT, 3, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "TEX_INDICES", 0, DXGI_FORMAT_R32G32_UINT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
         s_Data.RenderPasses[RenderPassType::DEFAULT] = std::make_unique<RenderPass>("PBR", desc);
     }

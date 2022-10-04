@@ -35,106 +35,189 @@ void ResourceManager::LoadTexture(const std::string& filepath, const std::string
 
 void ResourceManager::LoadModel(const std::string& filepath, const std::string& name)
 {
-	const tinygltf::Model& glTFModel = ResourceLoader::LoadGLTFModel(filepath);
+	const tinygltf::Model& tinygltf = ResourceLoader::LoadGLTFModel(filepath);
 
 	// Create all textures
 	std::vector<std::vector<std::shared_ptr<Texture>>> textures;
 
-	for (uint32_t matIndex = 0; matIndex < glTFModel.materials.size(); ++matIndex)
+	for (uint32_t matIndex = 0; matIndex < tinygltf.materials.size(); ++matIndex)
 	{
 		textures.emplace_back();
 		textures[matIndex].reserve(2);
 
-		auto& material = glTFModel.materials[matIndex];
+		auto& material = tinygltf.materials[matIndex];
 		int baseColorTextureIndex = material.pbrMetallicRoughness.baseColorTexture.index;
 		int normalTextureIndex = material.normalTexture.index;
 
 		if (baseColorTextureIndex >= 0)
 		{
-			uint32_t baseColorImageIndex = glTFModel.textures[baseColorTextureIndex].source;
+			uint32_t baseColorImageIndex = tinygltf.textures[baseColorTextureIndex].source;
 			textures[matIndex].push_back(std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				glTFModel.images[baseColorImageIndex].width, glTFModel.images[baseColorImageIndex].height), &glTFModel.images[baseColorImageIndex].image[0]));
+				tinygltf.images[baseColorImageIndex].width, tinygltf.images[baseColorImageIndex].height), &tinygltf.images[baseColorImageIndex].image[0]));
 		}
 		else
 		{
-			uint32_t whiteImageData = 0xFFFFFFFF;
 			textures[matIndex].push_back(m_Textures.at("WhiteTexture"));
 		}
 
 		if (normalTextureIndex >= 0)
 		{
-			uint32_t normalImageIndex = glTFModel.textures[normalTextureIndex].source;
+			uint32_t normalImageIndex = tinygltf.textures[normalTextureIndex].source;
 			textures[matIndex].push_back(std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				glTFModel.images[normalImageIndex].width, glTFModel.images[normalImageIndex].height), &glTFModel.images[normalImageIndex].image[0]));
+				tinygltf.images[normalImageIndex].width, tinygltf.images[normalImageIndex].height), &tinygltf.images[normalImageIndex].image[0]));
 		}
 		else
 		{
-			uint32_t whiteImageData = 0xFFFFFFFF;
 			textures[matIndex].push_back(m_Textures.at("WhiteTexture"));
 		}
 	}
 
+	std::size_t totalVertexCount = 0;
+	std::size_t totalIndexCount = 0;
+	std::size_t totalMeshCount = 0;
+
+	for (auto& mesh : tinygltf.meshes)
+	{
+		for (auto& prim : mesh.primitives)
+		{
+			uint32_t vertexPosIndex = prim.attributes.find("POSITION")->second;
+			const tinygltf::Accessor& vertexPosAccessor = tinygltf.accessors[vertexPosIndex];
+			totalVertexCount += vertexPosAccessor.count;
+
+			uint32_t indicesIndex = prim.indices;
+			const tinygltf::Accessor& indexAccessor = tinygltf.accessors[indicesIndex];
+			totalIndexCount += indexAccessor.count;
+
+			totalMeshCount++;
+		}
+	}
+
+	struct Vertex
+	{
+		glm::vec3 Position;
+		glm::vec2 TexCoord;
+		glm::vec3 Normal;
+	};
+
+	std::vector<Vertex> vertices;
+	std::vector<WORD> indices;
+	
+	vertices.reserve(totalVertexCount);
+	indices.reserve(totalIndexCount);
+
 	// Create all meshes
 	std::vector<std::shared_ptr<Mesh>> meshes;
-	std::string attributeNames[] = { "POSITION", "TEXCOORD_0", "NORMAL" };
+	meshes.reserve(totalMeshCount);
 
-	for (auto& mesh : glTFModel.meshes)
+	std::size_t currentStartVertex = 0;
+	std::size_t currentStartIndex = 0;
+
+	for (auto& mesh : tinygltf.meshes)
 	{
-		for (auto& primitive : mesh.primitives)
+		for (auto& prim : mesh.primitives)
 		{
-			std::vector<std::shared_ptr<Buffer>> buffers;
-			buffers.reserve(4);
+			currentStartVertex = vertices.size();
+			currentStartIndex = indices.size();
 
-			// Min/max bounds for mesh
-			glm::vec3 minBounds(0.0f);
-			glm::vec3 maxBounds(0.0f);
+			// Get vertex position data
+			auto vertexPosAttrib = prim.attributes.find("POSITION");
+			ASSERT(vertexPosAttrib != prim.attributes.end(), "GLTF primitive does not contain vertex attribute POSITION");
 
-			// Loop through all needed attributes to load them and create buffers with their data
-			for (auto& attributeName : attributeNames)
+			uint32_t vertexPosIndex = vertexPosAttrib->second;
+			const tinygltf::Accessor& vertexPosAccessor = tinygltf.accessors[vertexPosIndex];
+			const tinygltf::BufferView& vertexPosBufferView = tinygltf.bufferViews[vertexPosAccessor.bufferView];
+			const tinygltf::Buffer& vertexPosBuffer = tinygltf.buffers[vertexPosBufferView.buffer];
+
+			const float* pVertexPosData = reinterpret_cast<const float*>(&vertexPosBuffer.data[0] + vertexPosBufferView.byteOffset + vertexPosAccessor.byteOffset);
+			ASSERT(vertexPosAccessor.count * vertexPosAccessor.ByteStride(vertexPosBufferView) + vertexPosBufferView.byteOffset + vertexPosAccessor.byteOffset <= vertexPosBuffer.data.size(),
+				"Byte offset for vertex attribute POSITION exceeded total buffer size");
+
+			// Get vertex tex coordinates data
+			auto vertexTexCoordAttrib = prim.attributes.find("TEXCOORD_0");
+			ASSERT(vertexTexCoordAttrib != prim.attributes.end(), "GLTF primitive does not contain vertex attribute TEXCOORD_0");
+
+			uint32_t vertexTexCoordIndex = vertexTexCoordAttrib->second;
+			const tinygltf::Accessor& vertexTexCoordAccessor = tinygltf.accessors[vertexTexCoordIndex];
+			const tinygltf::BufferView& vertexTexCoordBufferView = tinygltf.bufferViews[vertexTexCoordAccessor.bufferView];
+			const tinygltf::Buffer& vertexTexCoordBuffer = tinygltf.buffers[vertexTexCoordBufferView.buffer];
+
+			const float* pVertexTexCoordData = reinterpret_cast<const float*>(&vertexTexCoordBuffer.data[0] + vertexTexCoordBufferView.byteOffset + vertexTexCoordAccessor.byteOffset);
+			ASSERT(vertexTexCoordAccessor.count * vertexTexCoordAccessor.ByteStride(vertexTexCoordBufferView) + vertexTexCoordBufferView.byteOffset + vertexTexCoordAccessor.byteOffset <= vertexTexCoordBuffer.data.size(),
+				"Byte offset for vertex attribute TEXCOORD_0 exceeded total buffer size");
+
+			// Get vertex normal data
+			auto vertexNormalAttrib = prim.attributes.find("NORMAL");
+			ASSERT(vertexNormalAttrib != prim.attributes.end(), "GLTF primitive does not contain vertex attribute NORMAL");
+
+			uint32_t vertexNormalIndex = vertexNormalAttrib->second;
+			const tinygltf::Accessor& vertexNormalAccessor = tinygltf.accessors[vertexNormalIndex];
+			const tinygltf::BufferView& vertexNormalBufferView = tinygltf.bufferViews[vertexNormalAccessor.bufferView];
+			const tinygltf::Buffer& vertexNormalBuffer = tinygltf.buffers[vertexNormalBufferView.buffer];
+
+			const float* pVertexNormalData = reinterpret_cast<const float*>(&vertexNormalBuffer.data[0] + vertexNormalBufferView.byteOffset + vertexNormalAccessor.byteOffset);
+			ASSERT(vertexNormalAccessor.count * vertexNormalAccessor.ByteStride(vertexNormalBufferView) + vertexNormalBufferView.byteOffset + vertexNormalAccessor.byteOffset <= vertexNormalBuffer.data.size(),
+				"Byte offset for vertex attribute NORMAL exceeded total buffer size");
+
+			// Set attribute indices
+			uint32_t posIndex = 0;
+			uint32_t texCoordIndex = 0;
+			uint32_t normalIndex = 0;
+
+			// Construct a vertex from the primitive attributes data and add it to all vertices
+			for (uint32_t i = 0; i < vertexPosAccessor.count; ++i)
 			{
-				auto attribIter = primitive.attributes.find(attributeName);
+				Vertex v = {};
+				v.Position = glm::vec3(pVertexPosData[posIndex], pVertexPosData[posIndex + 1], pVertexPosData[posIndex + 2]);
+				v.TexCoord = glm::vec2(pVertexTexCoordData[texCoordIndex], pVertexTexCoordData[texCoordIndex + 1]);
+				v.Normal = glm::vec3(pVertexNormalData[normalIndex], pVertexNormalData[normalIndex + 1], pVertexNormalData[normalIndex + 2]);
 
-				if (attribIter != primitive.attributes.end())
-				{
-					uint32_t attribIndex = attribIter->second;
+				vertices.push_back(v);
 
-					auto& accessor = glTFModel.accessors[attribIndex];
-					auto& bufferView = glTFModel.bufferViews[accessor.bufferView];
-					auto& buffer = glTFModel.buffers[bufferView.buffer];
-
-					const unsigned char* dataPtr = &buffer.data[0] + bufferView.byteOffset;
-					ASSERT((bufferView.byteOffset < buffer.data.size()), "Buffer view byte offset exceeded buffer total size");
-
-					buffers.push_back(std::make_shared<Buffer>(name + " vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, accessor.count, accessor.ByteStride(bufferView)), dataPtr));
-
-					if (attributeName == "POSITION")
-					{
-						minBounds = glm::vec3(accessor.minValues[0], accessor.minValues[1], accessor.minValues[2]);
-						maxBounds = glm::vec3(accessor.maxValues[0], accessor.maxValues[1], accessor.maxValues[2]);
-					}
-				}
-				else
-				{
-					ASSERT(false, "Mesh primitive does not contain attribute " + attributeName);
-				}
+				posIndex += 3;
+				texCoordIndex += 2;
+				normalIndex += 3;
 			}
 
-			// Create index buffer
-			uint32_t indicesIndex = primitive.indices;
+			// Set the min and max bounds for the current primitive/mesh
+			glm::vec3 minBounds = glm::vec3(vertexPosAccessor.minValues[0], vertexPosAccessor.minValues[1], vertexPosAccessor.minValues[2]);
+			glm::vec3 maxBounds = glm::vec3(vertexPosAccessor.maxValues[0], vertexPosAccessor.maxValues[1], vertexPosAccessor.maxValues[2]);
 
-			auto& accessor = glTFModel.accessors[indicesIndex];
-			auto& bufferView = glTFModel.bufferViews[accessor.bufferView];
-			auto& buffer = glTFModel.buffers[bufferView.buffer];
+			// Get index data
+			uint32_t indicesIndex = prim.indices;
+			const tinygltf::Accessor& indexAccessor = tinygltf.accessors[indicesIndex];
+			const tinygltf::BufferView& indexBufferView = tinygltf.bufferViews[indexAccessor.bufferView];
+			const tinygltf::Buffer& indexBuffer = tinygltf.buffers[indexBufferView.buffer];
 
-			const unsigned char* dataPtr = &buffer.data[0] + bufferView.byteOffset + accessor.byteOffset;
-			ASSERT((bufferView.byteOffset < buffer.data.size()), "Buffer view byte offset exceeded buffer total size");
+			const WORD* pIndexData = reinterpret_cast<const WORD*>(&indexBuffer.data[0] + indexBufferView.byteOffset + indexAccessor.byteOffset);
+			ASSERT(indexAccessor.count * indexAccessor.ByteStride(indexBufferView) + indexBufferView.byteOffset + indexAccessor.byteOffset,
+				"Byte offset for indices exceeded total buffer size");
 
-			buffers.push_back(std::make_shared<Buffer>(name + " index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, accessor.count, accessor.ByteStride(bufferView)), dataPtr));
+			// Get indices for current primitive/mesh and add it to all indices
+			std::size_t numIndices = 0;
+
+			for (uint32_t i = 0; i < indexAccessor.count; ++i)
+			{
+				indices.push_back(pIndexData[i]);
+				numIndices++;
+			}
+
+			// Meshes need to know their byte offset in both the vertex and index buffer
+			meshes.push_back(std::make_shared<Mesh>(textures[prim.material], currentStartVertex, currentStartIndex, numIndices, minBounds, maxBounds, "Unnamed", meshes.size()));
 
 			// Create the mesh with the buffers/textures, and additional data like min/max bounds, name, and hash
+			// Meshes all have a reference to the same vertex and index buffers, with an offset to where the data in that buffer is located.
 			// TODO: Name and hash generation
-			meshes.push_back(std::make_shared<Mesh>(buffers, textures[primitive.material], minBounds, maxBounds, "Unnamed", meshes.size()));
+			//meshes.push_back(std::make_shared<Mesh>(buffers, textures[primitive.material], minBounds, maxBounds, "Unnamed", meshes.size()));
 		}
+	}
+
+	std::shared_ptr<Buffer> modelVertexBuffer = std::make_shared<Buffer>(name + " vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, vertices.size(), sizeof(Vertex)), &vertices[0]);
+	std::shared_ptr<Buffer> modelIndexBuffer = std::make_shared<Buffer>(name + " index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, indices.size(), sizeof(WORD)), &indices[0]);
+
+	for (auto& mesh : meshes)
+	{
+		mesh->SetVertexBuffer(modelVertexBuffer);
+		mesh->SetIndexBuffer(modelIndexBuffer);
 	}
 
 	// Create model containing all of the meshes

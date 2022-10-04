@@ -21,16 +21,17 @@ void RootSignature::Create(const std::string& name, const std::vector<CD3DX12_RO
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
 	CD3DX12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
-	staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+	staticSamplers[0].Filter = D3D12_FILTER_ANISOTROPIC;
 	staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	staticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	staticSamplers[0].MipLODBias = 0;
-	staticSamplers[0].MaxAnisotropy = 0;
+	staticSamplers[0].MaxAnisotropy = 16;
 	staticSamplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
 	staticSamplers[0].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
 	staticSamplers[0].MinLOD = 0.0f;
 	staticSamplers[0].MaxLOD = D3D12_FLOAT32_MAX;
+	// Force shader to use a lower/higher mip (e.g. if the shader was going to sample from LOD3, and MipLODBias is 1, it will instead sample from LOD4)
+	staticSamplers[0].MipLODBias = 0;
 	staticSamplers[0].ShaderRegister = 0;
 	staticSamplers[0].RegisterSpace = 0;
 	staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
