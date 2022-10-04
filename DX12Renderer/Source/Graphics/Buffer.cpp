@@ -100,15 +100,7 @@ void Buffer::Create()
 		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
 	}
 
-	D3D12_RESOURCE_DESC d3d12ResourceDesc = {};
-	d3d12ResourceDesc.MipLevels = 1;
-	d3d12ResourceDesc.Width = m_ByteSize;
-	d3d12ResourceDesc.Height = 1;
-	d3d12ResourceDesc.DepthOrArraySize = 1;
-	d3d12ResourceDesc.SampleDesc.Count = 1;
-	d3d12ResourceDesc.SampleDesc.Quality = 0;
-	d3d12ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	d3d12ResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	CD3DX12_RESOURCE_DESC d3d12ResourceDesc = CD3DX12_RESOURCE_DESC::Buffer(m_ByteSize);
 
 	RenderBackend::GetDevice()->CreateBuffer(*this, heapType, d3d12ResourceDesc, initialState, m_ByteSize);
 
@@ -120,19 +112,22 @@ void Buffer::Create()
 
 void Buffer::CreateViews()
 {
-	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_READ)
+	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_READ || m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT)
 	{
 		auto& srv = m_DescriptorAllocations[DescriptorType::SRV];
 
 		// Create shader resource view (read-only)
 		if (srv.IsNull())
 			srv = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
+		
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		//srvDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-		srvDesc.Texture2D.MipLevels = m_d3d12Resource->GetDesc().MipLevels;
+		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Buffer.FirstElement = 0;
+		srvDesc.Buffer.NumElements = m_BufferDesc.NumElements;
+		srvDesc.Buffer.StructureByteStride = m_BufferDesc.ElementSize;
+		srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 
 		RenderBackend::GetDevice()->CreateShaderResourceView(*this, srvDesc, srv.GetCPUDescriptorHandle());
 	}
@@ -145,16 +140,17 @@ void Buffer::CreateViews()
 			uav = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-		
-		//uavDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+		uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
 		uavDesc.Buffer.FirstElement = 0;
-		uavDesc.Buffer.NumElements = 1;
+		uavDesc.Buffer.NumElements = m_BufferDesc.NumElements;
+		uavDesc.Buffer.StructureByteStride = m_BufferDesc.ElementSize;
 		uavDesc.Buffer.CounterOffsetInBytes = 0;
+		uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
 
 		RenderBackend::GetDevice()->CreateUnorderedAccessView(*this, uavDesc, uav.GetCPUDescriptorHandle());
 	}
-	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT)
+	/*if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT)
 	{
 		auto& cbv = m_DescriptorAllocations[DescriptorType::CBV];
 
@@ -166,5 +162,5 @@ void Buffer::CreateViews()
 		cbvDesc.SizeInBytes = m_ByteSize;
 
 		RenderBackend::GetDevice()->CreateConstantBufferView(*this, cbvDesc, cbv.GetCPUDescriptorHandle());
-	}
+	}*/
 }

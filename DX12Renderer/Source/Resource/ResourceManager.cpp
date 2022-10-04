@@ -76,6 +76,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 	std::size_t totalIndexCount = 0;
 	std::size_t totalMeshCount = 0;
 
+	// Loop through all meshes/primitives in GLTF to predetermine total amount of vertices/indices/meshes
 	for (auto& mesh : tinygltf.meshes)
 	{
 		for (auto& prim : mesh.primitives)
@@ -105,7 +106,6 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 	vertices.reserve(totalVertexCount);
 	indices.reserve(totalIndexCount);
 
-	// Create all meshes
 	std::vector<std::shared_ptr<Mesh>> meshes;
 	meshes.reserve(totalMeshCount);
 
@@ -202,12 +202,8 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			}
 
 			// Meshes need to know their byte offset in both the vertex and index buffer
+			// Todo: name and hash generation
 			meshes.push_back(std::make_shared<Mesh>(textures[prim.material], currentStartVertex, currentStartIndex, numIndices, minBounds, maxBounds, "Unnamed", meshes.size()));
-
-			// Create the mesh with the buffers/textures, and additional data like min/max bounds, name, and hash
-			// Meshes all have a reference to the same vertex and index buffers, with an offset to where the data in that buffer is located.
-			// TODO: Name and hash generation
-			//meshes.push_back(std::make_shared<Mesh>(buffers, textures[primitive.material], minBounds, maxBounds, "Unnamed", meshes.size()));
 		}
 	}
 
