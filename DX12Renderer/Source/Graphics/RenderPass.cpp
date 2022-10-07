@@ -24,6 +24,8 @@ void RenderPass::Resize(uint32_t width, uint32_t height)
 
 void RenderPass::ClearViews(const std::shared_ptr<CommandList>& commandList)
 {
-	commandList->ClearRenderTargetView(m_ColorAttachment->GetDescriptorHandle(DescriptorType::RTV), &m_Desc.ClearColor.x);
-	commandList->ClearDepthStencilView(m_DepthAttachment->GetDescriptorHandle(DescriptorType::DSV));
+	if (m_ColorAttachment->IsValid())
+		commandList->ClearRenderTargetView(m_ColorAttachment->GetDescriptorHandle(DescriptorType::RTV), &m_Desc.ClearColor.x);
+	if (m_DepthAttachment->IsValid())
+		commandList->ClearDepthStencilView(m_DepthAttachment->GetDescriptorHandle(DescriptorType::DSV));
 }

@@ -44,14 +44,28 @@ void PipelineState::Create(const std::string& name, const RenderPassDesc& render
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	psoDesc.BlendState = blendDesc;
 	psoDesc.DepthStencilState.DepthEnable = renderPassDesc.DepthEnabled ? TRUE : FALSE;
-	psoDesc.DSVFormat = TextureFormatToDXGIFormat(renderPassDesc.DepthAttachmentDesc.Format);
-	psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+	if (renderPassDesc.DepthEnabled)
+	{
+		psoDesc.DSVFormat = TextureFormatToDXGIFormat(renderPassDesc.DepthAttachmentDesc.Format);
+		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	}
+
 	psoDesc.DepthStencilState.StencilEnable = FALSE;
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.PrimitiveTopologyType = renderPassDesc.TopologyType;
-	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = TextureFormatToDXGIFormat(renderPassDesc.ColorAttachmentDesc.Format);
+
+	if (renderPassDesc.ColorAttachmentDesc.Usage == TextureUsage::TEXTURE_USAGE_NONE && renderPassDesc.ColorAttachmentDesc.Format == TextureFormat::TEXTURE_FORMAT_UNSPECIFIED)
+	{
+		psoDesc.NumRenderTargets = 0;
+	}
+	else
+	{
+		psoDesc.NumRenderTargets = 1;
+		psoDesc.RTVFormats[0] = TextureFormatToDXGIFormat(renderPassDesc.ColorAttachmentDesc.Format);
+	}
+
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.pRootSignature = m_RootSignature->GetD3D12RootSignature().Get();
 

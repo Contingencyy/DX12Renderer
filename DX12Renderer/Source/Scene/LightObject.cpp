@@ -1,13 +1,14 @@
 #include "Pch.h"
 #include "Scene/LightObject.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/Texture.h"
 
 /*
 
 	Since distance attenuation is a quadratic function, we can calculate a light's range based on its constant, linear, and quadratic falloff.
 	The light range epsilon defines the attenuation value that is required before the light source will be ignored for further calculations in the shaders.
 	We calculate it once on the CPU so that the GPU does not have to do it for every fragment/pixel. Only applies to point and spotlights.
-	In the shader we need to rescale the attenuation value to account for this cutoff.
+	In the shader we need to rescale the attenuation value to account for this cutoff, otherwise the cutoff will be visible.
 
 */
 
@@ -18,6 +19,21 @@ DirectionalLightObject::DirectionalLightObject(const DirectionalLightData& dirLi
 	: SceneObject(name, translation, rotation, scale), m_DirectionalLightData(dirLightData)
 {
 	m_FrustumCullable = false;
+
+	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
+
+	// Still need to find a way to get the up vector, negative direction does not work as this is just the backward vector
+	//glm::vec3 upVector = dirLightData.Direction * glm::mat3_cast(glm::fquat(glm::vec3(90.0f, 0.0f, 0.0f)));
+	glm::mat4 lightView = glm::lookAtLH(glm::vec3(-dirLightData.Direction.x, -dirLightData.Direction.y, -dirLightData.Direction.z) * 1000.0f, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+	float shadowMapSize = static_cast<float>(renderSettings.ShadowMapSize);
+	glm::mat4 lightProj = glm::orthoLH_ZO(-shadowMapSize, shadowMapSize, shadowMapSize, -shadowMapSize, 0.1f, 1200.0f);
+
+	m_DirectionalLightData.ViewProjection = lightProj * lightView;
+
+	m_ShadowMap = std::make_shared<Texture>("Directional light shadow map", TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+		renderSettings.ShadowMapSize, renderSettings.ShadowMapSize));
+	m_DirectionalLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorIndex(DescriptorType::SRV);
 }
 
 DirectionalLightObject::~DirectionalLightObject()
@@ -30,7 +46,7 @@ void DirectionalLightObject::Update(float deltaTime)
 
 void DirectionalLightObject::Render(const Camera& camera)
 {
-	Renderer::Submit(m_DirectionalLightData);
+	Renderer::Submit(m_DirectionalLightData, m_ShadowMap);
 }
 
 PointLightObject::PointLightObject(const PointLightData& pointLightData, const std::string& name,
@@ -39,6 +55,19 @@ PointLightObject::PointLightObject(const PointLightData& pointLightData, const s
 {
 	m_FrustumCullable = false;
 	m_PointLightData.Range = MathHelper::SolveQuadraticFunc(m_PointLightData.Attenuation.z, m_PointLightData.Attenuation.y, m_PointLightData.Attenuation.x - LIGHT_RANGE_EPSILON);
+
+	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
+
+	// UP STILL NEEDS TO BE CALCULATED SOMEHOW
+	// MAYBE CROSS PROD
+	glm::mat4 lightView = glm::lookAtLH(m_PointLightData.Position, m_PointLightData.Position + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 lightProj = glm::perspectiveFovLH_ZO(glm::radians(60.0f), static_cast<float>(renderSettings.ShadowMapSize), static_cast<float>(renderSettings.ShadowMapSize), 0.1f, m_PointLightData.Range);
+
+	m_PointLightData.ViewProjection = lightProj * lightView;
+
+	m_ShadowMap = std::make_shared<Texture>("Pointlight shadow map", TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+		renderSettings.ShadowMapSize, renderSettings.ShadowMapSize));
+	m_PointLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorIndex(DescriptorType::SRV);
 }
 
 PointLightObject::~PointLightObject()
@@ -52,7 +81,7 @@ void PointLightObject::Update(float deltaTime)
 
 void PointLightObject::Render(const Camera& camera)
 {
-	Renderer::Submit(m_PointLightData);
+	Renderer::Submit(m_PointLightData, m_ShadowMap);
 }
 
 SpotLightObject::SpotLightObject(const SpotLightData& spotLightData, const std::string& name, const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale)
@@ -60,6 +89,19 @@ SpotLightObject::SpotLightObject(const SpotLightData& spotLightData, const std::
 {
 	m_FrustumCullable = false;
 	m_SpotLightData.Range = MathHelper::SolveQuadraticFunc(m_SpotLightData.Attenuation.z, m_SpotLightData.Attenuation.y, m_SpotLightData.Attenuation.x - LIGHT_RANGE_EPSILON);
+
+	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
+
+	// UP STILL NEEDS TO BE CALCULATED SOMEHOW
+	// MAYBE CROSS PROD
+	glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 lightProj = glm::perspectiveFovLH_ZO(glm::radians(60.0f), static_cast<float>(renderSettings.ShadowMapSize), static_cast<float>(renderSettings.ShadowMapSize), 0.1f, m_SpotLightData.Range);
+
+	m_SpotLightData.ViewProjection = lightProj * lightView;
+
+	m_ShadowMap = std::make_shared<Texture>("Spotlight shadow map", TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+		renderSettings.ShadowMapSize, renderSettings.ShadowMapSize));
+	m_SpotLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorIndex(DescriptorType::SRV);
 }
 
 SpotLightObject::~SpotLightObject()
@@ -73,5 +115,5 @@ void SpotLightObject::Update(float deltaTime)
 
 void SpotLightObject::Render(const Camera& camera)
 {
-	Renderer::Submit(m_SpotLightData);
+	Renderer::Submit(m_SpotLightData, m_ShadowMap);
 }

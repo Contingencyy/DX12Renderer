@@ -283,11 +283,13 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Resources\Shaders\Default_VS.hlsl" />
-    <FxCompile Include="Resources\Shaders\Default_PS.hlsl" />
+    <FxCompile Include="Resources\Shaders\Lighting_VS.hlsl" />
+    <FxCompile Include="Resources\Shaders\Lighting_PS.hlsl" />
     <FxCompile Include="Resources\Shaders\ToneMapping_PS.hlsl" />
     <FxCompile Include="Resources\Shaders\ToneMapping_VS.hlsl" />
     <FxCompile Include="Resources\Shaders\DebugLine_VS.hlsl" />
     <FxCompile Include="Resources\Shaders\DebugLine_PS.hlsl" />
+    <FxCompile Include="Resources\Shaders\ShadowMapping_VS.hlsl" />
+    <FxCompile Include="Resources\Shaders\ShadowMapping_PS.hlsl" />
   </ItemGroup>
 </Project>

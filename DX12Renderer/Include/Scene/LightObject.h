@@ -1,6 +1,8 @@
 #pragma once
 #include "Scene/SceneObject.h"
 
+class Texture;
+
 struct DirectionalLightData
 {
 	DirectionalLightData() = default;
@@ -8,11 +10,15 @@ struct DirectionalLightData
 		: Direction(direction), Ambient(ambient), Diffuse(diffuse) {}
 
 	glm::vec3 Direction = glm::vec3(0.0f);
-	BYTE_PADDING(1);
+	BYTE_PADDING(4);
 	glm::vec3 Ambient = glm::vec3(0.0f);
-	BYTE_PADDING(1);
+	BYTE_PADDING(4);
 	glm::vec3 Diffuse = glm::vec3(1.0f);
-	BYTE_PADDING(1);
+	BYTE_PADDING(4);
+
+	glm::mat4 ViewProjection;
+	uint32_t ShadowMapIndex;
+	BYTE_PADDING(12);
 };
 
 class DirectionalLightObject : public SceneObject
@@ -27,6 +33,7 @@ public:
 
 private:
 	DirectionalLightData m_DirectionalLightData;
+	std::shared_ptr<Texture> m_ShadowMap;
 
 };
 
@@ -39,11 +46,15 @@ struct PointLightData
 	glm::vec3 Position = glm::vec3(0.0f);
 	float Range = 0.0f;
 	glm::vec3 Attenuation = glm::vec3(0.0f);
-	BYTE_PADDING(1);
+	BYTE_PADDING(4);
 	glm::vec3 Ambient = glm::vec3(0.0f);
-	BYTE_PADDING(1);
+	BYTE_PADDING(4);
 	glm::vec3 Diffuse = glm::vec3(1.0f);
-	BYTE_PADDING(1);
+	BYTE_PADDING(4);
+
+	glm::mat4 ViewProjection;
+	uint32_t ShadowMapIndex;
+	BYTE_PADDING(12);
 };
 
 class PointLightObject : public SceneObject
@@ -58,6 +69,8 @@ public:
 
 private:
 	PointLightData m_PointLightData;
+	glm::mat4 m_LightViewProjection;
+	std::shared_ptr<Texture> m_ShadowMap;
 
 };
 
@@ -68,7 +81,7 @@ struct SpotLightData
 		: Direction(direction), Attenuation(attenuation), InnerConeAngle(glm::cos(glm::radians(innerConeAngle))), OuterConeAngle(glm::cos(glm::radians(outerConeAngle))), Ambient(ambient), Diffuse(diffuse) {}
 
 	glm::vec3 Position = glm::vec3(0.0f);
-	BYTE_PADDING(1);
+	BYTE_PADDING(4);
 	glm::vec3 Direction = glm::vec3(0.0f);
 	float Range = 0.0f;
 	glm::vec3 Attenuation = glm::vec3(0.0f);
@@ -76,7 +89,11 @@ struct SpotLightData
 	float OuterConeAngle = 0.0f;
 	glm::vec3 Ambient = glm::vec3(0.0f);
 	glm::vec3 Diffuse = glm::vec3(0.0f);
-	BYTE_PADDING(1);
+	BYTE_PADDING(4);
+
+	glm::mat4 ViewProjection;
+	uint32_t ShadowMapIndex;
+	BYTE_PADDING(12);
 };
 
 class SpotLightObject : public SceneObject
@@ -91,5 +108,7 @@ public:
 
 private:
 	SpotLightData m_SpotLightData;
+	glm::mat4 m_LightViewProjection;
+	std::shared_ptr<Texture> m_ShadowMap;
 
 };
