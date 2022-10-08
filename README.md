@@ -14,7 +14,7 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Render backend with platform agnostic renderers (debug and 3D renderer)
 - GPU validation
 
-## In Process
+## WIP
 - Shadow mapping (directional lights, spotlights, pointlights)
 - Mipmap generation
 
