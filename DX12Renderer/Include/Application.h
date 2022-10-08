@@ -48,5 +48,6 @@ private:
 	std::unique_ptr<Scene> m_Scene = nullptr;
 
 	bool m_Initialized = false;
+	bool m_RenderGUI = true;
 
 };

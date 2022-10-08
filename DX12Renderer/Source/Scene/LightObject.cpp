@@ -24,7 +24,8 @@ DirectionalLightObject::DirectionalLightObject(const DirectionalLightData& dirLi
 
 	glm::mat4 lightView = glm::lookAtLH(glm::vec3(-m_DirectionalLightData.Direction.x, -m_DirectionalLightData.Direction.y, -m_DirectionalLightData.Direction.z) * 2000.0f, glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	// Shadow map projection size should be calculated by the maximum scene bounds in terms of shadow casters and receivers
-	glm::mat4 lightProj = glm::orthoLH_ZO(-2048.0f, 2048.0f, 2048.0f, -2048.0f, 0.1f, 2100.0f);
+	float orthoSize = 2000.0f;
+	glm::mat4 lightProj = glm::orthoLH_ZO(-orthoSize, orthoSize, orthoSize, -orthoSize, 0.1f, 2100.0f);
 
 	m_DirectionalLightData.ViewProjection = lightProj * lightView;
 

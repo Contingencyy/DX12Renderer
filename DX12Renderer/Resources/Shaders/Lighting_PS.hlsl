@@ -160,9 +160,9 @@ float CalculateShadow(float4 fragPosLightSpace, uint shadowMapIndex, float angle
 	shadow = currentDepth - bias > closestDepth ? 1.0f : 0.0f;*/
 
 	// Apply percentage closer filtering with poisson sampling
-	for (int x = -2; x <= 2; ++x)
+	for (int x = -1; x <= 1; ++x)
 	{
-		for (int y = -2; y <= 2; ++y)
+		for (int y = -1; y <= 1; ++y)
 		{
 			for (int i = 0; i < numDiskSamples; ++i)
 			{
@@ -172,7 +172,7 @@ float CalculateShadow(float4 fragPosLightSpace, uint shadowMapIndex, float angle
 			}
 		}
 	}
-	shadow /= 25 * numDiskSamples;
+	shadow /= 9 * numDiskSamples;
 
 	// Apply poisson sampling
 	/*for (int i = 0; i < numDiskSamples; ++i)

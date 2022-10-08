@@ -138,50 +138,54 @@ void Application::Render()
 	const Camera& sceneCamera = m_Scene->GetActiveCamera();
 	Renderer::BeginScene(sceneCamera, m_Scene->GetAmbientLight());
 	DebugRenderer::BeginScene(sceneCamera);
-	m_GUI->BeginFrame();
 
 	m_Scene->Render();
 	Renderer::Render();
 	DebugRenderer::Render();
 
-	m_Scene->OnImGuiRender();
-
-	ImGui::Begin("Rendering");
-	Renderer::OnImGuiRender();
-	ImGui::Separator();
-	DebugRenderer::OnImGuiRender();
-	ImGui::End();
-
-	// Profiler
+	if (m_RenderGUI)
 	{
-		ImGui::Begin("Profiler");
+		m_GUI->BeginFrame();
+		m_Scene->OnImGuiRender();
 
-		auto& timerResults = Profiler::Get().GetTimerResults();
-		auto frameTimeIter = timerResults.find("Frametime");
-
-		if (frameTimeIter != timerResults.end())
-		{
-			ImGui::Text("Frametime: %.3f ms", frameTimeIter->second.Duration);
-			ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / (frameTimeIter->second.Duration)));
-		}
-
-		for (auto& timerResult : timerResults)
-		{
-			if (timerResult.first == "Frametime")
-				continue;
-
-			char buf[50];
-			strcpy_s(buf, timerResult.second.Name);
-			strcat_s(buf, ": %.3fms");
-
-			ImGui::Text(buf, timerResult.second.Duration);
-		}
-
+		ImGui::Begin("Rendering");
+		Renderer::OnImGuiRender();
+		ImGui::Separator();
+		DebugRenderer::OnImGuiRender();
 		ImGui::End();
-		Profiler::Get().Reset();
+
+		// Profiler
+		{
+			ImGui::Begin("Profiler");
+
+			auto& timerResults = Profiler::Get().GetTimerResults();
+			auto frameTimeIter = timerResults.find("Frametime");
+
+			if (frameTimeIter != timerResults.end())
+			{
+				ImGui::Text("Frametime: %.3f ms", frameTimeIter->second.Duration);
+				ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / (frameTimeIter->second.Duration)));
+			}
+
+			for (auto& timerResult : timerResults)
+			{
+				if (timerResult.first == "Frametime")
+					continue;
+
+				char buf[50];
+				strcpy_s(buf, timerResult.second.Name);
+				strcat_s(buf, ": %.3fms");
+
+				ImGui::Text(buf, timerResult.second.Duration);
+			}
+
+			ImGui::End();
+			Profiler::Get().Reset();
+		}
+
+		m_GUI->EndFrame();
 	}
 
-	m_GUI->EndFrame();
 	DebugRenderer::EndScene();
 	Renderer::EndScene();
 }
