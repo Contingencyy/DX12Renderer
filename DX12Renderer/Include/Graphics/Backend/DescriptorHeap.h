@@ -6,7 +6,7 @@ class Device;
 class DescriptorHeap
 {
 public:
-	DescriptorHeap(std::shared_ptr<Device> device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors = 256);
+	DescriptorHeap(std::shared_ptr<Device> device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors = 512);
 	~DescriptorHeap();
 
 	DescriptorAllocation Allocate(uint32_t numDescriptors = 1);

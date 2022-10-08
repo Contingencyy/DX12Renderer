@@ -20,6 +20,7 @@ void RootSignature::Create(const std::string& name, const std::vector<CD3DX12_RO
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
+	// Default texture sampler (antisotropic)
 	CD3DX12_STATIC_SAMPLER_DESC staticSamplers[2] = {};
 	staticSamplers[0].Filter = D3D12_FILTER_ANISOTROPIC;
 	staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -36,13 +37,14 @@ void RootSignature::Create(const std::string& name, const std::vector<CD3DX12_RO
 	staticSamplers[0].RegisterSpace = 0;
 	staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-	staticSamplers[1].Filter = D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR;
-	staticSamplers[1].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	staticSamplers[1].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	staticSamplers[1].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	staticSamplers[1].MaxAnisotropy = 16;
+	// Shadow map sampler
+	staticSamplers[1].Filter = D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_POINT;
+	staticSamplers[1].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	staticSamplers[1].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	staticSamplers[1].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	staticSamplers[1].MaxAnisotropy = 1;
 	staticSamplers[1].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-	staticSamplers[1].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+	staticSamplers[1].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
 	staticSamplers[1].MinLOD = 0.0f;
 	staticSamplers[1].MaxLOD = D3D12_FLOAT32_MAX;
 	staticSamplers[1].MipLODBias = 0;

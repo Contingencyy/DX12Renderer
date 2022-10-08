@@ -201,6 +201,7 @@ void Renderer::Render()
         commandList->SetViewports(1, &shadowmapViewport);
         commandList->SetScissorRects(1, &scissorRect);
 
+        // Shadow map indices somehow need to map to their respective related light data, otherwise there is no guarantee we pick the right shadow map here.
         for (uint32_t lightIndex = 0; lightIndex < s_Data.DirectionalLightData.size(); ++lightIndex)
         {
             GenerateShadowMap(*commandList.get(), s_Data.DirectionalLightData[lightIndex].ViewProjection, *s_Data.ShadowMaps[lightIndex].get());

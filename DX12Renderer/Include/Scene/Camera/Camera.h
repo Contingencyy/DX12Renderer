@@ -42,6 +42,6 @@ private:
 	bool m_SetAnchorPointOnClick = true;
 
 	ViewFrustum m_ViewFrustum;
-	bool m_EnableFrustumCulling = true;
+	bool m_EnableFrustumCulling = false;
 
 };

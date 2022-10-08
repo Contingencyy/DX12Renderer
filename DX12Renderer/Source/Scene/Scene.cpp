@@ -15,15 +15,15 @@ Scene::Scene()
 {
 	Renderer::RenderSettings renderSettings = Renderer::GetSettings();
 	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f), 60.0f, static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
-	m_AmbientLight = glm::vec3(0.01f);
+	m_AmbientLight = glm::vec3(0.0f);
 
 	// Directional light
-	DirectionalLightData dirLightData(glm::normalize(glm::vec3(0.5f, -50.0f, 0.5f)), glm::vec3(0.0025f), glm::vec3(0.125f, 0.125f, 0.1f));
+	DirectionalLightData dirLightData(glm::normalize(glm::vec3(0.0f, -100.0f, 0.0f)), glm::vec3(0.005f), glm::vec3(0.4f, 0.38f, 0.28f));
 	m_SceneObjects.push_back(std::make_unique<DirectionalLightObject>(dirLightData, "DirectionalLight"));
 
-	dirLightData.Direction = glm::normalize(glm::vec3(-0.5f, -50.0f, -0.5f));
+	/*dirLightData.Direction = glm::normalize(glm::vec3(4.0f, -50.0f, 2.0f));
 	dirLightData.Diffuse = glm::vec3(0.25f, 0.0f, 0.25f);
-	m_SceneObjects.push_back(std::make_unique<DirectionalLightObject>(dirLightData, "DirectionalLight"));
+	m_SceneObjects.push_back(std::make_unique<DirectionalLightObject>(dirLightData, "DirectionalLight"));*/
 
 	// Pointlights
 	//PointLightData pointlightData(glm::vec3(1.0f, 0.007f, 0.0002f), glm::vec3(0.0001f, 0.00005f, 0.00005f), glm::vec3(10.0f, 0.0f, 0.0f));
@@ -38,7 +38,7 @@ Scene::Scene()
 	//m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(150.0f, 5.0f, 0.0f)));
 
 	// Spotlights
-	//SpotLightData spotLightData(glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f)), glm::vec3(1.0f, 0.007f, 0.0002f), 12.5f, 25.0f, glm::vec3(0.0001f, 0.0001f, 0.0001f), glm::vec3(10.0f));
+	//SpotLightData spotLightData(glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f)), glm::vec3(1.0f, 0.007f, 0.0002f), 12.5f, 25.0f, glm::vec3(0.1f, 0.1f, 0.1f), glm::vec3(10.0f));
 	//m_SceneObjects.push_back(std::make_unique<SpotLightObject>(spotLightData, "SpotLight", glm::vec3(-500.0f, 250.0f, 0.0f)));
 	//m_SceneObjects.push_back(std::make_unique<SpotLightObject>(spotLightData, "SpotLight", glm::vec3(-1000.0f, 250.0f, -50.0f)));
 	//m_SceneObjects.push_back(std::make_unique<SpotLightObject>(spotLightData, "SpotLight", glm::vec3(500.0f, 250.0f, 0.0f)));

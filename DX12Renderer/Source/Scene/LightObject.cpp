@@ -22,12 +22,9 @@ DirectionalLightObject::DirectionalLightObject(const DirectionalLightData& dirLi
 
 	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
 
-	// Still need to find a way to get the up vector, negative direction does not work as this is just the backward vector
-	//glm::vec3 upVector = dirLightData.Direction * glm::mat3_cast(glm::fquat(glm::vec3(90.0f, 0.0f, 0.0f)));
-	glm::mat4 lightView = glm::lookAtLH(glm::vec3(-dirLightData.Direction.x, -dirLightData.Direction.y, -dirLightData.Direction.z) * 1000.0f, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-	float shadowMapSize = static_cast<float>(renderSettings.ShadowMapSize);
-	glm::mat4 lightProj = glm::orthoLH_ZO(-shadowMapSize, shadowMapSize, shadowMapSize, -shadowMapSize, 0.1f, 1200.0f);
+	glm::mat4 lightView = glm::lookAtLH(glm::vec3(-m_DirectionalLightData.Direction.x, -m_DirectionalLightData.Direction.y, -m_DirectionalLightData.Direction.z) * 2000.0f, glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	// Shadow map projection size should be calculated by the maximum scene bounds in terms of shadow casters and receivers
+	glm::mat4 lightProj = glm::orthoLH_ZO(-2048.0f, 2048.0f, 2048.0f, -2048.0f, 0.1f, 2100.0f);
 
 	m_DirectionalLightData.ViewProjection = lightProj * lightView;
 
@@ -58,10 +55,9 @@ PointLightObject::PointLightObject(const PointLightData& pointLightData, const s
 
 	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
 
-	// UP STILL NEEDS TO BE CALCULATED SOMEHOW
-	// MAYBE CROSS PROD
-	glm::mat4 lightView = glm::lookAtLH(m_PointLightData.Position, m_PointLightData.Position + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 lightProj = glm::perspectiveFovLH_ZO(glm::radians(60.0f), static_cast<float>(renderSettings.ShadowMapSize), static_cast<float>(renderSettings.ShadowMapSize), 0.1f, m_PointLightData.Range);
+	glm::mat4 lightView = glm::lookAtLH(m_PointLightData.Position, glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	float shadowMapSize = static_cast<float>(renderSettings.ShadowMapSize);
+	glm::mat4 lightProj = glm::orthoLH_ZO(-shadowMapSize, shadowMapSize, shadowMapSize, -shadowMapSize, 0.1f, 2100.0f);
 
 	m_PointLightData.ViewProjection = lightProj * lightView;
 
@@ -92,11 +88,10 @@ SpotLightObject::SpotLightObject(const SpotLightData& spotLightData, const std::
 
 	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
 
-	// UP STILL NEEDS TO BE CALCULATED SOMEHOW
-	// MAYBE CROSS PROD
-	glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 lightProj = glm::perspectiveFovLH_ZO(glm::radians(60.0f), static_cast<float>(renderSettings.ShadowMapSize), static_cast<float>(renderSettings.ShadowMapSize), 0.1f, m_SpotLightData.Range);
+	glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
 
+	// FOV should be the outer cone angle
+	glm::mat4 lightProj = glm::perspectiveLH_ZO(glm::radians(60.0f), 1.0f, 0.1f, m_SpotLightData.Range);
 	m_SpotLightData.ViewProjection = lightProj * lightView;
 
 	m_ShadowMap = std::make_shared<Texture>("Spotlight shadow map", TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_DEPTH32,

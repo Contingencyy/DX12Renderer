@@ -20,8 +20,8 @@ float4 main(VertexShaderInput IN) : SV_POSITION
 	float4 lightViewSpacePos = float4(IN.Position, 1.0f);
 
 	// Transform vertex into light view space
-	lightViewSpacePos = mul(lightViewSpacePos, IN.Model);
-	lightViewSpacePos = mul(lightViewSpacePos, transpose(LightMatrixCB.LightViewProjection));
+	lightViewSpacePos = mul(IN.Model, lightViewSpacePos);
+	lightViewSpacePos = mul(LightMatrixCB.LightViewProjection, lightViewSpacePos);
 
 	return lightViewSpacePos;
 }
