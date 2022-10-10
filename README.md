@@ -38,6 +38,9 @@ The project builds and runs on both Windows 10 and Windows 11.
 ##### Directional light shadow mapping
 ![sponza_shadow_mapping_01](https://user-images.githubusercontent.com/34250026/194719281-e756dc51-b51b-430f-9ef6-9c5c2bb027f0.png)
 
+##### Spotlight shadow mapping
+![sponza_shadow_mapping_spotlights_01](https://user-images.githubusercontent.com/34250026/194946833-0f7060ee-cc2e-47cb-bba4-c654f76597b9.png)
+
 ##### Sponza (Reinhard tonemapping, directional light from above, white spotlights and colored pointlights)
 ![Sponza_Lights](https://user-images.githubusercontent.com/34250026/189538342-a83f89a1-bb30-4c4b-980a-2993196fe2c5.png)
 
