@@ -47,8 +47,5 @@ The project builds and runs on both Windows 10 and Windows 11.
 ##### Sponza (Directional lighting)
 ![Sponza_Directional_Lighting](https://user-images.githubusercontent.com/34250026/189538344-3ebbda4f-6d95-412d-868a-bd101b8096a0.png)
 
-##### Instancing
-![Scifi_Helmet_Instancing](https://user-images.githubusercontent.com/34250026/189538438-ad586049-2a57-44b6-913f-0d1d18100035.png)
-
 ## Building
 The project currently provides the Visual Studio 2022 solution file. CMake is currently not supported. You will need to have installed the latest Windows 10 SDK in the Visual Studio workloads.
