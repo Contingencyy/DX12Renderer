@@ -49,7 +49,7 @@ void PipelineState::Create(const std::string& name, const RenderPassDesc& render
 	{
 		psoDesc.DSVFormat = TextureFormatToDXGIFormat(renderPassDesc.DepthAttachmentDesc.Format);
 		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		psoDesc.DepthStencilState.DepthFunc = renderPassDesc.DepthComparisonFunc;
 	}
 
 	psoDesc.DepthStencilState.StencilEnable = FALSE;

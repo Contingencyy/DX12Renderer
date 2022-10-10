@@ -25,7 +25,7 @@ DirectionalLightObject::DirectionalLightObject(const DirectionalLightData& dirLi
 	glm::mat4 lightView = glm::lookAtLH(glm::vec3(-m_DirectionalLightData.Direction.x, -m_DirectionalLightData.Direction.y, -m_DirectionalLightData.Direction.z) * 2000.0f, glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	// Shadow map projection size should be calculated by the maximum scene bounds in terms of shadow casters and receivers
 	float orthoSize = 2000.0f;
-	glm::mat4 lightProj = glm::orthoLH_ZO(-orthoSize, orthoSize, orthoSize, -orthoSize, 0.1f, 2100.0f);
+	glm::mat4 lightProj = glm::orthoLH_ZO(-orthoSize, orthoSize, orthoSize, -orthoSize, 2250.0f, 0.1f);
 
 	m_DirectionalLightData.ViewProjection = lightProj * lightView;
 
@@ -52,6 +52,7 @@ PointLightObject::PointLightObject(const PointLightData& pointLightData, const s
 	: SceneObject(name, translation, rotation, scale), m_PointLightData(pointLightData)
 {
 	m_FrustumCullable = false;
+	m_PointLightData.Position = m_Transform.GetPosition();
 	m_PointLightData.Range = MathHelper::SolveQuadraticFunc(m_PointLightData.Attenuation.z, m_PointLightData.Attenuation.y, m_PointLightData.Attenuation.x - LIGHT_RANGE_EPSILON);
 
 	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
@@ -85,14 +86,16 @@ SpotLightObject::SpotLightObject(const SpotLightData& spotLightData, const std::
 	: SceneObject(name, translation, rotation, scale), m_SpotLightData(spotLightData)
 {
 	m_FrustumCullable = false;
+	m_SpotLightData.Position = m_Transform.GetPosition();
 	m_SpotLightData.Range = MathHelper::SolveQuadraticFunc(m_SpotLightData.Attenuation.z, m_SpotLightData.Attenuation.y, m_SpotLightData.Attenuation.x - LIGHT_RANGE_EPSILON);
 
 	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
 
 	glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
-
-	// FOV should be the outer cone angle
-	glm::mat4 lightProj = glm::perspectiveLH_ZO(glm::radians(60.0f), 1.0f, 0.1f, m_SpotLightData.Range);
+	// We use a reversed perspective projection with an infinite far plane to have more depth buffer precision because values between 0..0.5 have a lot more possible values then 0.5..1
+	glm::mat4 lightProj = glm::perspectiveLH_ZO(m_SpotLightData.OuterConeAngle, 1.0f, m_SpotLightData.Range, 0.1f);
+	lightProj[2][2] = 0.0f;
+	lightProj[3][2] = 0.1f;
 	m_SpotLightData.ViewProjection = lightProj * lightView;
 
 	m_ShadowMap = std::make_shared<Texture>("Spotlight shadow map", TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_DEPTH32,

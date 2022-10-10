@@ -76,7 +76,7 @@ ConstantBuffer<SpotLightBuffer> SpotLightCB : register(b3);
 
 Texture2D Texture2DTable[] : register(t0, space0);
 SamplerState Samp2DWrap : register(s0, space0);
-SamplerState Samp2DClamp : register(s0, space1);
+SamplerState Samp2DBorder : register(s0, space1);
 
 float3 CalculateDirectionalLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, DirectionalLight dirLight);
 float3 CalculatePointLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, PointLight pointLight);
@@ -140,26 +140,25 @@ float GetRandom(float3 seed, int i)
 float CalculateShadow(float4 fragPosLightSpace, uint shadowMapIndex, float angle)
 {
 	float3 projectedCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-	projectedCoords = projectedCoords * 0.5f + 0.5f;
+	float currentDepth = projectedCoords.z;
+	projectedCoords = projectedCoords * 0.5f;
+	projectedCoords.xy += 0.5f;
 
 	// Invert Y for D3D style screen coordinates
 	projectedCoords.y = 1.0f - projectedCoords.y;
 
-	float currentDepth = projectedCoords.z;
-	//float bias = max(0.05f * (1.0f - angle), 0.005f);
-	float bias = clamp(0.005f * tan(acos(angle)), 0.0f, 0.01f);
-
+	float bias = max(0.000008f * (1.0f - angle), 0.000004f);
 	float shadow = 0.0f;
-	float2 texelSize = 0.25f / float2(1024.0f, 1024.0f);
 
+	// One sample
+	/*float closestDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DBorder, projectedCoords.xy);
+	shadow = currentDepth + bias < closestDepth ? 1.0f : 0.0f;*/
+
+	// Apply percentage closer filtering with poisson sampling
+	float2 texelSize = 0.25f / float2(1024.0f, 1024.0f);
 	float diskDenom = 1.0f / 2048.0f;
 	int numDiskSamples = 4;
 
-	// One sample
-	/*float closestDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DClamp, projectedCoords.xy);
-	shadow = currentDepth - bias > closestDepth ? 1.0f : 0.0f;*/
-
-	// Apply percentage closer filtering with poisson sampling
 	for (int x = -1; x <= 1; ++x)
 	{
 		for (int y = -1; y <= 1; ++y)
@@ -167,21 +166,13 @@ float CalculateShadow(float4 fragPosLightSpace, uint shadowMapIndex, float angle
 			for (int i = 0; i < numDiskSamples; ++i)
 			{
 				int poissonIndex = 16.0f * GetRandom(fragPosLightSpace.xyz, i) % 16.0f;
-				float2 pcfDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DClamp, projectedCoords.xy + (poissonDisk[poissonIndex] * diskDenom) + (float2(x, y) * texelSize)).r;
-				shadow += currentDepth - bias > pcfDepth ? 1.0f : 0.0f;
+				float2 pcfDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DBorder, projectedCoords.xy + (poissonDisk[poissonIndex] * diskDenom) + (float2(x, y) * texelSize)).r;
+				shadow += currentDepth + bias < pcfDepth ? 1.0f : 0.0f;
 			}
 		}
 	}
 	shadow /= 9 * numDiskSamples;
 
-	// Apply poisson sampling
-	/*for (int i = 0; i < numDiskSamples; ++i)
-	{
-		int poissonIndex = 16.0f * GetRandom(fragPosLightSpace.xyz, i) % 16.0f;
-		float2 pDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DClamp, projectedCoords.xy + (poissonDisk[poissonIndex] * diskDenom));
-		shadow += currentDepth - bias > pDepth ? 1.0f : 0.0f;
-	}
-	shadow /= numDiskSamples;*/
 	return shadow;
 }
 
@@ -250,6 +241,8 @@ float3 CalculateSpotLight(float4 fragPos, float3 fragNormal, float3 diffuseColor
 	float3 diffuse = float3(0.0f, 0.0f, 0.0f);
 	//float3 specular = float3(0.0f, 0.0f, 0.0f);
 
+	float shadow = 0.0f;
+
 	if (distance <= spotLight.Range)
 	{
 		ldirection /= distance;
@@ -270,6 +263,10 @@ float3 CalculateSpotLight(float4 fragPos, float3 fragNormal, float3 diffuseColor
 			//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0f), material.shininess);
 
 			float diff = max(dot(fragNormal, ldirection), 0.0f);
+
+			float4 fragPosLightSpace = mul(spotLight.ViewProjection, fragPos);
+			shadow = CalculateShadow(fragPosLightSpace, spotLight.ShadowMapIndex, dot(fragNormal, ldirection)); // either 1.0 or 0.0
+
 			diffuse = spotLight.Diffuse * diff * diffuseColor;
 			//float3 specular = pointlight.Specular.xyz * spec * specularColor;
 
@@ -281,5 +278,5 @@ float3 CalculateSpotLight(float4 fragPos, float3 fragNormal, float3 diffuseColor
 		}
 	}
 
-	return (ambient + diffuse /*+ specular*/);
+	return (ambient + (1.0f - shadow) * diffuse /*+ specular*/);
 }

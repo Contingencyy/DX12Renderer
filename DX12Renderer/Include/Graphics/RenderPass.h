@@ -15,6 +15,7 @@ struct RenderPassDesc
 	
 	glm::vec4 ClearColor;
 	bool DepthEnabled;
+	D3D12_COMPARISON_FUNC DepthComparisonFunc;
 
 	D3D12_PRIMITIVE_TOPOLOGY Topology;
 	D3D12_PRIMITIVE_TOPOLOGY_TYPE TopologyType;

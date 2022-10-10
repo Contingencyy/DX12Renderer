@@ -131,16 +131,18 @@ struct InternalRendererData
 
     // Directional light data and buffer
     std::vector<DirectionalLightData> DirectionalLightData;
-    std::vector<std::shared_ptr<Texture>> ShadowMaps;
     std::unique_ptr<Buffer> DirectionalLightConstantBuffer;
+    std::vector<std::shared_ptr<Texture>> DirectionalLightShadowMaps;
 
     // Pointlight data and buffer
     std::vector<PointLightData> PointLightData;
     std::unique_ptr<Buffer> PointLightConstantBuffer;
+    std::vector<std::shared_ptr<Texture>> PointLightShadowMaps;
 
     // Spotlight data and buffer
     std::vector<SpotLightData> SpotLightData;
     std::unique_ptr<Buffer> SpotLightConstantBuffer;
+    std::vector<std::shared_ptr<Texture>> SpotLightShadowMaps;
 };
 
 static InternalRendererData s_Data;
@@ -202,9 +204,19 @@ void Renderer::Render()
         commandList->SetScissorRects(1, &scissorRect);
 
         // Shadow map indices somehow need to map to their respective related light data, otherwise there is no guarantee we pick the right shadow map here.
-        for (uint32_t lightIndex = 0; lightIndex < s_Data.DirectionalLightData.size(); ++lightIndex)
+        for (uint32_t i = 0; i < s_Data.DirectionalLightData.size(); ++i)
         {
-            GenerateShadowMap(*commandList.get(), s_Data.DirectionalLightData[lightIndex].ViewProjection, *s_Data.ShadowMaps[lightIndex].get());
+            GenerateShadowMap(*commandList.get(), s_Data.DirectionalLightData[i].ViewProjection, *s_Data.DirectionalLightShadowMaps[i].get());
+        }
+
+        for (uint32_t i = 0; i < s_Data.PointLightData.size(); ++i)
+        {
+            GenerateShadowMap(*commandList.get(), s_Data.PointLightData[i].ViewProjection, *s_Data.PointLightShadowMaps[i].get());
+        }
+
+        for (uint32_t i = 0; i < s_Data.SpotLightData.size(); ++i)
+        {
+            GenerateShadowMap(*commandList.get(), s_Data.SpotLightData[i].ViewProjection, *s_Data.SpotLightShadowMaps[i].get());
         }
 
         RenderBackend::ExecuteCommandList(commandList);
@@ -369,10 +381,12 @@ void Renderer::EndScene()
 
     s_Data.MeshDrawData.clear();
 
-    s_Data.ShadowMaps.clear();
     s_Data.DirectionalLightData.clear();
+    s_Data.DirectionalLightShadowMaps.clear();
     s_Data.PointLightData.clear();
+    s_Data.PointLightShadowMaps.clear();
     s_Data.SpotLightData.clear();
+    s_Data.SpotLightShadowMaps.clear();
 
     s_Data.RenderStatistics.Reset();
 }
@@ -397,26 +411,26 @@ void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transf
     }
 }
 
-void Renderer::Submit(const DirectionalLightData& dirLightData, const std::shared_ptr<Texture> shadowMap)
+void Renderer::Submit(const DirectionalLightData& dirLightData, const std::shared_ptr<Texture>& shadowMap)
 {
     s_Data.DirectionalLightData.push_back(dirLightData);
-    s_Data.ShadowMaps.push_back(shadowMap);
+    s_Data.DirectionalLightShadowMaps.push_back(shadowMap);
 
     ASSERT(s_Data.DirectionalLightData.size() <= s_Data.RenderSettings.MaxDirectionalLights, "Exceeded the maximum amount of directional lights");
 }
 
-void Renderer::Submit(const PointLightData& pointlightData, const std::shared_ptr<Texture> shadowMap)
+void Renderer::Submit(const PointLightData& pointlightData, const std::shared_ptr<Texture>& shadowMap)
 {
     s_Data.PointLightData.push_back(pointlightData);
-    s_Data.ShadowMaps.push_back(shadowMap);
+    s_Data.PointLightShadowMaps.push_back(shadowMap);
 
     ASSERT(s_Data.PointLightData.size() <= s_Data.RenderSettings.MaxPointLights, "Exceeded the maximum amount of point lights");
 }
 
-void Renderer::Submit(const SpotLightData& spotlightData, const std::shared_ptr<Texture> shadowMap)
+void Renderer::Submit(const SpotLightData& spotlightData, const std::shared_ptr<Texture>& shadowMap)
 {
     s_Data.SpotLightData.push_back(spotlightData);
-    s_Data.ShadowMaps.push_back(shadowMap);
+    s_Data.SpotLightShadowMaps.push_back(shadowMap);
 
     ASSERT(s_Data.SpotLightData.size() <= s_Data.RenderSettings.MaxSpotLights, "Exceeded the maximum amount of spot lights");
 }
@@ -475,6 +489,7 @@ void Renderer::MakeRenderPasses()
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
             0, 0);
         desc.DepthEnabled = true;
+        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_GREATER;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
@@ -505,6 +520,7 @@ void Renderer::MakeRenderPasses()
             s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
         desc.ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
         desc.DepthEnabled = true;
+        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
@@ -543,6 +559,7 @@ void Renderer::MakeRenderPasses()
             s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
         desc.ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
         desc.DepthEnabled = false;
+        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
@@ -626,9 +643,19 @@ void Renderer::PrepareShadowMaps()
 {
     auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-    for (auto& shadowMap : s_Data.ShadowMaps)
+    for (auto& shadowMap : s_Data.DirectionalLightShadowMaps)
     {
-        commandList->ClearDepthStencilView(shadowMap->GetDescriptorHandle(DescriptorType::DSV));
+        commandList->ClearDepthStencilView(shadowMap->GetDescriptorHandle(DescriptorType::DSV), 0.0f);
+    }
+
+    for (auto& shadowMap : s_Data.PointLightShadowMaps)
+    {
+        commandList->ClearDepthStencilView(shadowMap->GetDescriptorHandle(DescriptorType::DSV), 0.0f);
+    }
+
+    for (auto& shadowMap : s_Data.SpotLightShadowMaps)
+    {
+        commandList->ClearDepthStencilView(shadowMap->GetDescriptorHandle(DescriptorType::DSV), 0.0f);
     }
 
     RenderBackend::ExecuteCommandListAndWait(commandList);

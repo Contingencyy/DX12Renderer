@@ -158,6 +158,7 @@ void DebugRenderer::MakeRenderPasses()
             renderSettings.Resolution.x, renderSettings.Resolution.y);
         desc.ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
         desc.DepthEnabled = true;
+        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 
