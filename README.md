@@ -16,16 +16,16 @@ The project builds and runs on both Windows 10 and Windows 11.
 
 ## WIP
 - Shadow mapping (directional lights, spotlights, pointlights)
-- Mipmap generation
 
 ## Planned features
+- Mipmap generation
 - Material system
-- Deferred rendering
 - Full PBR
+- G-Buffering
 - MSAA
 - Ambient occlusion
 - Particle system
-- Post-process: Bloom
+- Post-process: Bloom, Vignette
 
 ## Camera controls
 - Forward/backward: W/S
