@@ -1,7 +1,6 @@
 # DX12Renderer
 ## Description
 A 3D rendering and rasterization project written in C++17, using DirectX 12 as the graphics API. The renderer currently works with using almost all resources from a bindless descriptor heap, with the exception of constant buffers/constant data, which is set using either root descriptors or root constants. The bindless descriptor implementation uses the pre shader model 6.6 way, using descriptor table ranges for CBVs, SRVs, and UAVs respectively.
-The lights have been optimized by using a cut-off value for their maximum range, based on each light's constant/linear/quadratic fall-off.
 
 The project builds and runs on both Windows 10 and Windows 11.
 
