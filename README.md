@@ -1,6 +1,7 @@
 # DX12Renderer
 ## Description
-A 3D rendering and rasterization project written in C++17, using DirectX 12 as the graphics API. The renderer currently works with bindless textures, while using constant buffers with root constants and root descriptors. The bindless descriptor implementation is pre SM 6.6, using descriptor table ranges.
+A 3D rendering and rasterization project written in C++17, using DirectX 12 as the graphics API. The renderer currently works with using almost all resources from a bindless descriptor heap, with the exception of constant buffers/constant data, which is set using either root descriptors or root constants. The bindless descriptor implementation uses the pre shader model 6.6 way, using descriptor table ranges for CBVs, SRVs, and UAVs respectively.
+
 The project builds and runs on both Windows 10 and Windows 11.
 
 ## Features
@@ -16,16 +17,16 @@ The project builds and runs on both Windows 10 and Windows 11.
 
 ## WIP
 - Shadow mapping (directional lights, spotlights, pointlights)
-- Mipmap generation
 
 ## Planned features
+- Mipmap generation
 - Material system
-- Deferred rendering
 - Full PBR
+- G-Buffering
 - MSAA
 - Ambient occlusion
 - Particle system
-- Post-process: Bloom
+- Post-process: Bloom, Vignette
 
 ## Camera controls
 - Forward/backward: W/S
