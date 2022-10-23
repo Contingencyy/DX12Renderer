@@ -39,6 +39,9 @@ struct TextureDesc
 
 	uint32_t Width = 1;
 	uint32_t Height = 1;
+
+	glm::vec4 ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+	glm::vec2 ClearDepthStencil = glm::vec2(1.0f, 0.0f);
 };
 
 DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format);

@@ -106,8 +106,8 @@ void Texture::Create()
 	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_RENDER_TARGET)
 	{
 		clearValue.Format = d3d12ResourceDesc.Format;
-		glm::vec4 defaultClearValue(0.2f, 0.2f, 0.2f, 1.0f);
-		memcpy(clearValue.Color, &defaultClearValue, sizeof(float) * 4);
+		//glm::vec4 defaultClearValue(0.2f, 0.2f, 0.2f, 1.0f);
+		memcpy(clearValue.Color, &m_TextureDesc.ClearColor, sizeof(float) * 4);
 
 		d3d12ResourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 		initialState = D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -116,7 +116,7 @@ void Texture::Create()
 	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_DEPTH)
 	{
 		clearValue.Format = d3d12ResourceDesc.Format;
-		clearValue.DepthStencil = { 1.0f, 0 };
+		clearValue.DepthStencil = { m_TextureDesc.ClearDepthStencil.x, static_cast<UINT8>(m_TextureDesc.ClearDepthStencil.y) };
 
 		// TEMP to get D3D to shut up about different clear values during creation for shadow maps
 		if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_READ)

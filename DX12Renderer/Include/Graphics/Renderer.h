@@ -25,7 +25,7 @@ public:
 
 		uint32_t MaxModelInstances = 1000;
 		uint32_t MaxInstancesPerDraw = 10000;
-		uint32_t MaxDirectionalLights = 5;
+		uint32_t MaxDirectionalLights = 1;
 		uint32_t MaxPointLights = 50;
 		uint32_t MaxSpotLights = 50;
 	};

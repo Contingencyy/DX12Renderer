@@ -29,7 +29,7 @@ struct DirectionalLight
 
 struct DirectionalLightBuffer
 {
-	DirectionalLight DirLights[5];
+	DirectionalLight DirLight;
 };
 
 struct PointLight
@@ -93,10 +93,8 @@ float4 main(PixelShaderInput IN) : SV_TARGET
 	float4 fragPos = IN.WorldPosition;
 	float3 fragNormal = normalize(IN.Normal * textureNormal.xyz);
 
-	for (uint d = 0; d < SceneDataCB.NumDirectionalLights; ++d)
-	{
-		finalColor += CalculateDirectionalLight(fragPos, fragNormal, diffuseColor.xyz, DirLightCB.DirLights[d]);
-	}
+	if (SceneDataCB.NumDirectionalLights == 1)
+		finalColor += CalculateDirectionalLight(fragPos, fragNormal, diffuseColor.xyz, DirLightCB.DirLight);
 
 	for (uint p = 0; p < SceneDataCB.NumPointLights; ++p)
 	{
