@@ -14,8 +14,8 @@ struct DebugRendererSettings
 
 struct DebugRendererStatistics
 {
-    uint32_t DrawCallCount;
-    uint32_t LineCount;
+    uint32_t DrawCallCount = 0;
+    uint32_t LineCount = 0;
 
     void Reset()
     {
@@ -46,7 +46,7 @@ struct InternalDebugRendererData
     std::vector<LineVertex> LineVertexData;
     std::unique_ptr<Buffer> LineBuffer;
 
-    glm::mat4 CameraViewProjection;
+    glm::mat4 CameraViewProjection = glm::identity<glm::mat4>();
 };
 
 static InternalDebugRendererData s_Data;
@@ -102,10 +102,10 @@ void DebugRenderer::Render()
     s_Data.LineBuffer->SetBufferData(&s_Data.LineVertexData[0], sizeof(LineVertex) * s_Data.LineVertexData.size());
     commandList->SetVertexBuffers(0, 1, *s_Data.LineBuffer);
 
-    commandList->Draw(s_Data.LineVertexData.size(), 1);
+    commandList->Draw(static_cast<uint32_t>(s_Data.LineVertexData.size()), 1);
 
     s_Data.DebugRenderStatistics.DrawCallCount++;
-    s_Data.DebugRenderStatistics.LineCount += s_Data.LineVertexData.size() / 2;
+    s_Data.DebugRenderStatistics.LineCount += static_cast<uint32_t>(s_Data.LineVertexData.size()) / 2;
 
     RenderBackend::ExecuteCommandList(commandList);
 }
@@ -135,12 +135,10 @@ void DebugRenderer::Submit(const glm::vec3& lineStart, const glm::vec3& lineEnd,
 
 void DebugRenderer::Resize(uint32_t width, uint32_t height)
 {
-    const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
+    s_Data.Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width),
+        static_cast<float>(height), 0.0f, 1.0f);
 
-    s_Data.Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(renderSettings.Resolution.x),
-        static_cast<float>(renderSettings.Resolution.y), 0.0f, 1.0f);
-
-    s_Data.RenderPass->Resize(static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
+    s_Data.RenderPass->Resize(width, height);
 }
 
 void DebugRenderer::MakeRenderPasses()
@@ -156,7 +154,6 @@ void DebugRenderer::MakeRenderPasses()
             renderSettings.Resolution.x, renderSettings.Resolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
             renderSettings.Resolution.x, renderSettings.Resolution.y);
-        desc.ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
         desc.DepthEnabled = true;
         desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;

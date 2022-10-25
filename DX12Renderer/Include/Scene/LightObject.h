@@ -16,8 +16,8 @@ struct DirectionalLightData
 	glm::vec3 Diffuse = glm::vec3(1.0f);
 	BYTE_PADDING(4);
 
-	glm::mat4 ViewProjection;
-	uint32_t ShadowMapIndex;
+	glm::mat4 ViewProjection = glm::identity<glm::mat4>();
+	uint32_t ShadowMapIndex = 0;
 	BYTE_PADDING(12);
 };
 
@@ -52,8 +52,8 @@ struct PointLightData
 	glm::vec3 Diffuse = glm::vec3(1.0f);
 	BYTE_PADDING(4);
 
-	glm::mat4 ViewProjection;
-	uint32_t ShadowMapIndex;
+	glm::mat4 ViewProjection = glm::identity<glm::mat4>();
+	uint32_t ShadowMapIndex = 0;
 	BYTE_PADDING(12);
 };
 
@@ -91,8 +91,8 @@ struct SpotLightData
 	glm::vec3 Diffuse = glm::vec3(0.0f);
 	BYTE_PADDING(4);
 
-	glm::mat4 ViewProjection;
-	uint32_t ShadowMapIndex;
+	glm::mat4 ViewProjection = glm::identity<glm::mat4>();
+	uint32_t ShadowMapIndex = 0;
 	BYTE_PADDING(12);
 };
 

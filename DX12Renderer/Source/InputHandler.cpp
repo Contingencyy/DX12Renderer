@@ -54,6 +54,8 @@ KeyCode InputHandler::WParamToKeyCode(WPARAM wParam)
 		return KeyCode::Q;
 	case 0x45:
 		return KeyCode::E;
+	default:
+		return KeyCode::NONE;
 	}
 }
 

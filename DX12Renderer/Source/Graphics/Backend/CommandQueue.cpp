@@ -66,7 +66,7 @@ void CommandQueue::WaitForFenceValue(uint64_t fenceValue) const
         HANDLE fenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
         ASSERT(fenceEvent, "Failed to creat efence event handle");
 
-        DX_CALL(m_d3d12Fence->SetEventOnCompletion(m_FenceValue, fenceEvent));
+        DX_CALL(m_d3d12Fence->SetEventOnCompletion(fenceValue, fenceEvent));
         ::WaitForSingleObject(fenceEvent, static_cast<DWORD>(std::chrono::milliseconds::max().count()));
 
         ::CloseHandle(fenceEvent);

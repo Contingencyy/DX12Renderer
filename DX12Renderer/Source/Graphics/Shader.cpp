@@ -37,7 +37,7 @@ void Shader::Compile(const std::wstring& filepath, const std::string& entryPoint
         filepath.c_str(),
         StringHelper::StringToWString(entryPoint).c_str(),
         StringHelper::StringToWString(target).c_str(),
-        args.data(), args.size(),
+        args.data(), static_cast<uint32_t>(args.size()),
         NULL, 0,
         NULL,
         &result

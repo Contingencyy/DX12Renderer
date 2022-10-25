@@ -48,12 +48,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case WM_SYSKEYUP:
             case WM_KEYUP:
             {
-                switch (wParam)
-                {
-                default:
-                    InputHandler::OnKeyReleased(InputHandler::WParamToKeyCode(wParam));
-                    break;
-                }
+                InputHandler::OnKeyReleased(InputHandler::WParamToKeyCode(wParam));
+                break;
             }
             break;
 
@@ -204,7 +200,7 @@ void Window::RegisterWindow()
     windowClass.cbClsExtra = 0;
     windowClass.cbWndExtra = 0;
     windowClass.hInstance = hInst;
-    windowClass.hIcon = ::LoadIcon(hInst, 0);
+    windowClass.hIcon = ::LoadIcon(hInst, L"");
     windowClass.hCursor = ::LoadCursor(NULL, IDC_ARROW);
     windowClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     windowClass.lpszMenuName = NULL;

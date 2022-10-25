@@ -27,6 +27,8 @@ struct BufferDesc
 	BufferDesc() = default;
 	BufferDesc(BufferUsage usage, std::size_t numElements, std::size_t elementSize)
 		: Usage(usage), NumElements(numElements), ElementSize(elementSize) {}
+	BufferDesc(BufferUsage usage, std::size_t byteSize)
+		: Usage(usage), NumElements(1), ElementSize(byteSize) {}
 
 	BufferUsage Usage = BufferUsage::BUFFER_USAGE_NONE;
 

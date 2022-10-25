@@ -70,8 +70,8 @@ void CommandList::SetVertexBuffers(uint32_t slot, uint32_t numViews, const Buffe
 {
 	D3D12_VERTEX_BUFFER_VIEW vbView = {};
 	vbView.BufferLocation = vertexBuffer.GetD3D12Resource()->GetGPUVirtualAddress();
-	vbView.SizeInBytes = vertexBuffer.GetByteSize();
-	vbView.StrideInBytes = vertexBuffer.GetBufferDesc().ElementSize;
+	vbView.SizeInBytes = static_cast<uint32_t>(vertexBuffer.GetByteSize());
+	vbView.StrideInBytes = static_cast<uint32_t>(vertexBuffer.GetBufferDesc().ElementSize);
 
 	m_d3d12CommandList->IASetVertexBuffers(slot, numViews, &vbView);
 }
@@ -80,7 +80,7 @@ void CommandList::SetIndexBuffer(const Buffer& indexBuffer)
 {
 	D3D12_INDEX_BUFFER_VIEW ibView = {};
 	ibView.BufferLocation = indexBuffer.GetD3D12Resource()->GetGPUVirtualAddress();
-	ibView.SizeInBytes = indexBuffer.GetByteSize();
+	ibView.SizeInBytes = static_cast<uint32_t>(indexBuffer.GetByteSize());
 	ibView.Format = indexBuffer.GetBufferDesc().ElementSize == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
 	m_d3d12CommandList->IASetIndexBuffer(&ibView);
@@ -98,9 +98,9 @@ void CommandList::SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, const Descr
 
 		for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
 		{
-			ID3D12DescriptorHeap* descriptorHeap = DescriptorHeaps[i];
-			if (descriptorHeap)
-				descriptorHeaps[numDescriptorHeaps++] = descriptorHeap;
+			ID3D12DescriptorHeap* currentHeap = DescriptorHeaps[i];
+			if (currentHeap)
+				descriptorHeaps[numDescriptorHeaps++] = currentHeap;
 		}
 
 		m_d3d12CommandList->SetDescriptorHeaps(numDescriptorHeaps, descriptorHeaps);

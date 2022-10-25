@@ -279,12 +279,13 @@ void Renderer::Render()
                 currentIndexBuffer = ib;
             }
 
-            commandList->DrawIndexed(mesh->GetNumIndices(), meshInstanceData.size(), mesh->GetStartIndex(), mesh->GetStartVertex(), startInstance);
-            startInstance += meshInstanceData.size();
+            commandList->DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), static_cast<uint32_t>(meshInstanceData.size()),
+                static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
+            startInstance += static_cast<uint32_t>(meshInstanceData.size());
 
             s_Data.RenderStatistics.DrawCallCount++;
-            s_Data.RenderStatistics.TriangleCount += (mesh->GetNumIndices() / 3) * meshInstanceData.size();
-            s_Data.RenderStatistics.MeshCount += meshInstanceData.size();
+            s_Data.RenderStatistics.TriangleCount += (static_cast<uint32_t>(mesh->GetNumIndices()) / 3) * static_cast<uint32_t>(meshInstanceData.size());
+            s_Data.RenderStatistics.MeshCount += static_cast<uint32_t>(meshInstanceData.size());
         }
 
         RenderBackend::ExecuteCommandList(commandList);
@@ -322,7 +323,7 @@ void Renderer::Render()
         commandList->SetVertexBuffers(0, 1, *s_Data.TonemapVertexBuffer.get());
         commandList->SetIndexBuffer(*s_Data.TonemapIndexBuffer.get());
 
-        commandList->DrawIndexed(s_Data.TonemapIndexBuffer->GetBufferDesc().NumElements, 1);
+        commandList->DrawIndexed(static_cast<uint32_t>(s_Data.TonemapIndexBuffer->GetBufferDesc().NumElements), 1);
 
         RenderBackend::ExecuteCommandList(commandList);
     }
@@ -518,9 +519,8 @@ void Renderer::MakeRenderPasses()
             s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
             s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
-        desc.ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
         desc.DepthEnabled = true;
-        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
@@ -557,9 +557,8 @@ void Renderer::MakeRenderPasses()
             s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
             s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
-        desc.ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
         desc.DepthEnabled = false;
-        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
@@ -621,22 +620,22 @@ void Renderer::PrepareInstanceBuffer()
 void Renderer::PrepareLightBuffers()
 {
     // Update scene data constant buffer with data for this frame
-    s_Data.SceneData.NumDirLights = s_Data.DirectionalLightData.size();
-    s_Data.SceneData.NumPointLights = s_Data.PointLightData.size();
-    s_Data.SceneData.NumSpotLights = s_Data.SpotLightData.size();
+    s_Data.SceneData.NumDirLights = static_cast<uint32_t>(s_Data.DirectionalLightData.size());
+    s_Data.SceneData.NumPointLights = static_cast<uint32_t>(s_Data.PointLightData.size());
+    s_Data.SceneData.NumSpotLights = static_cast<uint32_t>(s_Data.SpotLightData.size());
 
     // Set constant buffer data for directional lights/pointlights/spotlights
     if (s_Data.SceneData.NumDirLights > 0)
         s_Data.DirectionalLightConstantBuffer->SetBufferData(&s_Data.DirectionalLightData[0], s_Data.DirectionalLightData.size() * sizeof(DirectionalLightData));
-    s_Data.RenderStatistics.DirectionalLightCount += s_Data.DirectionalLightData.size();
+    s_Data.RenderStatistics.DirectionalLightCount += s_Data.SceneData.NumDirLights;
 
     if (s_Data.SceneData.NumPointLights > 0)
         s_Data.PointLightConstantBuffer->SetBufferData(&s_Data.PointLightData[0], s_Data.PointLightData.size() * sizeof(PointLightData));
-    s_Data.RenderStatistics.PointLightCount += s_Data.PointLightData.size();
+    s_Data.RenderStatistics.PointLightCount += s_Data.SceneData.NumPointLights;
 
     if (s_Data.SceneData.NumSpotLights > 0)
         s_Data.SpotLightConstantBuffer->SetBufferData(&s_Data.SpotLightData[0], s_Data.SpotLightData.size() * sizeof(SpotLightData));
-    s_Data.RenderStatistics.SpotLightCount += s_Data.SpotLightData.size();
+    s_Data.RenderStatistics.SpotLightCount += s_Data.SceneData.NumSpotLights;
 }
 
 void Renderer::PrepareShadowMaps()
@@ -697,7 +696,8 @@ void Renderer::GenerateShadowMap(CommandList& commandList, const glm::mat4& ligh
             currentIndexBuffer = ib;
         }
 
-        commandList.DrawIndexed(mesh->GetNumIndices(), meshInstanceData.size(), mesh->GetStartIndex(), mesh->GetStartVertex(), startInstance);
-        startInstance += meshInstanceData.size();
+        commandList.DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), static_cast<uint32_t>(meshInstanceData.size()),
+            static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
+        startInstance += static_cast<uint32_t>(meshInstanceData.size());
     }
 }

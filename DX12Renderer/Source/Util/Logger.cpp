@@ -26,13 +26,12 @@ const char* Logger::SeverityToString(Severity severity)
 	{
 	case Severity::INFO:
 		return "[INFO] ";
-		break;
 	case Severity::WARN:
 		return "[WARN] ";
-		break;
 	case Severity::ERR:
 		return "[ERR] ";
-		break;
+	default:
+		return "[INFO] ";
 	}
 }
 

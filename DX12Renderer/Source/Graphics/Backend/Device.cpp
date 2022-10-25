@@ -63,7 +63,7 @@ void Device::CreateRootSignature(const CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC& ro
         serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
 }
 
-void Device::CreateBuffer(Buffer& buffer, D3D12_HEAP_TYPE bufferType, const D3D12_RESOURCE_DESC& bufferDesc, D3D12_RESOURCE_STATES initialState, std::size_t size)
+void Device::CreateBuffer(Buffer& buffer, D3D12_HEAP_TYPE bufferType, const D3D12_RESOURCE_DESC& bufferDesc, D3D12_RESOURCE_STATES initialState)
 {
     CD3DX12_HEAP_PROPERTIES heapProps(bufferType);
 
@@ -107,7 +107,7 @@ void Device::CreateDepthStencilView(Texture& texture, const D3D12_DEPTH_STENCIL_
     m_d3d12Device->CreateDepthStencilView(texture.GetD3D12Resource().Get(), &dsvDesc, descriptor);
 }
 
-void Device::CreateConstantBufferView(Buffer& buffer, const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor)
+void Device::CreateConstantBufferView(const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor)
 {
     m_d3d12Device->CreateConstantBufferView(&cbvDesc, descriptor);
 }

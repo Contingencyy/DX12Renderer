@@ -169,7 +169,7 @@ void Application::Render()
 
 			for (auto& timerResult : timerResults)
 			{
-				if (timerResult.first == "Frametime")
+				if (strcmp(timerResult.first, "Frametime") == 0)
 					continue;
 
 				char buf[50];

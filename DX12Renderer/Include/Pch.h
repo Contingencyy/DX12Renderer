@@ -35,6 +35,7 @@
 #include <glm/glm/gtx/compatibility.hpp>
 #include <glm/glm/gtc/matrix_transform.hpp>
 #include <glm/glm/gtc/quaternion.hpp>
+#include <glm/glm/gtc/type_ptr.hpp>
 
 /*
 
@@ -44,7 +45,7 @@
 #define ASSERT(x, y) if (!(x)) LOG_ERR(y); assert(x)
 #define CONCAT_IMPL(a, b) a##b
 #define CONCAT(a, b) CONCAT_IMPL(a, b)
-#define BYTE_PADDING(x) unsigned char CONCAT(_padding_, __LINE__)[x]
+#define BYTE_PADDING(x) unsigned char CONCAT(_padding_, __LINE__)[x] = {0}
 
 constexpr bool GPU_VALIDATION_ENABLED = false;
 

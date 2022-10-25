@@ -37,7 +37,7 @@ void Buffer::SetBufferData(const void* data, std::size_t byteSize)
 	std::size_t dataByteSize = byteSize == 0 ? m_ByteSize : byteSize;
 	if (m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_CONSTANT && m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
-		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, dataByteSize));
+		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, dataByteSize));
 		RenderBackend::CopyBuffer(uploadBuffer, *this, data);
 	}
 	else
@@ -50,7 +50,7 @@ void Buffer::SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::
 {
 	if (m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_CONSTANT && m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
-		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, byteSize));
+		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, byteSize));
 		RenderBackend::CopyBufferRegion(uploadBuffer, 0, *this, byteOffset, byteSize);
 	}
 	else
@@ -85,14 +85,14 @@ void Buffer::Create()
 	D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
 	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
 
-	uint32_t alignment = m_BufferDesc.ElementSize;
+	uint32_t alignment = static_cast<uint32_t>(m_BufferDesc.ElementSize);
 
 	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT)
 	{
 		alignment = 256;
 	}
 
-	m_ByteSize = MathHelper::AlignUp(m_BufferDesc.NumElements * m_BufferDesc.ElementSize, 256);
+	m_ByteSize = MathHelper::AlignUp(m_BufferDesc.NumElements * m_BufferDesc.ElementSize, alignment);
 
 	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT || m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
@@ -101,8 +101,7 @@ void Buffer::Create()
 	}
 
 	CD3DX12_RESOURCE_DESC d3d12ResourceDesc = CD3DX12_RESOURCE_DESC::Buffer(m_ByteSize);
-
-	RenderBackend::GetDevice()->CreateBuffer(*this, heapType, d3d12ResourceDesc, initialState, m_ByteSize);
+	RenderBackend::GetDevice()->CreateBuffer(*this, heapType, d3d12ResourceDesc, initialState);
 
 	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT || m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
@@ -125,8 +124,8 @@ void Buffer::CreateViews()
 		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		srvDesc.Buffer.FirstElement = 0;
-		srvDesc.Buffer.NumElements = m_BufferDesc.NumElements;
-		srvDesc.Buffer.StructureByteStride = m_BufferDesc.ElementSize;
+		srvDesc.Buffer.NumElements = static_cast<uint32_t>(m_BufferDesc.NumElements);
+		srvDesc.Buffer.StructureByteStride = static_cast<uint32_t>(m_BufferDesc.ElementSize);
 		srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 
 		RenderBackend::GetDevice()->CreateShaderResourceView(*this, srvDesc, srv.GetCPUDescriptorHandle());
@@ -143,8 +142,8 @@ void Buffer::CreateViews()
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 		uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
 		uavDesc.Buffer.FirstElement = 0;
-		uavDesc.Buffer.NumElements = m_BufferDesc.NumElements;
-		uavDesc.Buffer.StructureByteStride = m_BufferDesc.ElementSize;
+		uavDesc.Buffer.NumElements = static_cast<uint32_t>(m_BufferDesc.NumElements);
+		uavDesc.Buffer.StructureByteStride = static_cast<uint32_t>(m_BufferDesc.ElementSize);
 		uavDesc.Buffer.CounterOffsetInBytes = 0;
 		uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
 

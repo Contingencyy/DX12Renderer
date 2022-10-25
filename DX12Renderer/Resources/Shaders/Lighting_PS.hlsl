@@ -130,7 +130,7 @@ static float2 poissonDisk[16] = {
 
 float GetRandom(float3 seed, int i)
 {
-	float4 seed4 = (seed, i);
+	float4 seed4 = float4(seed, i);
 	float dotprod = dot(seed4, float4(12.9898f, 78.233f, 45.164f, 94.673f));
 	return frac(sin(dotprod) * 43758.5453f);
 }
@@ -152,9 +152,12 @@ float CalculateShadow(float4 fragPosLightSpace, uint shadowMapIndex, float angle
 	/*float closestDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DBorder, projectedCoords.xy);
 	shadow = currentDepth + bias < closestDepth ? 1.0f : 0.0f;*/
 
+	uint2 shadowMapSize = uint2(0, 0);
+	Texture2DTable[shadowMapIndex].GetDimensions(shadowMapSize.x, shadowMapSize.y);
+
 	// Apply percentage closer filtering with poisson sampling
-	float2 texelSize = 0.25f / float2(1024.0f, 1024.0f);
-	float diskDenom = 1.0f / 2048.0f;
+	float2 texelSize = 0.25f / shadowMapSize;
+	float diskDenom = 1.0f / shadowMapSize.x;
 	int numDiskSamples = 4;
 
 	for (int x = -1; x <= 1; ++x)
@@ -164,7 +167,7 @@ float CalculateShadow(float4 fragPosLightSpace, uint shadowMapIndex, float angle
 			for (int i = 0; i < numDiskSamples; ++i)
 			{
 				int poissonIndex = 16.0f * GetRandom(fragPosLightSpace.xyz, i) % 16.0f;
-				float2 pcfDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DBorder, projectedCoords.xy + (poissonDisk[poissonIndex] * diskDenom) + (float2(x, y) * texelSize)).r;
+				float pcfDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DBorder, projectedCoords.xy + (poissonDisk[poissonIndex] * diskDenom) + (float2(x, y) * texelSize)).r;
 				shadow += currentDepth + bias < pcfDepth ? 1.0f : 0.0f;
 			}
 		}

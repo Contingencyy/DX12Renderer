@@ -17,12 +17,12 @@ public:
 	void CreatePipelineState(const D3D12_GRAPHICS_PIPELINE_STATE_DESC& pipelineStateDesc, ComPtr<ID3D12PipelineState>& pipelineState);
 	void CreateRootSignature(const CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC& rootSignatureDesc, ComPtr<ID3D12RootSignature>& rootSignature);
 
-	void CreateBuffer(Buffer& buffer, D3D12_HEAP_TYPE bufferType, const D3D12_RESOURCE_DESC& bufferDesc, D3D12_RESOURCE_STATES initialState, std::size_t size);
+	void CreateBuffer(Buffer& buffer, D3D12_HEAP_TYPE bufferType, const D3D12_RESOURCE_DESC& bufferDesc, D3D12_RESOURCE_STATES initialState);
 	void CreateTexture(Texture& texture, const D3D12_RESOURCE_DESC& textureDesc, D3D12_RESOURCE_STATES initialState, const D3D12_CLEAR_VALUE* clearValue = nullptr);
 
 	void CreateRenderTargetView(Texture& texture, const D3D12_RENDER_TARGET_VIEW_DESC& rtvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor);
 	void CreateDepthStencilView(Texture& texture, const D3D12_DEPTH_STENCIL_VIEW_DESC& dsvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor);
-	void CreateConstantBufferView(Buffer& buffer, const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor);
+	void CreateConstantBufferView(const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor);
 	void CreateShaderResourceView(Buffer& texture, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor);
 	void CreateShaderResourceView(Texture& texture, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor);
 	void CreateUnorderedAccessView(Buffer& texture, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDesc, D3D12_CPU_DESCRIPTOR_HANDLE descriptor);

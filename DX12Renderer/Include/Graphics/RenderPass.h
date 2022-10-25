@@ -13,12 +13,11 @@ struct RenderPassDesc
 	TextureDesc ColorAttachmentDesc;
 	TextureDesc DepthAttachmentDesc;
 	
-	glm::vec4 ClearColor;
-	bool DepthEnabled;
-	D3D12_COMPARISON_FUNC DepthComparisonFunc;
+	bool DepthEnabled = true;
+	D3D12_COMPARISON_FUNC DepthComparisonFunc = D3D12_COMPARISON_FUNC_GREATER;
 
-	D3D12_PRIMITIVE_TOPOLOGY Topology;
-	D3D12_PRIMITIVE_TOPOLOGY_TYPE TopologyType;
+	D3D12_PRIMITIVE_TOPOLOGY Topology = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
 	std::vector<CD3DX12_ROOT_PARAMETER1> RootParameters;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> ShaderInputLayout;
