@@ -1,24 +1,24 @@
 #include "Pch.h"
-#include "Scene/MeshObject.h"
+#include "Components/MeshComponent.h"
+#include "Scene/Camera/Camera.h"
 #include "Graphics/Mesh.h"
 #include "Graphics/Renderer.h"
 #include "Graphics/DebugRenderer.h"
 
-MeshObject::MeshObject(const std::vector<std::shared_ptr<Mesh>>& meshes, const std::string& name,
-	const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale)
-	: SceneObject(name, translation, rotation, scale), m_Meshes(meshes)
+MeshComponent::MeshComponent(const std::vector<std::shared_ptr<Mesh>>& meshes)
+	: m_Meshes(meshes)
 {
 }
 
-MeshObject::~MeshObject()
+MeshComponent::~MeshComponent()
 {
 }
 
-void MeshObject::Update(float deltaTime)
+void MeshComponent::Update(float deltaTime)
 {
 }
 
-void MeshObject::Render(const Camera& camera)
+void MeshComponent::Render(const Camera& camera, const Transform& transform)
 {
 	if (camera.IsFrustumCullingEnabled())
 	{
@@ -28,12 +28,12 @@ void MeshObject::Render(const Camera& camera)
 		{
 			Mesh::BoundingBox boundingBox = mesh->GetBoundingBox();
 
-			boundingBox.Min = boundingBox.Min * m_Transform.GetScale() + m_Transform.GetPosition();
-			boundingBox.Max = boundingBox.Max * m_Transform.GetScale() + m_Transform.GetPosition();
+			boundingBox.Min = boundingBox.Min * transform.GetScale() + transform.GetPosition();
+			boundingBox.Max = boundingBox.Max * transform.GetScale() + transform.GetPosition();
 
 			if (cameraViewFrustum.IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
 			{
-				Renderer::Submit(mesh, m_Transform.GetTransformMatrix());
+				Renderer::Submit(mesh, transform.GetTransformMatrix());
 
 				// Draw bounding box
 				DebugRenderer::Submit(boundingBox.Min, glm::vec3(boundingBox.Max.x, boundingBox.Min.y, boundingBox.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
@@ -57,7 +57,11 @@ void MeshObject::Render(const Camera& camera)
 	{
 		for (auto& mesh : m_Meshes)
 		{
-			Renderer::Submit(mesh, m_Transform.GetTransformMatrix());
+			Renderer::Submit(mesh, transform.GetTransformMatrix());
 		}
 	}
+}
+
+void MeshComponent::OnImGuiRender()
+{
 }

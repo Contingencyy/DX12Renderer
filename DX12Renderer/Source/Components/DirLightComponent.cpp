@@ -1,0 +1,42 @@
+#include "Pch.h"
+#include "Components/DirLightComponent.h"
+#include "Scene/Camera/Camera.h"
+#include "Graphics/Renderer.h"
+#include "Graphics/Texture.h"
+
+#include <imgui/imgui.h>
+
+DirLightComponent::DirLightComponent(const DirectionalLightData& dirLightData)
+	: m_DirectionalLightData(dirLightData)
+{
+	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
+
+	float orthoSize = 2000.0f;
+	glm::mat4 lightView = glm::lookAtLH(glm::vec3(-m_DirectionalLightData.Direction.x, -m_DirectionalLightData.Direction.y, -m_DirectionalLightData.Direction.z) * orthoSize, glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	// Shadow map projection size should be calculated by the maximum scene bounds in terms of shadow casters and receivers
+	// We use a reverse projection matrix here
+	glm::mat4 lightProj = glm::orthoLH_ZO(-orthoSize, orthoSize, orthoSize, -orthoSize, 2250.0f, 0.1f);
+
+	m_DirectionalLightData.ViewProjection = lightProj * lightView;
+
+	m_ShadowMap = std::make_shared<Texture>("Directional light shadow map", TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+		renderSettings.ShadowMapSize, renderSettings.ShadowMapSize));
+	m_DirectionalLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorIndex(DescriptorType::SRV);
+}
+
+DirLightComponent::~DirLightComponent()
+{
+}
+
+void DirLightComponent::Update(float deltaTime)
+{
+}
+
+void DirLightComponent::Render(const Camera& camera, const Transform& transform)
+{
+	Renderer::Submit(m_DirectionalLightData, m_ShadowMap);
+}
+
+void DirLightComponent::OnImGuiRender()
+{
+}

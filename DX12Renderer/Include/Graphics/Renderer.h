@@ -1,6 +1,8 @@
 #pragma once
 #include "Scene/Camera/Camera.h"
-#include "Scene/LightObject.h"
+#include "Components/DirLightComponent.h"
+#include "Components/PointLightComponent.h"
+#include "Components/SpotLightComponent.h"
 
 class Mesh;
 class RenderPass;

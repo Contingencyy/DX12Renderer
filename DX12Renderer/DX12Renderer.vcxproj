@@ -224,6 +224,11 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Source\Application.cpp" />
+    <ClCompile Include="Source\Components\Component.cpp" />
+    <ClCompile Include="Source\Components\DirLightComponent.cpp" />
+    <ClCompile Include="Source\Components\MeshComponent.cpp" />
+    <ClCompile Include="Source\Components\PointLightComponent.cpp" />
+    <ClCompile Include="Source\Components\SpotLightComponent.cpp" />
     <ClCompile Include="Source\Graphics\DebugRenderer.cpp" />
     <ClCompile Include="Source\Graphics\Backend\RenderBackend.cpp" />
     <ClCompile Include="Source\Graphics\RenderPass.cpp" />
@@ -252,8 +257,6 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClCompile Include="Source\Graphics\Renderer.cpp" />
     <ClCompile Include="Source\Resource\ResourceLoader.cpp" />
     <ClCompile Include="Source\Resource\ResourceManager.cpp" />
-    <ClCompile Include="Source\Scene\LightObject.cpp" />
-    <ClCompile Include="Source\Scene\MeshObject.cpp" />
     <ClCompile Include="Source\Scene\Scene.cpp" />
     <ClCompile Include="Source\Scene\SceneObject.cpp" />
     <ClCompile Include="Source\Scene\Camera\ViewFrustum.cpp" />
@@ -271,6 +274,11 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Extern\imgui\imgui_impl_win32.h" />
     <ClInclude Include="Extern\stb_image\stb_image.h" />
     <ClInclude Include="Include\Application.h" />
+    <ClInclude Include="Include\Components\Component.h" />
+    <ClInclude Include="Include\Components\DirLightComponent.h" />
+    <ClInclude Include="Include\Components\MeshComponent.h" />
+    <ClInclude Include="Include\Components\PointLightComponent.h" />
+    <ClInclude Include="Include\Components\SpotLightComponent.h" />
     <ClInclude Include="Include\Graphics\DebugRenderer.h" />
     <ClInclude Include="Include\Graphics\Backend\RenderBackend.h" />
     <ClInclude Include="Include\Graphics\RenderPass.h" />
@@ -293,8 +301,6 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\InputHandler.h" />
     <ClInclude Include="Include\Resource\ResourceLoader.h" />
     <ClInclude Include="Include\Resource\ResourceManager.h" />
-    <ClInclude Include="Include\Scene\LightObject.h" />
-    <ClInclude Include="Include\Scene\MeshObject.h" />
     <ClInclude Include="Include\Scene\Scene.h" />
     <ClInclude Include="Include\Scene\SceneObject.h" />
     <ClInclude Include="Include\Scene\Camera\ViewFrustum.h" />

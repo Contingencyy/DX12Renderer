@@ -149,14 +149,14 @@ float CalculateShadow(float4 fragPosLightSpace, uint shadowMapIndex, float angle
 	float shadow = 0.0f;
 
 	// One sample
-	/*float closestDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DBorder, projectedCoords.xy);
-	shadow = currentDepth + bias < closestDepth ? 1.0f : 0.0f;*/
+	float closestDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DBorder, projectedCoords.xy).r;
+	shadow = currentDepth + bias < closestDepth ? 1.0f : 0.0f;
 
 	uint2 shadowMapSize = uint2(0, 0);
 	Texture2DTable[shadowMapIndex].GetDimensions(shadowMapSize.x, shadowMapSize.y);
 
 	// Apply percentage closer filtering with poisson sampling
-	float2 texelSize = 0.25f / shadowMapSize;
+	/*float2 texelSize = 0.25f / shadowMapSize;
 	float diskDenom = 1.0f / shadowMapSize.x;
 	int numDiskSamples = 4;
 
@@ -172,7 +172,7 @@ float CalculateShadow(float4 fragPosLightSpace, uint shadowMapIndex, float angle
 			}
 		}
 	}
-	shadow /= 9 * numDiskSamples;
+	shadow /= 9 * numDiskSamples;*/
 
 	return shadow;
 }
