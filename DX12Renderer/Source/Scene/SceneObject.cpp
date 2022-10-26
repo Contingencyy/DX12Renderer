@@ -40,18 +40,20 @@ void SceneObject::Render(const Camera& camera)
 
 void SceneObject::OnImGuiRender()
 {
-	for (uint32_t i = 0; i < 8; ++i)
+	ImGui::PushID(m_Name.c_str());
+
+	if (ImGui::CollapsingHeader(m_Name.c_str()))
 	{
-		if (m_ComponentBitFlag & (1 << i))
+		for (uint32_t i = 0; i < 8; ++i)
 		{
-			ImGui::PushID(m_Name.c_str());
-			if (ImGui::CollapsingHeader(m_Name.c_str()))
+			if (m_ComponentBitFlag & (1 << i))
 			{
 				ImGui::Indent(15.0f);
 				m_Components[i]->OnImGuiRender();
 				ImGui::Unindent(15.0f);
 			}
-			ImGui::PopID();
 		}
 	}
+
+	ImGui::PopID();
 }

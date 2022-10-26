@@ -40,6 +40,7 @@ Scene::Scene()
 	SpotLightData spotLightData(glm::normalize(glm::vec3(0.0f, -1.0f, 1.0f)), glm::vec3(1.0f, 0.00014f, 0.00004f), 12.5f, 25.0f, glm::vec3(0.1f, 0.1f, 0.1f), glm::vec3(20.0f, 19.0f, 14.0f));
 	auto& spotLight1 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight01", glm::vec3(-50.0f, 500.0f, 0.0f)));
 	spotLight1->AddComponent<SpotLightComponent>(spotLightData, spotLight1->GetTransform().GetPosition());
+	//spotLight1->AddComponent<MeshComponent>(Application::Get().GetResourceManager()->GetModel("DamagedHelmet")->GetMeshes());
 
 	auto& spotLight2 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight02", glm::vec3(700.0f, 500.0f, 0.0f)));
 	spotLight2->AddComponent<SpotLightComponent>(spotLightData, spotLight2->GetTransform().GetPosition());
