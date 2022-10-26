@@ -7,9 +7,9 @@
 #include <imgui/imgui.h>
 
 Camera::Camera(const glm::vec3& pos, float fov, float width, float height, float near, float far)
-	: m_FOV(fov)
+	: m_FOV(fov), m_Width(width), m_Height(height)
 {
-	m_AspectRatio = width / height;
+	m_AspectRatio = m_Width / m_Height;
 
 	m_ViewFrustum.SetNearFarTangent(near, far, (float)glm::tan(glm::pi<float>() / 180.0f * m_FOV * 0.5f));
 	m_ViewFrustum.UpdateBounds(m_AspectRatio);
@@ -17,7 +17,7 @@ Camera::Camera(const glm::vec3& pos, float fov, float width, float height, float
 	m_Transform.Translate(pos);
 
 	m_ViewMatrix = glm::inverse(m_Transform.GetTransformMatrix());
-	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), width, height, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
+	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), m_Width, m_Height, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
 	m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 
 	m_ViewFrustum.UpdatePlanes(m_Transform);
@@ -43,10 +43,12 @@ void Camera::Update(float deltaTime)
 
 void Camera::ResizeProjection(float width, float height)
 {
-	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), width, height, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
-	m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
+	m_Width = width;
+	m_Height = height;
 
-	m_AspectRatio = width / height;
+	m_AspectRatio = m_Width / m_Height;
+	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), m_Width, m_Height, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
+	m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 
 	m_ViewFrustum.UpdateBounds(m_AspectRatio);
 	m_ViewFrustum.UpdatePlanes(m_Transform);
@@ -56,6 +58,11 @@ void Camera::OnImGuiRender()
 {
 	ImGui::Text("Camera");
 	ImGui::Checkbox("Frustum culling", &m_EnableFrustumCulling);
+	if (ImGui::DragFloat("FOV", &m_FOV, 1.0f, 10.0f, 150.0f, "%.0f"))
+	{
+		m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), m_Width, m_Height, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
+		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
+	}
 	ImGui::DragFloat("Exposure", &m_Exposure, 0.01f, 0.01f, 10.0f);
 	ImGui::DragFloat("Gamma", &m_Gamma, 0.01f, 0.01f, 10.0f);
 }

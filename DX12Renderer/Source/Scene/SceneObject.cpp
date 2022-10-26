@@ -2,6 +2,8 @@
 #include "Scene/SceneObject.h"
 #include "Resource/Model.h"
 
+#include <imgui/imgui.h>
+
 SceneObject::SceneObject(const std::string& name, const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale, bool frustumCullable)
 	: m_Name(name), m_FrustumCullable(frustumCullable)
 {
@@ -42,7 +44,14 @@ void SceneObject::OnImGuiRender()
 	{
 		if (m_ComponentBitFlag & (1 << i))
 		{
-			m_Components[i]->OnImGuiRender();
+			ImGui::PushID(m_Name.c_str());
+			if (ImGui::CollapsingHeader(m_Name.c_str()))
+			{
+				ImGui::Indent(15.0f);
+				m_Components[i]->OnImGuiRender();
+				ImGui::Unindent(15.0f);
+			}
+			ImGui::PopID();
 		}
 	}
 }

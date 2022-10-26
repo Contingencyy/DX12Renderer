@@ -32,7 +32,14 @@ public:
 	virtual void OnImGuiRender();
 
 private:
+	struct GUIDataRepresentation
+	{
+		glm::vec3 Direction = glm::vec3(0.0f);
+	};
+
+private:
 	DirectionalLightData m_DirectionalLightData;
+	GUIDataRepresentation m_GUIData;
 	std::shared_ptr<Texture> m_ShadowMap;
 
 };

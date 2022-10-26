@@ -36,6 +36,16 @@ public:
 	virtual void OnImGuiRender();
 
 private:
+	struct GUIDataRepresentation
+	{
+		glm::vec3 Direction = glm::vec3(0.0f);
+		float InnerConeAngle = 0.0f;
+		float OuterConeAngle = 0.0f;
+	};
+
+private:
 	SpotLightData m_SpotLightData;
+	GUIDataRepresentation m_GUIData;
+
 	std::shared_ptr<Texture> m_ShadowMap;
 };

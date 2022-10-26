@@ -32,7 +32,7 @@ public:
 	virtual void Update(float deltaTime);
 	virtual void Render(const Camera& camera, const Transform& transform);
 	virtual void OnImGuiRender();
-
+	
 private:
 	PointLightData m_PointLightData;
 	std::shared_ptr<Texture> m_ShadowMap;

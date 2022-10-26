@@ -21,7 +21,7 @@ Scene::Scene()
 
 	// Directional light
 	DirectionalLightData dirLightData(glm::normalize(glm::vec3(0.0f, -100.0f, 0.0f)), glm::vec3(0.005f), glm::vec3(0.4f, 0.38f, 0.28f));
-	auto& dirLight1 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("DirectionalLight"));
+	auto& dirLight1 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("DirectionalLight01"));
 	dirLight1->AddComponent<DirLightComponent>(dirLightData);
 
 	// Pointlights
@@ -38,24 +38,24 @@ Scene::Scene()
 
 	// Spotlights
 	SpotLightData spotLightData(glm::normalize(glm::vec3(0.0f, -1.0f, 1.0f)), glm::vec3(1.0f, 0.00014f, 0.00004f), 12.5f, 25.0f, glm::vec3(0.1f, 0.1f, 0.1f), glm::vec3(20.0f, 19.0f, 14.0f));
-	auto& spotLight1 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight", glm::vec3(-50.0f, 500.0f, 0.0f)));
+	auto& spotLight1 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight01", glm::vec3(-50.0f, 500.0f, 0.0f)));
 	spotLight1->AddComponent<SpotLightComponent>(spotLightData, spotLight1->GetTransform().GetPosition());
 
-	auto& spotLight2 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight", glm::vec3(700.0f, 500.0f, 0.0f)));
+	auto& spotLight2 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight02", glm::vec3(700.0f, 500.0f, 0.0f)));
 	spotLight2->AddComponent<SpotLightComponent>(spotLightData, spotLight2->GetTransform().GetPosition());
 
-	auto& spotLight3 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight", glm::vec3(-800.0f, 500.0f, 0.0f)));
+	auto& spotLight3 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight03", glm::vec3(-800.0f, 500.0f, 0.0f)));
 	spotLight3->AddComponent<SpotLightComponent>(spotLightData, spotLight3->GetTransform().GetPosition());
 
 	spotLightData.Direction = glm::normalize(glm::vec3(0.0f, -1.0f, -1.0f));
 
-	auto& spotLight4 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight", glm::vec3(-50.0f, 500.0f, 0.0f)));
+	auto& spotLight4 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight04", glm::vec3(-50.0f, 500.0f, 0.0f)));
 	spotLight4->AddComponent<SpotLightComponent>(spotLightData, spotLight4->GetTransform().GetPosition());
 
-	auto& spotLight5 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight", glm::vec3(700.0f, 500.0f, 0.0f)));
+	auto& spotLight5 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight05", glm::vec3(700.0f, 500.0f, 0.0f)));
 	spotLight5->AddComponent<SpotLightComponent>(spotLightData, spotLight5->GetTransform().GetPosition());
 
-	auto& spotLight6 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight", glm::vec3(-800.0f, 500.0f, 0.0f)));
+	auto& spotLight6 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SpotLight06", glm::vec3(-800.0f, 500.0f, 0.0f)));
 	spotLight6->AddComponent<SpotLightComponent>(spotLightData, spotLight6->GetTransform().GetPosition());
 
 	// Mesh objects
@@ -91,7 +91,8 @@ void Scene::OnImGuiRender()
 {
 	ImGui::Begin("Scene");
 
-	m_ActiveCamera.OnImGuiRender();
+	if (ImGui::CollapsingHeader("Camera"))
+		m_ActiveCamera.OnImGuiRender();
 
 	for (auto& sceneObject : m_SceneObjects)
 	{

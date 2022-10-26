@@ -5,6 +5,8 @@
 #include "Graphics/Renderer.h"
 #include "Graphics/DebugRenderer.h"
 
+#include <imgui/imgui.h>
+
 MeshComponent::MeshComponent(const std::vector<std::shared_ptr<Mesh>>& meshes)
 	: m_Meshes(meshes)
 {
@@ -64,4 +66,8 @@ void MeshComponent::Render(const Camera& camera, const Transform& transform)
 
 void MeshComponent::OnImGuiRender()
 {
+	if (ImGui::CollapsingHeader("Mesh"))
+	{
+		ImGui::Text("Mesh component");
+	}
 }

@@ -3,6 +3,8 @@
 #include "Graphics/Renderer.h"
 #include "Graphics/Texture.h"
 
+#include <imgui/imgui.h>
+
 PointLightComponent::PointLightComponent(const PointLightData& pointLightData, const glm::vec3& position)
 	: m_PointLightData(pointLightData)
 {
@@ -31,4 +33,12 @@ void PointLightComponent::Render(const Camera& camera, const Transform& transfor
 
 void PointLightComponent::OnImGuiRender()
 {
+	if (ImGui::CollapsingHeader("Point light"))
+	{
+		ImGui::DragFloat3("Position", glm::value_ptr(m_PointLightData.Position), 0.001f);
+		ImGui::Text("Range (calculated by attenuation): %f", m_PointLightData.Range);
+		ImGui::DragFloat3("Attenuation", glm::value_ptr(m_PointLightData.Attenuation), 0.00001f, 0.0f, 100.0f, "%.7f");
+		ImGui::DragFloat3("Attenuation", glm::value_ptr(m_PointLightData.Ambient), 0.01f, 0.0f, 1000.0f);
+		ImGui::DragFloat3("Diffuse", glm::value_ptr(m_PointLightData.Diffuse), 0.01f, 0.0f, 1000.0f);
+	}
 }
