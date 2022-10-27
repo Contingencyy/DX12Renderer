@@ -56,7 +56,9 @@ void SpotLightComponent::OnImGuiRender()
 			lightProj[3][2] = 0.1f;
 			m_SpotLightData.ViewProjection = lightProj * lightView;
 		}
-		ImGui::DragFloat3("Attenuation", glm::value_ptr(m_SpotLightData.Attenuation), 0.00001f, 0.0f, 100.0f, "%.7f");
+		ImGui::Text("Range (from attenuation): %.3f", m_SpotLightData.Range);
+		if (ImGui::DragFloat3("Attenuation", glm::value_ptr(m_SpotLightData.Attenuation), 0.00001f, 0.0f, 100.0f, "%.7f"))
+			m_SpotLightData.Range = MathHelper::SolveQuadraticFunc(m_SpotLightData.Attenuation.z, m_SpotLightData.Attenuation.y, m_SpotLightData.Attenuation.x - LIGHT_RANGE_EPSILON);
 		if (ImGui::DragFloat("Inner cone angle", &m_GUIData.InnerConeAngle, 0.001f, 180.0f))
 			m_SpotLightData.InnerConeAngle = glm::radians(m_GUIData.InnerConeAngle);
 		if (ImGui::DragFloat("Outer cone angle", &m_GUIData.OuterConeAngle, 0.001f, 180.0f))
