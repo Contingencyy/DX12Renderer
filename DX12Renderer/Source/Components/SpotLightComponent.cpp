@@ -47,7 +47,15 @@ void SpotLightComponent::OnImGuiRender()
 	if (ImGui::CollapsingHeader("Spot light"))
 	{
 		if (ImGui::DragFloat3("Direction", glm::value_ptr(m_GUIData.Direction), 0.001f, -1000.0f, 1000.0f))
+		{
 			m_SpotLightData.Direction = glm::normalize(m_GUIData.Direction);
+			glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
+			// We use a reversed perspective projection with an infinite far plane to have more depth buffer precision because values between 0..0.5 have a lot more possible values than 0.5..1
+			glm::mat4 lightProj = glm::perspectiveLH_ZO(m_SpotLightData.OuterConeAngle, 1.0f, m_SpotLightData.Range, 0.1f);
+			lightProj[2][2] = 0.0f;
+			lightProj[3][2] = 0.1f;
+			m_SpotLightData.ViewProjection = lightProj * lightView;
+		}
 		ImGui::DragFloat3("Attenuation", glm::value_ptr(m_SpotLightData.Attenuation), 0.00001f, 0.0f, 100.0f, "%.7f");
 		if (ImGui::DragFloat("Inner cone angle", &m_GUIData.InnerConeAngle, 0.001f, 180.0f))
 			m_SpotLightData.InnerConeAngle = glm::radians(m_GUIData.InnerConeAngle);
