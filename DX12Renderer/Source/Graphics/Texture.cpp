@@ -53,8 +53,11 @@ void Texture::Resize(uint32_t width, uint32_t height)
 	m_TextureDesc.Width = width;
 	m_TextureDesc.Height = height;
 
-	Create();
-	CreateViews();
+	if (IsValid())
+	{
+		Create();
+		CreateViews();
+	}
 }
 
 bool Texture::IsValid() const

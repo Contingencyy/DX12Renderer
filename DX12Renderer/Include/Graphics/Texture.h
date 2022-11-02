@@ -59,9 +59,9 @@ public:
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle(DescriptorType type) const;
 	uint32_t GetDescriptorIndex(DescriptorType type) const;
 
-	TextureDesc GetTextureDesc() const { return m_TextureDesc; }
+	const TextureDesc& GetTextureDesc() const { return m_TextureDesc; }
 	std::size_t GetByteSize() const { return m_ByteSize; }
-	std::string GetName() const { return m_Name; }
+	const std::string& GetName() const { return m_Name; }
 	void SetName(const std::string& name);
 
 	ComPtr<ID3D12Resource> GetD3D12Resource() const { return m_d3d12Resource; }
