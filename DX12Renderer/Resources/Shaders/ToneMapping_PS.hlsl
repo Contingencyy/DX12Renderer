@@ -1,15 +1,9 @@
+#include "DataStructs.hlsl"
+
 struct PixelShaderInput
 {
 	float4 Position : SV_POSITION;
 	float2 TexCoord : TEXCOORD;
-};
-
-struct TonemapSettings
-{
-	uint HDRTargetIndex;
-	float Exposure;
-	float Gamma;
-	uint Type;
 };
 
 ConstantBuffer<TonemapSettings> TonemapCB : register(b0);

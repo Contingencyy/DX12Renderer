@@ -31,7 +31,14 @@ void Shader::Compile(const std::wstring& filepath, const std::string& entryPoint
     ComPtr<IDxcBlobEncoding> sourceBlob;
     DX_CALL(library->CreateBlobFromFile(filepath.c_str(), &codePage, &sourceBlob));
 
+    ComPtr<IDxcUtils> utils;
+    DX_CALL(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils)));
+
+    ComPtr<IDxcIncludeHandler> defaultIncludeHandler;
+    DX_CALL(utils->CreateDefaultIncludeHandler(&defaultIncludeHandler));
+
     ComPtr<IDxcOperationResult> result;
+
     HRESULT hr = compiler->Compile(
         sourceBlob.Get(),
         filepath.c_str(),
@@ -39,7 +46,7 @@ void Shader::Compile(const std::wstring& filepath, const std::string& entryPoint
         StringHelper::StringToWString(target).c_str(),
         args.data(), static_cast<uint32_t>(args.size()),
         NULL, 0,
-        NULL,
+        defaultIncludeHandler.Get(),
         &result
     );
 

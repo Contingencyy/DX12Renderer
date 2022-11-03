@@ -1,3 +1,5 @@
+#include "DataStructs.hlsl"
+
 struct PixelShaderInput
 {
 	float4 Position : SV_POSITION;
@@ -8,59 +10,14 @@ struct PixelShaderInput
 	uint2 TexIndices : TEX_INDICES;
 };
 
-struct SceneData
-{
-	matrix ViewProjection;
-	float3 Ambient;
-	uint NumDirectionalLights;
-	uint NumPointLights;
-	uint NumSpotLights;
-};
-
-struct DirectionalLightData
-{
-	float3 Direction;
-	float3 Ambient;
-	float3 Diffuse;
-
-	matrix ViewProjection;
-	uint ShadowMapIndex;
-};
-
 struct DirectionalLightBuffer
 {
-	DirectionalLightData DirLight;
-};
-
-struct PointLightData
-{
-	float3 Position;
-	float Range;
-	float3 Attenuation;
-	float3 Ambient;
-	float3 Diffuse;
-
-	uint ShadowMapIndex;
+	DirectionalLight DirLight;
 };
 
 struct PointLightBuffer
 {
-	PointLightData PointLights[50];
-};
-
-struct SpotLight
-{
-	float3 Position;
-	float3 Direction;
-	float Range;
-	float3 Attenuation;
-	float InnerConeAngle;
-	float OuterConeAngle;
-	float3 Ambient;
-	float3 Diffuse;
-
-	matrix ViewProjection;
-	uint ShadowMapIndex;
+	PointLight PointLights[50];
 };
 
 struct SpotLightBuffer
@@ -78,8 +35,8 @@ TextureCube TextureCubeTable[] : register(t0, space1);
 SamplerState Samp2DWrap : register(s0, space0);
 SamplerState Samp2DBorder : register(s0, space1);
 
-float3 CalculateDirectionalLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, DirectionalLightData dirLight);
-float3 CalculatePointLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, PointLightData pointLight);
+float3 CalculateDirectionalLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, DirectionalLight dirLight);
+float3 CalculatePointLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, PointLight pointLight);
 float3 CalculateSpotLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, SpotLight spotLight);
 
 float4 main(PixelShaderInput IN) : SV_TARGET
@@ -197,7 +154,7 @@ float CalculatePointShadow(float3 lightToFrag, uint shadowMapIndex, float angle,
 	return shadow;
 }
 
-float3 CalculateDirectionalLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, DirectionalLightData dirLight)
+float3 CalculateDirectionalLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, DirectionalLight dirLight)
 {
 	float3 ldirection = normalize(-dirLight.Direction);
 	float diff = max(dot(fragNormal, ldirection), 0.0f);
@@ -215,7 +172,7 @@ float3 CalculateDirectionalLight(float4 fragPos, float3 fragNormal, float3 diffu
 	return (ambient + (1.0f - shadow) * (diffuse /*+ specular*/));
 }
 
-float3 CalculatePointLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, PointLightData pointLight)
+float3 CalculatePointLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, PointLight pointLight)
 {
 	float3 ldirection = pointLight.Position - fragPos.xyz;
 	float distance = length(ldirection);

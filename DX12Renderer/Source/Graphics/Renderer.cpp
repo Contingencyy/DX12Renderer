@@ -15,9 +15,7 @@
 
 struct SceneData
 {
-    SceneData() = default;
-
-    glm::mat4 ViewProjection = glm::identity<glm::mat4>();
+    glm::mat4 SceneCameraViewProjection = glm::identity<glm::mat4>();
     glm::vec3 Ambient = glm::vec3(0.0f);
 
     uint32_t NumDirLights = 0;
@@ -84,7 +82,7 @@ struct TonemapSettings
     uint32_t HDRTargetIndex = 0;
     float Exposure = 1.5f;
     float Gamma = 2.2f;
-    TonemapType Type = TonemapType::REINHARD;
+    TonemapType Type = TonemapType::UNCHARTED2;
 };
 
 std::string TonemapTypeToString(TonemapType type)
@@ -122,6 +120,7 @@ struct InternalRendererData
     std::unique_ptr<Buffer> TonemapIndexBuffer;
 
     // Scene data and buffer
+    Camera SceneCamera;
     SceneData SceneData;
     std::unique_ptr<Buffer> SceneDataConstantBuffer;
 
@@ -166,7 +165,8 @@ void Renderer::BeginScene(const Camera& sceneCamera, const glm::vec3& ambient)
 {
     SCOPED_TIMER("Renderer::BeginScene");
     
-    s_Data.SceneData.ViewProjection = sceneCamera.GetViewProjection();
+    s_Data.SceneCamera = sceneCamera;
+    s_Data.SceneData.SceneCameraViewProjection = sceneCamera.GetViewProjection();
     s_Data.SceneData.Ambient = ambient;
 
     s_Data.TonemapSettings.Exposure = sceneCamera.GetExposure();

@@ -1,3 +1,5 @@
+#include "DataStructs.hlsl"
+
 struct VertexShaderInput
 {
 	float3 Position : POSITION;
@@ -6,15 +8,6 @@ struct VertexShaderInput
 	matrix Model : MODEL;
 	float4 Color : COLOR;
 	uint2 TexIndices : TEX_INDICES;
-};
-
-struct SceneData
-{
-	matrix ViewProjection;
-	float3 Ambient;
-	uint NumDirectionalLights;
-	uint NumPointLights;
-	uint NumSpotLights;
 };
 
 ConstantBuffer<SceneData> SceneDataCB : register(b0);
