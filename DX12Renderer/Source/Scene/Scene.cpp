@@ -25,16 +25,19 @@ Scene::Scene()
 	dirLight1->AddComponent<DirLightComponent>(dirLightData);
 
 	// Pointlights
-	//PointLightData pointlightData(glm::vec3(1.0f, 0.007f, 0.0002f), glm::vec3(0.0001f, 0.00005f, 0.00005f), glm::vec3(10.0f, 0.0f, 0.0f));
-	//m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(-150.0f, 5.0f, 0.0f)));
+	PointLightData pointLightData(glm::vec3(1.0f, 0.007f, 0.0002f), glm::vec3(0.0001f, 0.00005f, 0.00005f), glm::vec3(10.0f, 0.0f, 0.0f));
+	auto& pointLight1 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("PointLight1", glm::vec3(-500.0f, 50.0f, 0.0f)));
+	pointLight1->AddComponent<PointLightComponent>(pointLightData, pointLight1->GetTransform().GetPosition());
 
-	//pointlightData.Ambient = glm::vec3(0.00005f, 0.0001f, 0.00005f);
-	//pointlightData.Diffuse = glm::vec3(0.0f, 10.0f, 0.0f);
-	//m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(0.0f, 5.0f, 0.0f)));
+	pointLightData.Ambient = glm::vec3(0.00005f, 0.0001f, 0.00005f);
+	pointLightData.Diffuse = glm::vec3(0.0f, 10.0f, 0.0f);
+	auto& pointLight2 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("PointLight2", glm::vec3(0.0f, 50.0f, 0.0f)));
+	pointLight2->AddComponent<PointLightComponent>(pointLightData, pointLight2->GetTransform().GetPosition());
 
-	//pointlightData.Ambient = glm::vec3(0.00005f, 0.00005f, 0.0001f);
-	//pointlightData.Diffuse = glm::vec3(0.0f, 0.0f, 10.0f);
-	//m_SceneObjects.push_back(std::make_unique<PointLightObject>(pointlightData, "PointLight", glm::vec3(150.0f, 5.0f, 0.0f)));
+	pointLightData.Ambient = glm::vec3(0.00005f, 0.00005f, 0.0001f);
+	pointLightData.Diffuse = glm::vec3(0.0f, 0.0f, 10.0f);
+	auto& pointLight3 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("PointLight3", glm::vec3(500.0f, 50.0f, 0.0f)));
+	pointLight3->AddComponent<PointLightComponent>(pointLightData, pointLight3->GetTransform().GetPosition());
 
 	// Spotlights
 	SpotLightData spotLightData(glm::normalize(glm::vec3(0.0f, -1.0f, 1.0f)), glm::vec3(1.0f, 0.00014f, 0.00004f), 12.5f, 25.0f, glm::vec3(0.1f, 0.1f, 0.1f), glm::vec3(20.0f, 19.0f, 14.0f));

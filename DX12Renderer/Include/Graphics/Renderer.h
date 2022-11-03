@@ -43,7 +43,7 @@ public:
 
 	static void Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform);
 	static void Submit(const DirectionalLightData& dirLightData, const std::shared_ptr<Texture>& shadowMap);
-	static void Submit(const PointLightData& pointlightData, const std::shared_ptr<Texture>& shadowMap);
+	static void Submit(const PointLightData& pointlightData, const std::array<glm::mat4, 6>& lightViewProjs, const std::shared_ptr<Texture>& shadowMap);
 	static void Submit(const SpotLightData& spotlightData, const std::shared_ptr<Texture>& shadowMap);
 
 	static void Resize(uint32_t width, uint32_t height);
@@ -65,6 +65,6 @@ private:
 	static void PrepareLightBuffers();
 	static void PrepareShadowMaps();
 
-	static void GenerateShadowMap(CommandList& commandList, const glm::mat4& lightVP, const Texture& shadowMap);
+	static void GenerateShadowMap(CommandList& commandList, const glm::mat4& lightVP, D3D12_CPU_DESCRIPTOR_HANDLE dsv);
 
 };

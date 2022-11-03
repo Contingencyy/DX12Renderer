@@ -76,7 +76,7 @@ bool Camera::UpdateMovement(float deltaTime)
 	velocity += InputHandler::GetInputAxis1D(KeyCode::D, KeyCode::A) * invTransform.Right();
 	velocity += InputHandler::GetInputAxis1D(KeyCode::SPACEBAR, KeyCode::CTRL) * invTransform.Up();
 
-	float speedMultiplier = InputHandler::IsKeyPressed(KeyCode::SHIFT) ? 10.0f : 1.0f;
+	float speedMultiplier = InputHandler::IsKeyPressed(KeyCode::SHIFT) ? 5.0f : 1.0f;
 
 	if (glm::length(velocity) > 0.0f)
 	{

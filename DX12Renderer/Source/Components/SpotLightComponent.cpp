@@ -14,7 +14,7 @@ SpotLightComponent::SpotLightComponent(const SpotLightData& spotLightData, const
 	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
 
 	glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
-	// We use a reversed perspective projection with an infinite far plane to have more depth buffer precision because values between 0..0.5 have a lot more possible values than 0.5..1
+	// Use a reverse-z perspective projection with an infinite far plane
 	glm::mat4 lightProj = glm::perspectiveLH_ZO(m_SpotLightData.OuterConeAngle, 1.0f, m_SpotLightData.Range, 0.1f);
 	lightProj[2][2] = 0.0f;
 	lightProj[3][2] = 0.1f;
@@ -46,11 +46,18 @@ void SpotLightComponent::OnImGuiRender()
 {
 	if (ImGui::CollapsingHeader("Spot light"))
 	{
+		if (ImGui::DragFloat3("Position", glm::value_ptr(m_SpotLightData.Position), 0.1f))
+		{
+			glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
+			glm::mat4 lightProj = glm::perspectiveLH_ZO(m_SpotLightData.OuterConeAngle, 1.0f, m_SpotLightData.Range, 0.1f);
+			lightProj[2][2] = 0.0f;
+			lightProj[3][2] = 0.1f;
+			m_SpotLightData.ViewProjection = lightProj * lightView;
+		}
 		if (ImGui::DragFloat3("Direction", glm::value_ptr(m_GUIData.Direction), 0.001f, -1000.0f, 1000.0f))
 		{
 			m_SpotLightData.Direction = glm::normalize(m_GUIData.Direction);
 			glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
-			// We use a reversed perspective projection with an infinite far plane to have more depth buffer precision because values between 0..0.5 have a lot more possible values than 0.5..1
 			glm::mat4 lightProj = glm::perspectiveLH_ZO(m_SpotLightData.OuterConeAngle, 1.0f, m_SpotLightData.Range, 0.1f);
 			lightProj[2][2] = 0.0f;
 			lightProj[3][2] = 0.1f;

@@ -28,14 +28,23 @@ enum class TextureFormat : uint32_t
 	TEXTURE_FORMAT_DEPTH32
 };
 
+enum class TextureDimension : uint32_t
+{
+	TEXTURE_DIMENSION_2D = 0,
+	TEXTURE_DIMENSION_CUBE
+};
+
 struct TextureDesc
 {
 	TextureDesc() = default;
 	TextureDesc(TextureUsage usage, TextureFormat format, uint32_t width, uint32_t height)
 		: Usage(usage), Format(format), Width(width), Height(height) {}
+	TextureDesc(TextureUsage usage, TextureFormat format, TextureDimension dimension, uint32_t width, uint32_t height)
+		: Usage(usage), Format(format), Dimension(dimension), Width(width), Height(height) {}
 
 	TextureUsage Usage = TextureUsage::TEXTURE_USAGE_NONE;
 	TextureFormat Format = TextureFormat::TEXTURE_FORMAT_UNSPECIFIED;
+	TextureDimension Dimension = TextureDimension::TEXTURE_DIMENSION_2D;
 
 	uint32_t Width = 1;
 	uint32_t Height = 1;
@@ -45,6 +54,8 @@ struct TextureDesc
 };
 
 DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format);
+D3D12_RESOURCE_DIMENSION TextureDimensionToD3DDimension(TextureDimension dimension);
+D3D12_SRV_DIMENSION TextureDimensionToD3DSRVDimension(TextureDimension dimension);
 
 class Texture
 {
@@ -57,6 +68,7 @@ public:
 	bool IsValid() const;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle(DescriptorType type) const;
+	D3D12_CPU_DESCRIPTOR_HANDLE GetCubeDepthDescriptorHandle(DescriptorType type, uint32_t face) const;
 	uint32_t GetDescriptorIndex(DescriptorType type) const;
 
 	const TextureDesc& GetTextureDesc() const { return m_TextureDesc; }
@@ -67,16 +79,17 @@ public:
 	ComPtr<ID3D12Resource> GetD3D12Resource() const { return m_d3d12Resource; }
 	void SetD3D12Resource(ComPtr<ID3D12Resource> resource) { m_d3d12Resource = resource; }
 
-private:
+protected:
 	void Create();
 	void CreateViews();
 
-private:
+protected:
 	TextureDesc m_TextureDesc = {};
 	std::string m_Name = "";
 	ComPtr<ID3D12Resource> m_d3d12Resource;
 
 	DescriptorAllocation m_DescriptorAllocations[DescriptorType::NUM_DESCRIPTOR_TYPES] = {};
+	DescriptorAllocation m_CubeDescriptorAllocations[DescriptorType::NUM_DESCRIPTOR_TYPES] = {};
 
 	std::size_t m_ByteSize = 0;
 

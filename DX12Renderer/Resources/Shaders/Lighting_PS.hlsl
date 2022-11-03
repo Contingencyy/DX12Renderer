@@ -17,7 +17,7 @@ struct SceneData
 	uint NumSpotLights;
 };
 
-struct DirectionalLight
+struct DirectionalLightData
 {
 	float3 Direction;
 	float3 Ambient;
@@ -29,10 +29,10 @@ struct DirectionalLight
 
 struct DirectionalLightBuffer
 {
-	DirectionalLight DirLight;
+	DirectionalLightData DirLight;
 };
 
-struct PointLight
+struct PointLightData
 {
 	float3 Position;
 	float Range;
@@ -40,13 +40,12 @@ struct PointLight
 	float3 Ambient;
 	float3 Diffuse;
 
-	matrix ViewProjection;
 	uint ShadowMapIndex;
 };
 
 struct PointLightBuffer
 {
-	PointLight PointLights[50];
+	PointLightData PointLights[50];
 };
 
 struct SpotLight
@@ -75,11 +74,12 @@ ConstantBuffer<PointLightBuffer> PointLightCB : register(b2);
 ConstantBuffer<SpotLightBuffer> SpotLightCB : register(b3);
 
 Texture2D Texture2DTable[] : register(t0, space0);
+TextureCube TextureCubeTable[] : register(t0, space1);
 SamplerState Samp2DWrap : register(s0, space0);
 SamplerState Samp2DBorder : register(s0, space1);
 
-float3 CalculateDirectionalLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, DirectionalLight dirLight);
-float3 CalculatePointLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, PointLight pointLight);
+float3 CalculateDirectionalLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, DirectionalLightData dirLight);
+float3 CalculatePointLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, PointLightData pointLight);
 float3 CalculateSpotLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, SpotLight spotLight);
 
 float4 main(PixelShaderInput IN) : SV_TARGET
@@ -135,7 +135,7 @@ float GetRandom(float3 seed, int i)
 	return frac(sin(dotprod) * 43758.5453f);
 }
 
-float CalculateShadow(float4 fragPosLightSpace, uint shadowMapIndex, float angle)
+float CalculateDirectionalShadow(float4 fragPosLightSpace, uint shadowMapIndex, float angle)
 {
 	float3 projectedCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
 	float currentDepth = projectedCoords.z;
@@ -145,18 +145,18 @@ float CalculateShadow(float4 fragPosLightSpace, uint shadowMapIndex, float angle
 	// Invert Y for D3D style screen coordinates
 	projectedCoords.y = 1.0f - projectedCoords.y;
 
-	float bias = max(0.000008f * (1.0f - angle), 0.000004f);
+	float bias = max(0.00005f * (1.0f - angle), 0.000005f);
 	float shadow = 0.0f;
 
 	// One sample
 	float closestDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DBorder, projectedCoords.xy).r;
 	shadow = currentDepth + bias < closestDepth ? 1.0f : 0.0f;
 
-	uint2 shadowMapSize = uint2(0, 0);
+	/*uint2 shadowMapSize = uint2(0, 0);
 	Texture2DTable[shadowMapIndex].GetDimensions(shadowMapSize.x, shadowMapSize.y);
 
 	// Apply percentage closer filtering with poisson sampling
-	/*float2 texelSize = 0.25f / shadowMapSize;
+	float2 texelSize = 0.25f / shadowMapSize;
 	float diskDenom = 1.0f / shadowMapSize.x;
 	int numDiskSamples = 4;
 
@@ -177,13 +177,33 @@ float CalculateShadow(float4 fragPosLightSpace, uint shadowMapIndex, float angle
 	return shadow;
 }
 
-float3 CalculateDirectionalLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, DirectionalLight dirLight)
+float DirectionToDepthValue(float3 direction, float near, float far)
+{
+	float3 absDir = abs(direction);
+	float localZComp = max(absDir.x, max(absDir.y, absDir.z));
+
+	float normZComp = (far + near) / (far - near) - (2 * far * near) / (far - near) / localZComp;
+	return (normZComp + 1.0f) * 0.5f;
+}
+
+float CalculatePointShadow(float3 lightToFrag, uint shadowMapIndex, float angle, float range, float fragW)
+{
+	float currentDepth = DirectionToDepthValue(lightToFrag, 3.402823466e+38F, 0.1f);
+	float closestDepth = TextureCubeTable[shadowMapIndex].Sample(Samp2DBorder, lightToFrag).r;
+
+	float bias = max(0.00005f * (1.0f - angle), 0.000005f);
+	float shadow = currentDepth + bias < closestDepth ? 1.0f : 0.0f;
+
+	return shadow;
+}
+
+float3 CalculateDirectionalLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, DirectionalLightData dirLight)
 {
 	float3 ldirection = normalize(-dirLight.Direction);
 	float diff = max(dot(fragNormal, ldirection), 0.0f);
 
 	float4 fragPosLightSpace = mul(dirLight.ViewProjection, fragPos);
-	float shadow = CalculateShadow(fragPosLightSpace, dirLight.ShadowMapIndex, dot(fragNormal, ldirection)); // either 1.0 or 0.0
+	float shadow = CalculateDirectionalShadow(fragPosLightSpace, dirLight.ShadowMapIndex, dot(fragNormal, ldirection)); // either 1.0 or 0.0
 
 	//float3 reflectDirection = reflect(-ldirection, fragNormal);
 	//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0f), material.shininess);
@@ -195,7 +215,7 @@ float3 CalculateDirectionalLight(float4 fragPos, float3 fragNormal, float3 diffu
 	return (ambient + (1.0f - shadow) * (diffuse /*+ specular*/));
 }
 
-float3 CalculatePointLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, PointLight pointLight)
+float3 CalculatePointLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, PointLightData pointLight)
 {
 	float3 ldirection = pointLight.Position - fragPos.xyz;
 	float distance = length(ldirection);
@@ -203,6 +223,8 @@ float3 CalculatePointLight(float4 fragPos, float3 fragNormal, float3 diffuseColo
 	float3 ambient = float3(0.0f, 0.0f, 0.0f);
 	float3 diffuse = float3(0.0f, 0.0f, 0.0f);
 	//float3 specular = float3(0.0f, 0.0f, 0.0f);
+
+	float shadow = 0.0f;
 
 	if (distance <= pointLight.Range)
 	{
@@ -219,6 +241,8 @@ float3 CalculatePointLight(float4 fragPos, float3 fragNormal, float3 diffuseColo
 		//float3 reflectDirection = reflect(-ldirection, fragNormal);
 		//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0f), material.shininess);
 
+		shadow = CalculatePointShadow(fragPos.xyz - pointLight.Position, pointLight.ShadowMapIndex, dot(fragNormal, ldirection), pointLight.Range, fragPos.w); // either 1.0 or 0.0
+
 		float diff = max(dot(fragNormal, ldirection), 0.0f);
 		diffuse = pointLight.Diffuse * diff * diffuseColor;
 		//float3 specular = pointlight.Specular.xyz * spec * specularColor;
@@ -227,10 +251,7 @@ float3 CalculatePointLight(float4 fragPos, float3 fragNormal, float3 diffuseColo
 		//specular *= attenuation;
 	}
 
-	/*if (distance > pointLight.Range)
-		return float3(1.0f, 0.0f, 1.0f);*/
-
-	return (ambient + diffuse /*+ specular*/);
+	return (ambient + (1.0f - shadow) * diffuse /*+ specular*/);
 }
 
 float3 CalculateSpotLight(float4 fragPos, float3 fragNormal, float3 diffuseColor, SpotLight spotLight)
@@ -266,7 +287,7 @@ float3 CalculateSpotLight(float4 fragPos, float3 fragNormal, float3 diffuseColor
 			float diff = max(dot(fragNormal, ldirection), 0.0f);
 
 			float4 fragPosLightSpace = mul(spotLight.ViewProjection, fragPos);
-			shadow = CalculateShadow(fragPosLightSpace, spotLight.ShadowMapIndex, dot(fragNormal, ldirection)); // either 1.0 or 0.0
+			shadow = CalculateDirectionalShadow(fragPosLightSpace, spotLight.ShadowMapIndex, dot(fragNormal, ldirection)); // either 1.0 or 0.0
 
 			diffuse = spotLight.Diffuse * diff * diffuseColor;
 			//float3 specular = pointlight.Specular.xyz * spec * specularColor;

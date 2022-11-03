@@ -16,11 +16,7 @@ struct PointLightData
 	glm::vec3 Ambient = glm::vec3(0.0f);
 	BYTE_PADDING(4);
 	glm::vec3 Diffuse = glm::vec3(1.0f);
-	BYTE_PADDING(4);
-
-	glm::mat4 ViewProjection = glm::identity<glm::mat4>();
 	uint32_t ShadowMapIndex = 0;
-	BYTE_PADDING(12);
 };
 
 class PointLightComponent : public Component
@@ -35,6 +31,8 @@ public:
 	
 private:
 	PointLightData m_PointLightData;
+	std::array<glm::mat4, 6> m_LightViewProjections;
+	glm::mat4 m_LightProjection = glm::identity<glm::mat4>();
 	std::shared_ptr<Texture> m_ShadowMap;
 
 };

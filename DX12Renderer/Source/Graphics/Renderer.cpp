@@ -137,6 +137,7 @@ struct InternalRendererData
     // Pointlight data and buffer
     std::vector<PointLightData> PointLightData;
     std::unique_ptr<Buffer> PointLightConstantBuffer;
+    std::vector<glm::mat4> PointLightViewProjections;
     std::vector<std::shared_ptr<Texture>> PointLightShadowMaps;
 
     // Spotlight data and buffer
@@ -206,17 +207,21 @@ void Renderer::Render()
         // Shadow map indices somehow need to map to their respective related light data, otherwise there is no guarantee we pick the right shadow map here.
         for (uint32_t i = 0; i < s_Data.DirectionalLightData.size(); ++i)
         {
-            GenerateShadowMap(*commandList.get(), s_Data.DirectionalLightData[i].ViewProjection, *s_Data.DirectionalLightShadowMaps[i].get());
+            GenerateShadowMap(*commandList.get(), s_Data.DirectionalLightData[i].ViewProjection, s_Data.DirectionalLightShadowMaps[i]->GetDescriptorHandle(DescriptorType::DSV));
         }
 
         for (uint32_t i = 0; i < s_Data.PointLightData.size(); ++i)
         {
-            GenerateShadowMap(*commandList.get(), s_Data.PointLightData[i].ViewProjection, *s_Data.PointLightShadowMaps[i].get());
+            for (uint32_t j = 0; j < 6; ++j)
+            {
+                std::size_t viewProjIndex = static_cast<std::size_t>(i * 6 + j);
+                GenerateShadowMap(*commandList.get(), s_Data.PointLightViewProjections[viewProjIndex], s_Data.PointLightShadowMaps[i]->GetCubeDepthDescriptorHandle(DescriptorType::DSV, j));
+            }
         }
 
         for (uint32_t i = 0; i < s_Data.SpotLightData.size(); ++i)
         {
-            GenerateShadowMap(*commandList.get(), s_Data.SpotLightData[i].ViewProjection, *s_Data.SpotLightShadowMaps[i].get());
+            GenerateShadowMap(*commandList.get(), s_Data.SpotLightData[i].ViewProjection, s_Data.SpotLightShadowMaps[i]->GetDescriptorHandle(DescriptorType::DSV));
         }
 
         RenderBackend::ExecuteCommandList(commandList);
@@ -386,6 +391,7 @@ void Renderer::EndScene()
     s_Data.DirectionalLightShadowMaps.clear();
     s_Data.PointLightData.clear();
     s_Data.PointLightShadowMaps.clear();
+    s_Data.PointLightViewProjections.clear();
     s_Data.SpotLightData.clear();
     s_Data.SpotLightShadowMaps.clear();
 
@@ -420,9 +426,11 @@ void Renderer::Submit(const DirectionalLightData& dirLightData, const std::share
     ASSERT(s_Data.DirectionalLightData.size() <= s_Data.RenderSettings.MaxDirectionalLights, "Exceeded the maximum amount of directional lights");
 }
 
-void Renderer::Submit(const PointLightData& pointlightData, const std::shared_ptr<Texture>& shadowMap)
+void Renderer::Submit(const PointLightData& pointlightData, const std::array<glm::mat4, 6>& lightViewProjs, const std::shared_ptr<Texture>& shadowMap)
 {
     s_Data.PointLightData.push_back(pointlightData);
+    for (uint32_t i = 0; i < 6; ++i)
+        s_Data.PointLightViewProjections.push_back(lightViewProjs[i]);
     s_Data.PointLightShadowMaps.push_back(shadowMap);
 
     ASSERT(s_Data.PointLightData.size() <= s_Data.RenderSettings.MaxPointLights, "Exceeded the maximum amount of point lights");
@@ -525,8 +533,9 @@ void Renderer::MakeRenderPasses()
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
         // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
-        CD3DX12_DESCRIPTOR_RANGE1 ranges[1] = {};
-        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 256, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+        CD3DX12_DESCRIPTOR_RANGE1 ranges[2] = {};
+        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 512, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+        ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 512, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
 
         desc.RootParameters.resize(5);
         desc.RootParameters[0].InitAsConstantBufferView(0); // Scene data
@@ -660,9 +669,8 @@ void Renderer::PrepareShadowMaps()
     RenderBackend::ExecuteCommandListAndWait(commandList);
 }
 
-void Renderer::GenerateShadowMap(CommandList& commandList, const glm::mat4& lightVP, const Texture& shadowMap)
+void Renderer::GenerateShadowMap(CommandList& commandList, const glm::mat4& lightVP, D3D12_CPU_DESCRIPTOR_HANDLE dsv)
 {
-    auto dsv = shadowMap.GetDescriptorHandle(DescriptorType::DSV);
     commandList.SetRenderTargets(0, nullptr, &dsv);
 
     // Set the pipeline state along with the root signature
@@ -699,5 +707,7 @@ void Renderer::GenerateShadowMap(CommandList& commandList, const glm::mat4& ligh
         commandList.DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), static_cast<uint32_t>(meshInstanceData.size()),
             static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
         startInstance += static_cast<uint32_t>(meshInstanceData.size());
+
+        s_Data.RenderStatistics.DrawCallCount++;
     }
 }
