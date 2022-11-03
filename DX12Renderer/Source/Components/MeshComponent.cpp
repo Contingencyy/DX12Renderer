@@ -27,9 +27,8 @@ void MeshComponent::Render(const Transform& transform)
 		Renderer::Submit(mesh, transform.GetTransformMatrix());
 
 		Mesh::BoundingBox boundingBox = mesh->GetBoundingBox();
-
-		boundingBox.Min = boundingBox.Min * transform.GetScale() + transform.GetPosition();
-		boundingBox.Max = boundingBox.Max * transform.GetScale() + transform.GetPosition();
+		boundingBox.Min = glm::vec4(boundingBox.Min, 1.0f) * transform.GetTransformMatrix();
+		boundingBox.Max = glm::vec4(boundingBox.Max, 1.0f) * transform.GetTransformMatrix();
 
 		// Draw bounding box
 		DebugRenderer::Submit(boundingBox.Min, glm::vec3(boundingBox.Max.x, boundingBox.Min.y, boundingBox.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));

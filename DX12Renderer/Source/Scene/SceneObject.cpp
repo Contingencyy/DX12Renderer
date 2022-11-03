@@ -4,8 +4,8 @@
 
 #include <imgui/imgui.h>
 
-SceneObject::SceneObject(const std::string& name, const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale, bool frustumCullable)
-	: m_Name(name), m_FrustumCullable(frustumCullable)
+SceneObject::SceneObject(const std::string& name, const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale)
+	: m_Name(name)
 {
 	m_Transform.Translate(translation);
 	m_Transform.Rotate(rotation);

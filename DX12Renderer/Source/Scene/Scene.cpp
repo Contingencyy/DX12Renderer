@@ -63,7 +63,7 @@ Scene::Scene()
 	spotLight6->AddComponent<SpotLightComponent>(spotLightData, spotLight6->GetTransform().GetPosition());
 
 	// Mesh objects
-	auto& meshObject1 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SponzaOld", glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f), true));
+	auto& meshObject1 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SponzaOld", glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f)));
 	meshObject1->AddComponent<MeshComponent>(Application::Get().GetResourceManager()->GetModel("SponzaOld")->GetMeshes());
 }
 

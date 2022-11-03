@@ -10,7 +10,7 @@ class SceneObject
 {
 public:
 	SceneObject(const std::string& name, const glm::vec3& translation = glm::vec3(0.0f),
-		const glm::vec3& rotation = glm::vec3(0.0f), const glm::vec3& scale = glm::vec3(1.0f), bool frustumCullable = false);
+		const glm::vec3& rotation = glm::vec3(0.0f), const glm::vec3& scale = glm::vec3(1.0f));
 	~SceneObject();
 
 	void Update(float deltaTime);
@@ -50,7 +50,6 @@ public:
 
 	const Transform& GetTransform() const { return m_Transform; }
 	const std::string& GetName() const { return m_Name; }
-	bool IsFrustumCullable() const { return m_FrustumCullable; }
 
 private:
 	Transform m_Transform;
@@ -58,7 +57,5 @@ private:
 
 	std::array<std::unique_ptr<Component>, 8> m_Components;
 	uint8_t m_ComponentBitFlag = 0;
-
-	bool m_FrustumCullable = true;
 
 };

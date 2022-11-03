@@ -53,6 +53,7 @@ enum RenderPassType : uint32_t
 
 struct MeshInstanceData
 {
+    MeshInstanceData() = default;
     MeshInstanceData(const glm::mat4& transform, const glm::vec4& color, uint32_t baseColorTexIndex, uint32_t normalTexIndex)
         : Transform(transform), Color(color), BaseColorTexIndex(baseColorTexIndex), NormalTexIndex(normalTexIndex) {}
 
@@ -64,11 +65,8 @@ struct MeshInstanceData
 
 struct MeshDrawData
 {
-    MeshDrawData(const std::shared_ptr<Mesh>& mesh)
-        : Mesh(mesh) {}
-
     std::shared_ptr<Mesh> Mesh;
-    std::vector<MeshInstanceData> MeshInstanceData;
+    MeshInstanceData InstanceData;
 };
 
 enum class TonemapType : uint32_t
@@ -125,8 +123,9 @@ struct InternalRendererData
     std::unique_ptr<Buffer> SceneDataConstantBuffer;
 
     // Mesh draw data and buffer
-    std::unordered_map<std::size_t, MeshDrawData> MeshDrawData;
     std::unique_ptr<Buffer> MeshInstanceBuffer;
+    std::array<MeshDrawData, 10000> MeshDrawData;
+    std::size_t NumMeshes = 0;
 
     // Directional/point/spotlight constant buffers
     std::unique_ptr<Buffer> DirectionalLightConstantBuffer;
@@ -274,14 +273,29 @@ void Renderer::Render()
 
         // Set instance buffer
         commandList->SetVertexBuffers(1, 1, *s_Data.MeshInstanceBuffer);
-        uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Data.RenderSettings.MaxInstancesPerDraw;
+        uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Data.RenderSettings.MaxMeshes;
 
         std::shared_ptr<Buffer> currentVertexBuffer = nullptr, currentIndexBuffer = nullptr;
 
-        for (auto& [meshHash, meshDrawData] : s_Data.MeshDrawData)
+        for (uint32_t i = 0; i < s_Data.NumMeshes; ++i)
         {
-            auto& mesh = meshDrawData.Mesh;
-            auto& meshInstanceData = meshDrawData.MeshInstanceData;
+            auto& mesh = s_Data.MeshDrawData[i].Mesh;
+            auto& instanceData = s_Data.MeshDrawData[i].InstanceData;
+
+            // Cull mesh from light camera frustum
+            if (s_Data.SceneCamera.IsFrustumCullingEnabled())
+            {
+                Mesh::BoundingBox boundingBox = mesh->GetBoundingBox();
+
+                boundingBox.Min = glm::vec4(boundingBox.Min, 1.0f) * instanceData.Transform;
+                boundingBox.Max = glm::vec4(boundingBox.Max, 1.0f) * instanceData.Transform;
+
+                if (!s_Data.SceneCamera.GetViewFrustum().IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
+                {
+                    startInstance++;
+                    continue;
+                }
+            }
 
             auto vb = mesh->GetVertexBuffer();
             auto ib = mesh->GetIndexBuffer();
@@ -297,13 +311,16 @@ void Renderer::Render()
                 currentIndexBuffer = ib;
             }
 
-            commandList->DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), static_cast<uint32_t>(meshInstanceData.size()),
+            /*commandList->DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), static_cast<uint32_t>(instanceData.size()),
                 static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
-            startInstance += static_cast<uint32_t>(meshInstanceData.size());
+            startInstance += static_cast<uint32_t>(meshInstanceData.size());*/
+            commandList->DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), 1,
+                static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
+            startInstance++;
 
             s_Data.RenderStatistics.DrawCallCount++;
-            s_Data.RenderStatistics.TriangleCount += (static_cast<uint32_t>(mesh->GetNumIndices()) / 3) * static_cast<uint32_t>(meshInstanceData.size());
-            s_Data.RenderStatistics.MeshCount += static_cast<uint32_t>(meshInstanceData.size());
+            s_Data.RenderStatistics.TriangleCount += (static_cast<uint32_t>(mesh->GetNumIndices()) / 3);// * static_cast<uint32_t>(meshInstanceData.size());
+            s_Data.RenderStatistics.MeshCount += 1;//static_cast<uint32_t>(meshInstanceData.size());
         }
 
         RenderBackend::ExecuteCommandList(commandList);
@@ -353,8 +370,8 @@ void Renderer::OnImGuiRender()
     ImGui::Text("Resolution: %ux%u", s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
     ImGui::Text("VSync: %s", s_Data.RenderSettings.VSync ? "On" : "Off");
     ImGui::Text("Shadow map resolution: %u", s_Data.RenderSettings.ShadowMapSize);
-    ImGui::Text("Max model instances: %u", s_Data.RenderSettings.MaxModelInstances);
-    ImGui::Text("Max instances per draw: %u", s_Data.RenderSettings.MaxInstancesPerDraw);
+    ImGui::Text("Max model instances: %u", s_Data.RenderSettings.MaxInstances);
+    ImGui::Text("Max instances per draw: %u", s_Data.RenderSettings.MaxMeshes);
     ImGui::Text("Max directional lights: %u", s_Data.RenderSettings.MaxDirectionalLights);
     ImGui::Text("Max point lights: %u", s_Data.RenderSettings.MaxPointLights);
     ImGui::Text("Max spot lights: %u", s_Data.RenderSettings.MaxSpotLights);
@@ -398,7 +415,7 @@ void Renderer::EndScene()
     RenderBackend::GetSwapChain().ResolveToBackBuffer(s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
     RenderBackend::GetSwapChain().SwapBuffers(s_Data.RenderSettings.VSync);
 
-    s_Data.MeshDrawData.clear();
+    s_Data.NumMeshes = 0;
 
     s_Data.SceneData.NumDirLights = 0;
     s_Data.SceneData.NumPointLights = 0;
@@ -412,19 +429,13 @@ void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transf
     uint32_t baseColorTexIndex = mesh->GetTexture(MeshTextureType::TEX_BASE_COLOR)->GetDescriptorIndex(DescriptorType::SRV);
     uint32_t normalTexIndex = mesh->GetTexture(MeshTextureType::TEX_NORMAL)->GetDescriptorIndex(DescriptorType::SRV);
 
-    auto iter = s_Data.MeshDrawData.find(mesh->GetHash());
+    s_Data.MeshDrawData[s_Data.NumMeshes].Mesh = mesh;
+    s_Data.MeshDrawData[s_Data.NumMeshes].InstanceData.Transform = transform;
+    s_Data.MeshDrawData[s_Data.NumMeshes].InstanceData.BaseColorTexIndex = baseColorTexIndex;
+    s_Data.MeshDrawData[s_Data.NumMeshes].InstanceData.NormalTexIndex = normalTexIndex;
 
-    if (iter != s_Data.MeshDrawData.end())
-    {
-        iter->second.MeshInstanceData.push_back(MeshInstanceData(transform, glm::vec4(1.0f),
-            baseColorTexIndex, normalTexIndex));
-    }
-    else
-    {
-        s_Data.MeshDrawData.emplace(std::pair<std::size_t, MeshDrawData>(mesh->GetHash(), mesh));
-        s_Data.MeshDrawData.at(mesh->GetHash()).MeshInstanceData.push_back(MeshInstanceData(transform, glm::vec4(1.0f),
-            baseColorTexIndex, normalTexIndex));
-    }
+    s_Data.NumMeshes++;
+    ASSERT(s_Data.NumMeshes <= s_Data.RenderSettings.MaxMeshes, "Exceeded the maximum amount of meshes");
 }
 
 void Renderer::Submit(const DirectionalLightData& dirLightData, const Camera& lightCamera, const std::shared_ptr<Texture>& shadowMap)
@@ -607,7 +618,7 @@ void Renderer::MakeRenderPasses()
 void Renderer::MakeBuffers()
 {
     s_Data.MeshInstanceBuffer = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD,
-        s_Data.RenderSettings.MaxInstancesPerDraw * RenderBackend::GetSwapChain().GetBackBufferCount(), sizeof(MeshInstanceData)));
+        s_Data.RenderSettings.MaxMeshes * RenderBackend::GetSwapChain().GetBackBufferCount(), sizeof(MeshInstanceData)));
 
     s_Data.DirectionalLightConstantBuffer = std::make_unique<Buffer>("Directional lights constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Data.RenderSettings.MaxDirectionalLights, sizeof(DirectionalLightData)));
     s_Data.PointLightConstantBuffer = std::make_unique<Buffer>("Pointlights constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Data.RenderSettings.MaxPointLights, sizeof(PointLightData)));
@@ -634,12 +645,12 @@ void Renderer::MakeBuffers()
 void Renderer::PrepareInstanceBuffer()
 {
     uint32_t currentBackBufferIndex = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex();
-    std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * s_Data.RenderSettings.MaxInstancesPerDraw) * sizeof(MeshInstanceData);
+    std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * s_Data.RenderSettings.MaxMeshes) * sizeof(MeshInstanceData);
 
-    for (auto& [meshHash, meshDrawData] : s_Data.MeshDrawData)
+    for (auto& [mesh, instanceData] : s_Data.MeshDrawData)
     {
-        std::size_t numBytes = meshDrawData.MeshInstanceData.size() * sizeof(MeshInstanceData);
-        s_Data.MeshInstanceBuffer->SetBufferDataAtOffset(&meshDrawData.MeshInstanceData[0], numBytes, currentByteOffset);
+        std::size_t numBytes = sizeof(MeshInstanceData);
+        s_Data.MeshInstanceBuffer->SetBufferDataAtOffset(&instanceData, numBytes, currentByteOffset);
         currentByteOffset += numBytes;
     }
 }
@@ -686,28 +697,29 @@ void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCame
 
     // Set instance buffer
     commandList.SetVertexBuffers(1, 1, *s_Data.MeshInstanceBuffer);
-    uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Data.RenderSettings.MaxInstancesPerDraw;
+    uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Data.RenderSettings.MaxMeshes;
 
     std::shared_ptr<Buffer> currentVertexBuffer = nullptr, currentIndexBuffer = nullptr;
 
-    for (auto& [meshHash, meshDrawData] : s_Data.MeshDrawData)
+    for (uint32_t i = 0; i < s_Data.NumMeshes; ++i)
     {
-        auto& mesh = meshDrawData.Mesh;
-        auto& meshInstanceData = meshDrawData.MeshInstanceData;
+        auto& mesh = s_Data.MeshDrawData[i].Mesh;
+        auto& instanceData = s_Data.MeshDrawData[i].InstanceData;
 
         // Cull mesh from light camera frustum
-        //if (lightCamera.IsFrustumCullingEnabled())
-        //{
-        //    Mesh::BoundingBox boundingBox = mesh->GetBoundingBox();
+        /*if (lightCamera.IsFrustumCullingEnabled())
+        {
+            Mesh::BoundingBox boundingBox = mesh->GetBoundingBox();
+            
+            boundingBox.Min = glm::vec4(boundingBox.Min, 1.0f) * instanceData.Transform;
+            boundingBox.Max = glm::vec4(boundingBox.Max, 1.0f) * instanceData.Transform;
 
-        //    boundingBox.Min = boundingBox.Min * meshInstanceData.GetScale() + transform.GetPosition();// * transform.GetRotation();
-        //    boundingBox.Max = boundingBox.Max * transform.GetScale() + transform.GetPosition();// * transform.GetRotation();
-
-        //    if (!lightCamera.GetViewFrustum().IsBoxInViewFrustum(mesh->GetBoundingBox().Min, mesh->GetBoundingBox().Max))
-        //    {
-        //        continue;
-        //    }
-        //}
+            if (lightCamera.GetViewFrustum().IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
+            {
+                startInstance++;
+                continue;
+            }
+        }*/
 
         auto vb = mesh->GetVertexBuffer();
         auto ib = mesh->GetIndexBuffer();
@@ -723,9 +735,12 @@ void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCame
             currentIndexBuffer = ib;
         }
 
-        commandList.DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), static_cast<uint32_t>(meshInstanceData.size()),
+        /*commandList.DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), static_cast<uint32_t>(meshInstanceData.size()),
             static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
-        startInstance += static_cast<uint32_t>(meshInstanceData.size());
+        startInstance += static_cast<uint32_t>(meshInstanceData.size());*/
+        commandList.DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), 1,
+            static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
+        startInstance += 1;
 
         s_Data.RenderStatistics.DrawCallCount++;
     }
