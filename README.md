@@ -14,9 +14,10 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Tone mapping (Uncharted2, Linear, Reinhard, Filmic, ACES filmic)
 - Render backend with platform agnostic renderers (debug and 3D renderer)
 - GPU validation
+- Shadow mapping (directional lights, spotlights, pointlights)
 
 ## WIP
-- Shadow mapping (directional lights, spotlights, pointlights)
+- Shadow map improvements (Slope-scaled bias, PCF, draw call reductions)
 
 ## Planned features
 - Mipmap generation
