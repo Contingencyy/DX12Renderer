@@ -129,21 +129,19 @@ struct InternalRendererData
     std::unordered_map<std::size_t, MeshDrawData> MeshDrawData;
     std::unique_ptr<Buffer> MeshInstanceBuffer;
 
-    // Directional light data and buffer
-    std::vector<DirectionalLightData> DirectionalLightData;
+    // Directional/point/spotlight constant buffers
     std::unique_ptr<Buffer> DirectionalLightConstantBuffer;
-    std::vector<std::shared_ptr<Texture>> DirectionalLightShadowMaps;
-
-    // Pointlight data and buffer
-    std::vector<PointLightData> PointLightData;
     std::unique_ptr<Buffer> PointLightConstantBuffer;
-    std::vector<glm::mat4> PointLightViewProjections;
-    std::vector<std::shared_ptr<Texture>> PointLightShadowMaps;
-
-    // Spotlight data and buffer
-    std::vector<SpotLightData> SpotLightData;
     std::unique_ptr<Buffer> SpotLightConstantBuffer;
-    std::vector<std::shared_ptr<Texture>> SpotLightShadowMaps;
+
+    // Directional/point/spotlight draw data
+    std::array<DirectionalLightData, 1> DirectionalLightDrawData;
+    std::array<PointLightData, 50> PointLightDrawData;
+    std::array<SpotLightData, 50> SpotLightDrawData;
+
+    // Light cameras and light shadow maps
+    std::array<Camera, 1 + 6 * 50 + 50> LightCameras;
+    std::array<std::shared_ptr<Texture>, 101> LightShadowMaps;
 };
 
 static InternalRendererData s_Data;
@@ -204,24 +202,39 @@ void Renderer::Render()
         commandList->SetViewports(1, &shadowmapViewport);
         commandList->SetScissorRects(1, &scissorRect);
 
-        // Shadow map indices somehow need to map to their respective related light data, otherwise there is no guarantee we pick the right shadow map here.
-        for (uint32_t i = 0; i < s_Data.DirectionalLightData.size(); ++i)
+        std::size_t cameraIndex = 0, shadowMapIndex = 0;
+
+        for (uint32_t i = 0; i < s_Data.SceneData.NumDirLights; ++i)
         {
-            GenerateShadowMap(*commandList.get(), s_Data.DirectionalLightData[i].ViewProjection, s_Data.DirectionalLightShadowMaps[i]->GetDescriptorHandle(DescriptorType::DSV));
+            RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], s_Data.LightShadowMaps[shadowMapIndex]->GetDescriptorHandle(DescriptorType::DSV));
+
+            cameraIndex++;
+            shadowMapIndex++;
         }
 
-        for (uint32_t i = 0; i < s_Data.PointLightData.size(); ++i)
+        cameraIndex = s_Data.RenderSettings.MaxDirectionalLights;
+        shadowMapIndex = s_Data.RenderSettings.MaxDirectionalLights;
+
+        for (uint32_t i = 0; i < s_Data.SceneData.NumPointLights; ++i)
         {
-            for (uint32_t j = 0; j < 6; ++j)
+            for (uint32_t face = 0; face < 6; ++face)
             {
-                std::size_t viewProjIndex = static_cast<std::size_t>(i * 6 + j);
-                GenerateShadowMap(*commandList.get(), s_Data.PointLightViewProjections[viewProjIndex], s_Data.PointLightShadowMaps[i]->GetCubeDepthDescriptorHandle(DescriptorType::DSV, j));
+                RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], s_Data.LightShadowMaps[shadowMapIndex]->GetCubeDepthDescriptorHandle(DescriptorType::DSV, face));
+                cameraIndex++;
             }
+
+            shadowMapIndex++;
         }
 
-        for (uint32_t i = 0; i < s_Data.SpotLightData.size(); ++i)
+        cameraIndex = s_Data.RenderSettings.MaxDirectionalLights + (s_Data.RenderSettings.MaxPointLights * 6);
+        shadowMapIndex = s_Data.RenderSettings.MaxDirectionalLights + s_Data.RenderSettings.MaxPointLights;
+
+        for (uint32_t i = 0; i < s_Data.SceneData.NumSpotLights; ++i)
         {
-            GenerateShadowMap(*commandList.get(), s_Data.SpotLightData[i].ViewProjection, s_Data.SpotLightShadowMaps[i]->GetDescriptorHandle(DescriptorType::DSV));
+            RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], s_Data.LightShadowMaps[shadowMapIndex]->GetDescriptorHandle(DescriptorType::DSV));
+
+            cameraIndex++;
+            shadowMapIndex++;
         }
 
         RenderBackend::ExecuteCommandList(commandList);
@@ -387,13 +400,9 @@ void Renderer::EndScene()
 
     s_Data.MeshDrawData.clear();
 
-    s_Data.DirectionalLightData.clear();
-    s_Data.DirectionalLightShadowMaps.clear();
-    s_Data.PointLightData.clear();
-    s_Data.PointLightShadowMaps.clear();
-    s_Data.PointLightViewProjections.clear();
-    s_Data.SpotLightData.clear();
-    s_Data.SpotLightShadowMaps.clear();
+    s_Data.SceneData.NumDirLights = 0;
+    s_Data.SceneData.NumPointLights = 0;
+    s_Data.SceneData.NumSpotLights = 0;
 
     s_Data.RenderStatistics.Reset();
 }
@@ -418,30 +427,39 @@ void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transf
     }
 }
 
-void Renderer::Submit(const DirectionalLightData& dirLightData, const std::shared_ptr<Texture>& shadowMap)
+void Renderer::Submit(const DirectionalLightData& dirLightData, const Camera& lightCamera, const std::shared_ptr<Texture>& shadowMap)
 {
-    s_Data.DirectionalLightData.push_back(dirLightData);
-    s_Data.DirectionalLightShadowMaps.push_back(shadowMap);
+    s_Data.DirectionalLightDrawData[s_Data.SceneData.NumDirLights] = dirLightData;
+    s_Data.LightCameras[s_Data.SceneData.NumDirLights] = lightCamera;
+    s_Data.LightShadowMaps[s_Data.SceneData.NumDirLights] = shadowMap;
 
-    ASSERT(s_Data.DirectionalLightData.size() <= s_Data.RenderSettings.MaxDirectionalLights, "Exceeded the maximum amount of directional lights");
+    s_Data.SceneData.NumDirLights++;
+    ASSERT(s_Data.SceneData.NumDirLights <= s_Data.RenderSettings.MaxDirectionalLights, "Exceeded the maximum amount of directional lights");
 }
 
-void Renderer::Submit(const PointLightData& pointlightData, const std::array<glm::mat4, 6>& lightViewProjs, const std::shared_ptr<Texture>& shadowMap)
+void Renderer::Submit(const PointLightData& pointLightData, const std::array<Camera, 6>& lightCameras, const std::shared_ptr<Texture>& shadowMap)
 {
-    s_Data.PointLightData.push_back(pointlightData);
+    std::size_t pointLightBaseIndex = s_Data.RenderSettings.MaxDirectionalLights;
+
+    s_Data.PointLightDrawData[s_Data.SceneData.NumPointLights] = pointLightData;
     for (uint32_t i = 0; i < 6; ++i)
-        s_Data.PointLightViewProjections.push_back(lightViewProjs[i]);
-    s_Data.PointLightShadowMaps.push_back(shadowMap);
+        s_Data.LightCameras[pointLightBaseIndex + (s_Data.SceneData.NumPointLights * 6) + i] = lightCameras[i];
+    s_Data.LightShadowMaps[pointLightBaseIndex + s_Data.SceneData.NumPointLights] = shadowMap;
 
-    ASSERT(s_Data.PointLightData.size() <= s_Data.RenderSettings.MaxPointLights, "Exceeded the maximum amount of point lights");
+    s_Data.SceneData.NumPointLights++;
+    ASSERT(s_Data.SceneData.NumPointLights <= s_Data.RenderSettings.MaxPointLights, "Exceeded the maximum amount of point lights");
 }
 
-void Renderer::Submit(const SpotLightData& spotlightData, const std::shared_ptr<Texture>& shadowMap)
+void Renderer::Submit(const SpotLightData& spotLightData, const Camera& lightCamera, const std::shared_ptr<Texture>& shadowMap)
 {
-    s_Data.SpotLightData.push_back(spotlightData);
-    s_Data.SpotLightShadowMaps.push_back(shadowMap);
+    std::size_t spotLightBaseIndex = s_Data.RenderSettings.MaxDirectionalLights + s_Data.RenderSettings.MaxPointLights;
 
-    ASSERT(s_Data.SpotLightData.size() <= s_Data.RenderSettings.MaxSpotLights, "Exceeded the maximum amount of spot lights");
+    s_Data.SpotLightDrawData[s_Data.SceneData.NumSpotLights] = spotLightData;
+    s_Data.LightCameras[s_Data.RenderSettings.MaxDirectionalLights + (s_Data.RenderSettings.MaxPointLights * 6) + s_Data.SceneData.NumSpotLights] = lightCamera;
+    s_Data.LightShadowMaps[spotLightBaseIndex + s_Data.SceneData.NumSpotLights] = shadowMap;
+
+    s_Data.SceneData.NumSpotLights++;
+    ASSERT(s_Data.SceneData.NumSpotLights <= s_Data.RenderSettings.MaxSpotLights, "Exceeded the maximum amount of spot lights");
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)
@@ -628,22 +646,17 @@ void Renderer::PrepareInstanceBuffer()
 
 void Renderer::PrepareLightBuffers()
 {
-    // Update scene data constant buffer with data for this frame
-    s_Data.SceneData.NumDirLights = static_cast<uint32_t>(s_Data.DirectionalLightData.size());
-    s_Data.SceneData.NumPointLights = static_cast<uint32_t>(s_Data.PointLightData.size());
-    s_Data.SceneData.NumSpotLights = static_cast<uint32_t>(s_Data.SpotLightData.size());
-
     // Set constant buffer data for directional lights/pointlights/spotlights
     if (s_Data.SceneData.NumDirLights > 0)
-        s_Data.DirectionalLightConstantBuffer->SetBufferData(&s_Data.DirectionalLightData[0], s_Data.DirectionalLightData.size() * sizeof(DirectionalLightData));
+        s_Data.DirectionalLightConstantBuffer->SetBufferData(&s_Data.DirectionalLightDrawData[0], s_Data.DirectionalLightDrawData.size() * sizeof(DirectionalLightData));
     s_Data.RenderStatistics.DirectionalLightCount += s_Data.SceneData.NumDirLights;
 
     if (s_Data.SceneData.NumPointLights > 0)
-        s_Data.PointLightConstantBuffer->SetBufferData(&s_Data.PointLightData[0], s_Data.PointLightData.size() * sizeof(PointLightData));
+        s_Data.PointLightConstantBuffer->SetBufferData(&s_Data.PointLightDrawData[0], s_Data.PointLightDrawData.size() * sizeof(PointLightData));
     s_Data.RenderStatistics.PointLightCount += s_Data.SceneData.NumPointLights;
 
     if (s_Data.SceneData.NumSpotLights > 0)
-        s_Data.SpotLightConstantBuffer->SetBufferData(&s_Data.SpotLightData[0], s_Data.SpotLightData.size() * sizeof(SpotLightData));
+        s_Data.SpotLightConstantBuffer->SetBufferData(&s_Data.SpotLightDrawData[0], s_Data.SpotLightDrawData.size() * sizeof(SpotLightData));
     s_Data.RenderStatistics.SpotLightCount += s_Data.SceneData.NumSpotLights;
 }
 
@@ -651,33 +664,25 @@ void Renderer::PrepareShadowMaps()
 {
     auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-    for (auto& shadowMap : s_Data.DirectionalLightShadowMaps)
+    for (auto& shadowMap : s_Data.LightShadowMaps)
     {
-        commandList->ClearDepthStencilView(shadowMap->GetDescriptorHandle(DescriptorType::DSV), 0.0f);
-    }
-
-    for (auto& shadowMap : s_Data.PointLightShadowMaps)
-    {
-        commandList->ClearDepthStencilView(shadowMap->GetDescriptorHandle(DescriptorType::DSV), 0.0f);
-    }
-
-    for (auto& shadowMap : s_Data.SpotLightShadowMaps)
-    {
-        commandList->ClearDepthStencilView(shadowMap->GetDescriptorHandle(DescriptorType::DSV), 0.0f);
+        if (shadowMap)
+            commandList->ClearDepthStencilView(shadowMap->GetDescriptorHandle(DescriptorType::DSV), 0.0f);
     }
 
     RenderBackend::ExecuteCommandListAndWait(commandList);
 }
 
-void Renderer::GenerateShadowMap(CommandList& commandList, const glm::mat4& lightVP, D3D12_CPU_DESCRIPTOR_HANDLE dsv)
+void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCamera, D3D12_CPU_DESCRIPTOR_HANDLE shadowMapDepthView)
 {
-    commandList.SetRenderTargets(0, nullptr, &dsv);
+    commandList.SetRenderTargets(0, nullptr, &shadowMapDepthView);
 
     // Set the pipeline state along with the root signature
     commandList.SetPipelineState(s_Data.RenderPasses[RenderPassType::SHADOW_MAPPING]->GetPipelineState());
 
     // Set root constant (light VP)
-    commandList.SetRootConstants(0, 16, &lightVP[0][0], 0);
+    const glm::mat4& lightViewProjection = lightCamera.GetViewProjection();
+    commandList.SetRootConstants(0, 16, &lightViewProjection[0][0], 0);
 
     // Set instance buffer
     commandList.SetVertexBuffers(1, 1, *s_Data.MeshInstanceBuffer);
@@ -689,6 +694,20 @@ void Renderer::GenerateShadowMap(CommandList& commandList, const glm::mat4& ligh
     {
         auto& mesh = meshDrawData.Mesh;
         auto& meshInstanceData = meshDrawData.MeshInstanceData;
+
+        // Cull mesh from light camera frustum
+        //if (lightCamera.IsFrustumCullingEnabled())
+        //{
+        //    Mesh::BoundingBox boundingBox = mesh->GetBoundingBox();
+
+        //    boundingBox.Min = boundingBox.Min * meshInstanceData.GetScale() + transform.GetPosition();// * transform.GetRotation();
+        //    boundingBox.Max = boundingBox.Max * transform.GetScale() + transform.GetPosition();// * transform.GetRotation();
+
+        //    if (!lightCamera.GetViewFrustum().IsBoxInViewFrustum(mesh->GetBoundingBox().Min, mesh->GetBoundingBox().Max))
+        //    {
+        //        continue;
+        //    }
+        //}
 
         auto vb = mesh->GetVertexBuffer();
         auto ib = mesh->GetIndexBuffer();

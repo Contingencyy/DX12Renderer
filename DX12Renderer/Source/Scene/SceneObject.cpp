@@ -27,13 +27,13 @@ void SceneObject::Update(float deltaTime)
 	}
 }
 
-void SceneObject::Render(const Camera& camera)
+void SceneObject::Render()
 {
 	for (uint32_t i = 0; i < 8; ++i)
 	{
 		if (m_ComponentBitFlag & (1 << i))
 		{
-			m_Components[i]->Render(camera, m_Transform);
+			m_Components[i]->Render(m_Transform);
 		}
 	}
 }

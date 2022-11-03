@@ -11,17 +11,15 @@ SpotLightComponent::SpotLightComponent(const SpotLightData& spotLightData, const
 	m_SpotLightData.Position = position;
 	m_SpotLightData.Range = MathHelper::SolveQuadraticFunc(m_SpotLightData.Attenuation.z, m_SpotLightData.Attenuation.y, m_SpotLightData.Attenuation.x - LIGHT_RANGE_EPSILON);
 
-	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
-
 	glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
-	// Use a reverse-z perspective projection with an infinite far plane
-	glm::mat4 lightProj = glm::perspectiveLH_ZO(m_SpotLightData.OuterConeAngle, 1.0f, m_SpotLightData.Range, 0.1f);
-	lightProj[2][2] = 0.0f;
-	lightProj[3][2] = 0.1f;
-	m_SpotLightData.ViewProjection = lightProj * lightView;
+	// This will construct a camera with a reverse-z perspective projection and an infinite far plane
+	m_Camera = Camera(lightView, glm::degrees(m_SpotLightData.OuterConeAngle), 1.0f, m_SpotLightData.Range, 0.1f);
 
+	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
 	m_ShadowMap = std::make_shared<Texture>("Spotlight shadow map", TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_DEPTH32,
 		renderSettings.ShadowMapSize, renderSettings.ShadowMapSize));
+
+	m_SpotLightData.ViewProjection = m_Camera.GetViewProjection();
 	m_SpotLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorIndex(DescriptorType::SRV);
 
 	m_GUIData.Direction = m_SpotLightData.Direction;
@@ -37,9 +35,9 @@ void SpotLightComponent::Update(float deltaTime)
 {
 }
 
-void SpotLightComponent::Render(const Camera& camera, const Transform& transform)
+void SpotLightComponent::Render(const Transform& transform)
 {
-	Renderer::Submit(m_SpotLightData, m_ShadowMap);
+	Renderer::Submit(m_SpotLightData, m_Camera, m_ShadowMap);
 }
 
 void SpotLightComponent::OnImGuiRender()
@@ -49,19 +47,15 @@ void SpotLightComponent::OnImGuiRender()
 		if (ImGui::DragFloat3("Position", glm::value_ptr(m_SpotLightData.Position), 0.1f))
 		{
 			glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
-			glm::mat4 lightProj = glm::perspectiveLH_ZO(m_SpotLightData.OuterConeAngle, 1.0f, m_SpotLightData.Range, 0.1f);
-			lightProj[2][2] = 0.0f;
-			lightProj[3][2] = 0.1f;
-			m_SpotLightData.ViewProjection = lightProj * lightView;
+			m_Camera.SetViewMatrix(lightView);
+			m_SpotLightData.ViewProjection = m_Camera.GetViewProjection();
 		}
 		if (ImGui::DragFloat3("Direction", glm::value_ptr(m_GUIData.Direction), 0.001f, -1000.0f, 1000.0f))
 		{
 			m_SpotLightData.Direction = glm::normalize(m_GUIData.Direction);
 			glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
-			glm::mat4 lightProj = glm::perspectiveLH_ZO(m_SpotLightData.OuterConeAngle, 1.0f, m_SpotLightData.Range, 0.1f);
-			lightProj[2][2] = 0.0f;
-			lightProj[3][2] = 0.1f;
-			m_SpotLightData.ViewProjection = lightProj * lightView;
+			m_Camera.SetViewMatrix(lightView);
+			m_SpotLightData.ViewProjection = m_Camera.GetViewProjection();
 		}
 		ImGui::Text("Range (from attenuation): %.3f", m_SpotLightData.Range);
 		if (ImGui::DragFloat3("Attenuation", glm::value_ptr(m_SpotLightData.Attenuation), 0.00001f, 0.0f, 100.0f, "%.7f"))

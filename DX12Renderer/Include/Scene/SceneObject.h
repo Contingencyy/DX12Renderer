@@ -14,7 +14,7 @@ public:
 	~SceneObject();
 
 	void Update(float deltaTime);
-	void Render(const Camera& camera);
+	void Render();
 	void OnImGuiRender();
 
 	template<typename T, typename... TArgs>

@@ -16,7 +16,7 @@
 Scene::Scene()
 {
 	Renderer::RenderSettings renderSettings = Renderer::GetSettings();
-	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f), 60.0f, static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y));
+	m_ActiveCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f), 60.0f, static_cast<float>(renderSettings.Resolution.x), static_cast<float>(renderSettings.Resolution.y), 0.1f, 10000.0f);
 	m_AmbientLight = glm::vec3(0.0f);
 
 	// Directional light
@@ -87,7 +87,7 @@ void Scene::Render()
 
 	for (auto& sceneObject : m_SceneObjects)
 	{
-		sceneObject->Render(m_ActiveCamera);
+		sceneObject->Render();
 	}
 }
 

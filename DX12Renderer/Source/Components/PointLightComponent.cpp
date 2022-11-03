@@ -23,15 +23,11 @@ PointLightComponent::PointLightComponent(const PointLightData& pointLightData, c
 	m_PointLightData.Position = position;
 	m_PointLightData.Range = MathHelper::SolveQuadraticFunc(m_PointLightData.Attenuation.z, m_PointLightData.Attenuation.y, m_PointLightData.Attenuation.x - LIGHT_RANGE_EPSILON);
 
-	// Use a reverse-z perspective projection with an infinite far plane
-	m_LightProjection = glm::perspectiveLH_ZO(glm::radians(90.0f), 1.0f, m_PointLightData.Range, 0.1f);
-	m_LightProjection[2][2] = 0.0f;
-	m_LightProjection[3][2] = 0.1f;
-
 	for (uint32_t i = 0; i < 6; ++i)
 	{
 		glm::mat4 lightViewFace = glm::lookAtLH(m_PointLightData.Position, m_PointLightData.Position + LightViewDirections[i], LightUpVectors[i]);
-		m_LightViewProjections[i] = m_LightProjection * lightViewFace;
+		// This will construct a camera with a reverse-z perspective projection and an infinite far plane
+		m_Cameras[i] = Camera(lightViewFace, 90.0f, 1.0f, m_PointLightData.Range, 0.1f);
 	}
 
 	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
@@ -49,9 +45,9 @@ void PointLightComponent::Update(float deltaTime)
 {
 }
 
-void PointLightComponent::Render(const Camera& camera, const Transform& transform)
+void PointLightComponent::Render(const Transform& transform)
 {
-	Renderer::Submit(m_PointLightData, m_LightViewProjections, m_ShadowMap);
+	Renderer::Submit(m_PointLightData, m_Cameras, m_ShadowMap);
 }
 
 void PointLightComponent::OnImGuiRender()
@@ -63,7 +59,7 @@ void PointLightComponent::OnImGuiRender()
 			for (uint32_t i = 0; i < 6; ++i)
 			{
 				glm::mat4 lightViewFace = glm::lookAtLH(m_PointLightData.Position, m_PointLightData.Position + LightViewDirections[i], LightUpVectors[i]);
-				m_LightViewProjections[i] = m_LightProjection * lightViewFace;
+				m_Cameras[i].SetViewMatrix(lightViewFace);
 			}
 		}
 		ImGui::Text("Range (from attenuation): %.3f", m_PointLightData.Range);

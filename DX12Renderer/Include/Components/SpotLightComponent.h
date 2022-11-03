@@ -1,5 +1,6 @@
 #pragma once
 #include "Component.h"
+#include "Scene/Camera/Camera.h"
 
 class Texture;
 
@@ -32,7 +33,7 @@ public:
 	~SpotLightComponent();
 
 	virtual void Update(float deltaTime);
-	virtual void Render(const Camera& camera, const Transform& transform);
+	virtual void Render(const Transform& transform);
 	virtual void OnImGuiRender();
 
 private:
@@ -44,8 +45,9 @@ private:
 	};
 
 private:
-	SpotLightData m_SpotLightData;
 	GUIDataRepresentation m_GUIData;
 
+	SpotLightData m_SpotLightData;
+	Camera m_Camera;
 	std::shared_ptr<Texture> m_ShadowMap;
 };

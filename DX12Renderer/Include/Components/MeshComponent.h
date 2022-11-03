@@ -10,7 +10,7 @@ public:
 	virtual ~MeshComponent();
 
 	virtual void Update(float deltaTime);
-	virtual void Render(const Camera& camera, const Transform& transform);
+	virtual void Render(const Transform& transform);
 	virtual void OnImGuiRender();
 
 private:

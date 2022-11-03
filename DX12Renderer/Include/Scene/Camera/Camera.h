@@ -6,11 +6,17 @@ class Camera
 {
 public:
 	Camera() = default;
-	Camera(const glm::vec3& pos, float fov, float width, float height, float near = 0.1f, float far = 10000.0f);
+	// Constructs a perspective camera with a normal near and far plane and normal z
+	Camera(const glm::vec3& pos, float fov, float width, float height, float near, float far);
+	// Constructs a perspective camera with a reverse-z projection and an infinite far plane
+	Camera(const glm::mat4& view, float fov, float aspect, float near, float far);
+	// Constructs an orthographic camera with a reverse-z projection and an infinite far plane
+	Camera(const glm::mat4& view, float left, float right, float bottom, float top, float near, float far);
 	~Camera();
 
 	void Update(float deltaTime);
 	void ResizeProjection(float width, float height);
+	void SetViewMatrix(const glm::mat4& view);
 	void OnImGuiRender();
 
 	const ViewFrustum& GetViewFrustum() const { return m_ViewFrustum; }
@@ -43,6 +49,6 @@ private:
 	bool m_SetAnchorPointOnClick = true;
 
 	ViewFrustum m_ViewFrustum;
-	bool m_EnableFrustumCulling = false;
+	bool m_EnableFrustumCulling = true;
 
 };

@@ -25,7 +25,7 @@ public:
 	virtual ~Component();
 
 	virtual void Update(float deltaTime) = 0;
-	virtual void Render(const Camera& camera, const Transform& transform) = 0;
+	virtual void Render(const Transform& transform) = 0;
 	virtual void OnImGuiRender() = 0;
 
 };

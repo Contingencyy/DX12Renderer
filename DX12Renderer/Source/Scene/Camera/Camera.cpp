@@ -18,9 +18,42 @@ Camera::Camera(const glm::vec3& pos, float fov, float width, float height, float
 
 	m_ViewMatrix = glm::inverse(m_Transform.GetTransformMatrix());
 	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), m_Width, m_Height, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
+
 	m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 
 	m_ViewFrustum.UpdatePlanes(m_Transform);
+}
+
+Camera::Camera(const glm::mat4& view, float fov, float aspect, float near, float far)
+	: m_FOV(fov), m_Width(1.0f), m_Height(1.0f)
+{
+	m_AspectRatio = aspect;
+
+	m_ViewFrustum.SetNearFarTangent(near, far, (float)glm::tan(glm::pi<float>() / 180.0f * m_FOV * 0.5f));
+	m_ViewFrustum.UpdateBounds(m_AspectRatio);
+
+	m_Transform = Transform(glm::inverse(view));
+
+	m_ViewMatrix = view;
+	m_ProjectionMatrix = glm::perspectiveLH_ZO(glm::radians(m_FOV), m_AspectRatio, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
+	m_ProjectionMatrix[2][2] = 0.0f;
+	m_ProjectionMatrix[3][2] = m_ViewFrustum.GetFar();
+
+	m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
+
+	m_ViewFrustum.UpdatePlanes(m_Transform);
+}
+
+Camera::Camera(const glm::mat4& view, float left, float right, float bottom, float top, float near, float far)
+{
+	m_Transform = Transform(glm::inverse(view));
+
+	m_ViewMatrix = view;
+	m_ProjectionMatrix = glm::orthoLH_ZO(left, right, bottom, top, near, far);
+	/*m_ProjectionMatrix[2][2] = 0.0f;
+	m_ProjectionMatrix[3][2] = far;*/
+
+	m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 }
 
 Camera::~Camera()
@@ -49,8 +82,17 @@ void Camera::ResizeProjection(float width, float height)
 	m_AspectRatio = m_Width / m_Height;
 	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), m_Width, m_Height, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
 	m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
-
+	
 	m_ViewFrustum.UpdateBounds(m_AspectRatio);
+	m_ViewFrustum.UpdatePlanes(m_Transform);
+}
+
+void Camera::SetViewMatrix(const glm::mat4& view)
+{
+	m_ViewMatrix = view;
+	m_Transform = Transform(glm::inverse(view));
+	m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
+
 	m_ViewFrustum.UpdatePlanes(m_Transform);
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 #include "Component.h"
+#include "Scene/Camera/Camera.h"
 
 class Texture;
 
@@ -26,12 +27,12 @@ public:
 	~PointLightComponent();
 
 	virtual void Update(float deltaTime);
-	virtual void Render(const Camera& camera, const Transform& transform);
+	virtual void Render(const Transform& transform);
 	virtual void OnImGuiRender();
 	
 private:
 	PointLightData m_PointLightData;
-	std::array<glm::mat4, 6> m_LightViewProjections;
+	std::array<Camera, 6> m_Cameras;
 	glm::mat4 m_LightProjection = glm::identity<glm::mat4>();
 	std::shared_ptr<Texture> m_ShadowMap;
 
