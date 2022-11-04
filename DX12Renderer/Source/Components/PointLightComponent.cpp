@@ -52,7 +52,7 @@ void PointLightComponent::Render(const Transform& transform)
 
 void PointLightComponent::OnImGuiRender()
 {
-	if (ImGui::CollapsingHeader("Point light"))
+	if (ImGui::CollapsingHeader("Point Light"))
 	{
 		if (ImGui::DragFloat3("Position", glm::value_ptr(m_PointLightData.Position), 0.1f))
 		{

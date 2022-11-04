@@ -124,7 +124,7 @@ struct InternalRendererData
 
     // Mesh draw data and buffer
     std::unique_ptr<Buffer> MeshInstanceBuffer;
-    std::array<MeshDrawData, 10000> MeshDrawData;
+    std::array<MeshDrawData, 1000> MeshDrawData;
     std::size_t NumMeshes = 0;
 
     // Directional/point/spotlight constant buffers
@@ -285,7 +285,7 @@ void Renderer::Render()
             // Cull mesh from light camera frustum
             if (s_Data.SceneCamera.IsFrustumCullingEnabled())
             {
-                Mesh::BoundingBox boundingBox = mesh->GetBoundingBox();
+                BoundingBox boundingBox = mesh->GetBoundingBox();
 
                 boundingBox.Min = glm::vec4(boundingBox.Min, 1.0f) * instanceData.Transform;
                 boundingBox.Max = glm::vec4(boundingBox.Max, 1.0f) * instanceData.Transform;
@@ -300,12 +300,12 @@ void Renderer::Render()
             auto vb = mesh->GetVertexBuffer();
             auto ib = mesh->GetIndexBuffer();
 
-            if (mesh->GetVertexBuffer() != currentVertexBuffer)
+            if (vb != currentVertexBuffer)
             {
                 commandList->SetVertexBuffers(0, 1, *vb);
                 currentVertexBuffer = vb;
             }
-            if (mesh->GetIndexBuffer() != currentIndexBuffer)
+            if (ib != currentIndexBuffer)
             {
                 commandList->SetIndexBuffer(*ib);
                 currentIndexBuffer = ib;
@@ -711,10 +711,10 @@ void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCame
         {
             Mesh::BoundingBox boundingBox = mesh->GetBoundingBox();
             
-            boundingBox.Min = glm::vec4(boundingBox.Min, 1.0f) * instanceData.Transform;
-            boundingBox.Max = glm::vec4(boundingBox.Max, 1.0f) * instanceData.Transform;
+            boundingBox.Min = instanceData.Transform * glm::vec4(boundingBox.Min, 1.0f);
+            boundingBox.Max = instanceData.Transform * glm::vec4(boundingBox.Max, 1.0f);
 
-            if (lightCamera.GetViewFrustum().IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
+            if (!lightCamera.GetViewFrustum().IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
             {
                 startInstance++;
                 continue;
@@ -724,12 +724,12 @@ void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCame
         auto vb = mesh->GetVertexBuffer();
         auto ib = mesh->GetIndexBuffer();
 
-        if (mesh->GetVertexBuffer() != currentVertexBuffer)
+        if (vb != currentVertexBuffer)
         {
             commandList.SetVertexBuffers(0, 1, *vb);
             currentVertexBuffer = vb;
         }
-        if (mesh->GetIndexBuffer() != currentIndexBuffer)
+        if (ib != currentIndexBuffer)
         {
             commandList.SetIndexBuffer(*ib);
             currentIndexBuffer = ib;

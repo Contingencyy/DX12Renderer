@@ -26,7 +26,7 @@ public:
 		uint32_t ShadowMapSize = 2048;
 
 		uint32_t MaxInstances = 1000;
-		uint32_t MaxMeshes = 10000;
+		uint32_t MaxMeshes = 1000;
 		uint32_t MaxDirectionalLights = 1;
 		uint32_t MaxPointLights = 50;
 		uint32_t MaxSpotLights = 50;

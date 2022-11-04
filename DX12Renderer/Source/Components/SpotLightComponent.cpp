@@ -1,6 +1,7 @@
 #include "Pch.h"
 #include "Components/SpotLightComponent.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/DebugRenderer.h"
 #include "Graphics/Texture.h"
 
 #include <imgui/imgui.h>
@@ -42,7 +43,7 @@ void SpotLightComponent::Render(const Transform& transform)
 
 void SpotLightComponent::OnImGuiRender()
 {
-	if (ImGui::CollapsingHeader("Spot light"))
+	if (ImGui::CollapsingHeader("Spot Light"))
 	{
 		if (ImGui::DragFloat3("Position", glm::value_ptr(m_SpotLightData.Position), 0.1f))
 		{

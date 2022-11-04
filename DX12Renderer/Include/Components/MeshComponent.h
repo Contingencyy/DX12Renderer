@@ -6,7 +6,7 @@ class Mesh;
 class MeshComponent : public Component
 {
 public:
-	MeshComponent(const std::vector<std::shared_ptr<Mesh>>& meshes);
+	MeshComponent(const std::shared_ptr<Mesh>& mesh);
 	virtual ~MeshComponent();
 
 	virtual void Update(float deltaTime);
@@ -14,6 +14,6 @@ public:
 	virtual void OnImGuiRender();
 
 private:
-	std::vector<std::shared_ptr<Mesh>> m_Meshes;
+	std::shared_ptr<Mesh> m_Mesh;
 
 };

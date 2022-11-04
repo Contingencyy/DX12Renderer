@@ -88,8 +88,10 @@ float CalculateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIn
 float DirectionToDepthValue(float3 direction, float near, float far)
 {
 	float3 absDir = abs(direction);
+	// Get face of cubemap we will be sampling from
 	float localZComp = max(absDir.x, max(absDir.y, absDir.z));
 
+	// Transform depth into range of 0..1 with the corresponding near and far plane
 	float normZComp = (far + near) / (far - near) - (2 * far * near) / (far - near) / localZComp;
 	return (normZComp + 1.0f) * 0.5f;
 }

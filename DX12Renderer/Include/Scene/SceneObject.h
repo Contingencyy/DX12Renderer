@@ -21,31 +21,21 @@ public:
 	void AddComponent(TArgs&&... args)
 	{
 		uint32_t componentID = GetComponentID<T>();
-
-		m_Components[componentID] = std::make_unique<T>(std::forward<TArgs>(args)...);
-		m_ComponentBitFlag |= (1 << componentID);
+		m_Components[componentID].emplace_back(std::make_unique<T>(std::forward<TArgs>(args)...));
 	}
 
 	template<typename T>
-	void RemoveComponent()
+	void RemoveComponent(uint32_t index)
 	{
 		uint32_t componentID = GetComponentID<T>();
-
-		m_Components[componentID].reset(nullptr);
-		m_ComponentBitFlag &= (0 << componentID);
+		m_Components[componentID].erase(index);
 	}
 
 	template<typename T>
-	bool HasComponent() const
-	{
-		return m_ComponentBitFlag & (1 << GetComponentID<T>());
-	}
-
-	template<typename T>
-	const T& GetComponent() const
+	const T& GetComponent(uint32_t index)
 	{
 		uint32_t componentID = GetComponentID<T>();
-		return m_Components[componentID];
+		return *m_Components[componentID][index];
 	}
 
 	const Transform& GetTransform() const { return m_Transform; }
@@ -55,7 +45,6 @@ private:
 	Transform m_Transform;
 	std::string m_Name;
 
-	std::array<std::unique_ptr<Component>, 8> m_Components;
-	uint8_t m_ComponentBitFlag = 0;
+	std::array<std::vector<std::unique_ptr<Component>>, 8> m_Components;
 
 };

@@ -33,7 +33,6 @@ public:
 private:
 	PointLightData m_PointLightData;
 	std::array<Camera, 6> m_Cameras;
-	glm::mat4 m_LightProjection = glm::identity<glm::mat4>();
 	std::shared_ptr<Texture> m_ShadowMap;
 
 };

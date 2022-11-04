@@ -202,8 +202,9 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			}
 
 			// Meshes need to know their byte offset in both the vertex and index buffer
-			// Todo: name and hash generation
-			meshes.push_back(std::make_shared<Mesh>(textures[prim.material], currentStartVertex, currentStartIndex, numIndices, minBounds, maxBounds, "Unnamed", meshes.size()));
+			std::string meshName = mesh.name.empty() ? name + std::to_string(meshes.size()) : mesh.name + std::to_string(meshes.size());
+			std::size_t meshHash = std::hash<std::string>{}(filepath + std::to_string(meshes.size()));
+			meshes.push_back(std::make_shared<Mesh>(textures[prim.material], currentStartVertex, currentStartIndex, numIndices, minBounds, maxBounds, meshName, meshHash));
 		}
 	}
 

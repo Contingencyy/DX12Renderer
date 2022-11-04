@@ -8,6 +8,7 @@
 #include "Graphics/Renderer.h"
 #include "Graphics/DebugRenderer.h"
 #include "Resource/ResourceManager.h"
+#include "Graphics/Mesh.h"
 #include "Resource/Model.h"
 #include "Application.h"
 
@@ -63,8 +64,13 @@ Scene::Scene()
 	spotLight6->AddComponent<SpotLightComponent>(spotLightData, spotLight6->GetTransform().GetPosition());
 
 	// Mesh objects
-	auto& meshObject1 = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SponzaOld", glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f)));
-	meshObject1->AddComponent<MeshComponent>(Application::Get().GetResourceManager()->GetModel("SponzaOld")->GetMeshes());
+	auto& meshObject = m_SceneObjects.emplace_back(std::make_unique<SceneObject>("SponzaOld"));
+	auto& modelMeshes = Application::Get().GetResourceManager()->GetModel("SponzaOld")->GetMeshes();
+
+	for (auto& mesh : modelMeshes)
+	{
+		meshObject->AddComponent<MeshComponent>(mesh);
+	}
 }
 
 Scene::~Scene()

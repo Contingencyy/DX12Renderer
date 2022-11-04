@@ -1,5 +1,5 @@
 #pragma once
-#include <tinygltf/tiny_gltf.h>
+#include "Scene/BoundingVolume.h"
 
 class Buffer;
 class Texture;
@@ -13,19 +13,6 @@ enum MeshTextureType : uint32_t
 
 class Mesh
 {
-public:
-	struct BoundingBox
-	{
-		glm::vec3 Min;
-		glm::vec3 Max;
-	};
-
-	struct BoundingSphere
-	{
-		glm::vec3 Position;
-		float Radius;
-	};
-
 public:
 	Mesh(const std::vector<std::shared_ptr<Texture>>& textures, std::size_t startVertex, std::size_t startIndex, std::size_t numIndices,
 		const glm::vec3& minBounds, const glm::vec3& maxBounds, const std::string& name, std::size_t hash);
