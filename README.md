@@ -23,7 +23,7 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Mipmap generation
 - Material system
 - Full PBR
-- G-Buffering
+- G-Buffering/Deferred rendering
 - MSAA
 - Ambient occlusion
 - Particle system
