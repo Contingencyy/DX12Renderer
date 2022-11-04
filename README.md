@@ -5,15 +5,15 @@ A 3D rendering and rasterization project written in C++17, using DirectX 12 as t
 The project builds and runs on both Windows 10 and Windows 11.
 
 ## Features
-- GLTF model/scene loading
+- GLTF model loading
 - Bindless/bindful rendering
 - Forward rendering
 - Instancing
-- Directional light/spotlights/pointlights (ambient and diffuse lighting)
 - Geometric view frustum culling with points, spheres, and AABBs
 - Tone mapping (Uncharted2, Linear, Reinhard, Filmic, ACES filmic)
 - Render backend with platform agnostic renderers (debug and 3D renderer)
 - GPU validation
+- Directional light/spotlights/pointlights (ambient and diffuse lighting)
 - Shadow mapping (directional lights, spotlights, pointlights)
 
 ## WIP
