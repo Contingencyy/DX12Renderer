@@ -101,9 +101,9 @@ float CalculateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIn
 	return shadow;
 }
 
-float CalculatePointShadow(float3 lightToFrag, float angle, uint shadowMapIndex)
+float CalculatePointShadow(float3 lightToFrag, float angle, float farPlane, uint shadowMapIndex)
 {
-	float currentDepth = DirectionToDepthValue(lightToFrag, 3.402823466e+38F, 0.1f);
+	float currentDepth = DirectionToDepthValue(lightToFrag, farPlane, 0.1f);
 	float closestDepth = TextureCubeTable[shadowMapIndex].Sample(Samp2DBorder, lightToFrag).r;
 
 	float bias = GetSlopeBias(angle);
@@ -157,7 +157,7 @@ float3 CalculatePointLight(float4 fragPosWS, float3 fragNormalWS, float3 diffuse
 
 		float3 lightToFrag = (fragPosWS.xyz - pointLight.Position);
 		float angle = dot(fragNormalWS, ldirection);
-		shadow = CalculatePointShadow(lightToFrag, angle, pointLight.ShadowMapIndex);
+		shadow = CalculatePointShadow(lightToFrag, angle, pointLight.Range, pointLight.ShadowMapIndex);
 
 		float diff = max(angle, 0.0f);
 		diffuse = pointLight.Diffuse * diff * diffuseColor;

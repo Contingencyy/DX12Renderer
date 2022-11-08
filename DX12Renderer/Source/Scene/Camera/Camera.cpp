@@ -36,8 +36,8 @@ Camera::Camera(const glm::mat4& view, float fov, float aspect, float near, float
 
 	m_ViewMatrix = view;
 	m_ProjectionMatrix = glm::perspectiveLH_ZO(glm::radians(m_FOV), m_AspectRatio, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
-	m_ProjectionMatrix[2][2] = 0.0f;
-	m_ProjectionMatrix[3][2] = m_ViewFrustum.GetFar();
+	/*m_ProjectionMatrix[2][2] = 0.0f;
+	m_ProjectionMatrix[3][2] = m_ViewFrustum.GetFar();*/
 
 	m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 
