@@ -19,11 +19,11 @@ public:
 		{
 			uint32_t x = 1280;
 			uint32_t y = 720;
-		} Resolution;
+		};
 
+		Resolution RenderResolution;
+		Resolution ShadowMapResolution = { 2048, 2048 };
 		bool VSync = true;
-
-		uint32_t ShadowMapSize = 2048;
 
 		uint32_t MaxInstances = 1000;
 		uint32_t MaxMeshes = 1000;

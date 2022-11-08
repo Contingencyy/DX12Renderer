@@ -66,25 +66,6 @@ float4 main(PixelShaderInput IN) : SV_TARGET
 	return float4(finalColor, diffuseColor.w);
 }
 
-float CalculateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIndex)
-{
-	float3 projectedCoords = fragPosLS.xyz / fragPosLS.w;
-	float currentDepth = projectedCoords.z;
-	projectedCoords = projectedCoords * 0.5f;
-	projectedCoords.xy += 0.5f;
-
-	// Invert Y for D3D style screen coordinates
-	projectedCoords.y = 1.0f - projectedCoords.y;
-
-	float bias = max(0.00005f * (1.0f - angle), 0.000005f);
-	float shadow = 0.0f;
-
-	float closestDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DBorder, projectedCoords.xy).r;
-	shadow = currentDepth + bias < closestDepth ? 1.0f : 0.0f;
-
-	return shadow;
-}
-
 float DirectionToDepthValue(float3 direction, float near, float far)
 {
 	float3 absDir = abs(direction);
@@ -96,12 +77,36 @@ float DirectionToDepthValue(float3 direction, float near, float far)
 	return (normZComp + 1.0f) * 0.5f;
 }
 
+float GetSlopeBias(float angle)
+{
+	return clamp(0.0000025f * tan(acos(angle)), 0.0f, 0.000005f);
+}
+
+float CalculateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIndex)
+{
+	float3 projectedCoords = fragPosLS.xyz / fragPosLS.w;
+	float currentDepth = projectedCoords.z;
+	projectedCoords = projectedCoords * 0.5f;
+	projectedCoords.xy += 0.5f;
+
+	// Invert Y for D3D style screen coordinates
+	projectedCoords.y = 1.0f - projectedCoords.y;
+
+	float bias = GetSlopeBias(angle);
+	float shadow = 0.0f;
+
+	float closestDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DBorder, projectedCoords.xy).r;
+	shadow = currentDepth + bias < closestDepth ? 1.0f : 0.0f;
+
+	return shadow;
+}
+
 float CalculatePointShadow(float3 lightToFrag, float angle, uint shadowMapIndex)
 {
 	float currentDepth = DirectionToDepthValue(lightToFrag, 3.402823466e+38F, 0.1f);
 	float closestDepth = TextureCubeTable[shadowMapIndex].Sample(Samp2DBorder, lightToFrag).r;
 
-	float bias = max(0.00005f * (1.0f - angle), 0.000005f);
+	float bias = GetSlopeBias(angle);
 	float shadow = currentDepth + bias < closestDepth ? 1.0f : 0.0f;
 
 	return shadow;

@@ -151,9 +151,9 @@ void DebugRenderer::MakeRenderPasses()
         desc.VertexShaderPath = "Resources/Shaders/DebugLine_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/DebugLine_PS.hlsl";
         desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-            renderSettings.Resolution.x, renderSettings.Resolution.y);
+            renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            renderSettings.Resolution.x, renderSettings.Resolution.y);
+            renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
         desc.DepthEnabled = true;
         desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;

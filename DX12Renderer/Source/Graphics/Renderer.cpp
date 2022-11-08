@@ -148,8 +148,8 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 {
     RenderBackend::Initialize(hWnd, width, height);
 
-    s_Data.RenderSettings.Resolution.x = width;
-    s_Data.RenderSettings.Resolution.y = height;
+    s_Data.RenderSettings.RenderResolution.x = width;
+    s_Data.RenderSettings.RenderResolution.y = height;
 
     MakeRenderPasses();
     MakeBuffers();
@@ -189,7 +189,7 @@ void Renderer::Render()
 
     auto& descriptorHeap = RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-    CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.Resolution.x), static_cast<float>(s_Data.RenderSettings.Resolution.y), 0.0f, 1.0f);
+    CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.RenderResolution.x), static_cast<float>(s_Data.RenderSettings.RenderResolution.y), 0.0f, 1.0f);
     CD3DX12_RECT scissorRect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
 
     {
@@ -197,7 +197,8 @@ void Renderer::Render()
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
 
-        CD3DX12_VIEWPORT shadowmapViewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.ShadowMapSize), static_cast<float>(s_Data.RenderSettings.ShadowMapSize), 0.0f, 1.0f);
+        CD3DX12_VIEWPORT shadowmapViewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.ShadowMapResolution.x),
+            static_cast<float>(s_Data.RenderSettings.ShadowMapResolution.y), 0.0f, 1.0f);
         commandList->SetViewports(1, &shadowmapViewport);
         commandList->SetScissorRects(1, &scissorRect);
 
@@ -367,9 +368,9 @@ void Renderer::Render()
 void Renderer::OnImGuiRender()
 {
     ImGui::Text("Renderer");
-    ImGui::Text("Resolution: %ux%u", s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
+    ImGui::Text("Render resolution: %ux%u", s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
     ImGui::Text("VSync: %s", s_Data.RenderSettings.VSync ? "On" : "Off");
-    ImGui::Text("Shadow map resolution: %u", s_Data.RenderSettings.ShadowMapSize);
+    ImGui::Text("Shadow map resolution: %ux%u", s_Data.RenderSettings.ShadowMapResolution, s_Data.RenderSettings.ShadowMapResolution);
     ImGui::Text("Max model instances: %u", s_Data.RenderSettings.MaxInstances);
     ImGui::Text("Max instances per draw: %u", s_Data.RenderSettings.MaxMeshes);
     ImGui::Text("Max directional lights: %u", s_Data.RenderSettings.MaxDirectionalLights);
@@ -475,15 +476,15 @@ void Renderer::Submit(const SpotLightData& spotLightData, const Camera& lightCam
 
 void Renderer::Resize(uint32_t width, uint32_t height)
 {
-    if (s_Data.RenderSettings.Resolution.x != width || s_Data.RenderSettings.Resolution.y != height)
+    if (s_Data.RenderSettings.RenderResolution.x != width || s_Data.RenderSettings.RenderResolution.y != height)
     {
-        s_Data.RenderSettings.Resolution.x = std::max(1u, width);
-        s_Data.RenderSettings.Resolution.y = std::max(1u, height);
+        s_Data.RenderSettings.RenderResolution.x = std::max(1u, width);
+        s_Data.RenderSettings.RenderResolution.y = std::max(1u, height);
 
         RenderBackend::Resize(width, height);
 
         for (auto& renderPass : s_Data.RenderPasses)
-            renderPass->Resize(s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
+            renderPass->Resize(s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
     }
 }
 
@@ -553,9 +554,9 @@ void Renderer::MakeRenderPasses()
         desc.VertexShaderPath = "Resources/Shaders/Lighting_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/Lighting_PS.hlsl";
         desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
-            s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
+            s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
+            s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
         desc.DepthEnabled = true;
         desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -592,9 +593,9 @@ void Renderer::MakeRenderPasses()
         desc.VertexShaderPath = "Resources/Shaders/ToneMapping_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/ToneMapping_PS.hlsl";
         desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-            s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
+            s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            s_Data.RenderSettings.Resolution.x, s_Data.RenderSettings.Resolution.y);
+            s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
         desc.DepthEnabled = false;
         desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
