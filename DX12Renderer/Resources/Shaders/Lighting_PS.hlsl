@@ -77,11 +77,6 @@ float DirectionToDepthValue(float3 direction, float near, float far)
 	return (normZComp + 1.0f) * 0.5f;
 }
 
-float GetSlopeBias(float angle)
-{
-	return clamp(0.0000025f * tan(acos(angle)), 0.0f, 0.000005f);
-}
-
 #define PCF_SAMPLE_RANGE 2
 
 float CalculateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIndex)
@@ -101,9 +96,6 @@ float CalculateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIn
 	}
 	else
 	{
-		float bias = GetSlopeBias(angle);
-		float currentDepthBiased = currentDepth + bias;
-
 		// Sample from -PCF_SAMPLE_RANGE to +PCF_SAMPLE_RANGE texels with a bilinear filter to obtain a multisampled and bilinearly filtered shadow
 		[unroll]
 		for (int x = -PCF_SAMPLE_RANGE; x <= PCF_SAMPLE_RANGE; ++x)
@@ -111,7 +103,7 @@ float CalculateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIn
 			[unroll]
 			for (int y = -PCF_SAMPLE_RANGE; y <= PCF_SAMPLE_RANGE; ++y)
 			{
-				shadow += Texture2DTable[shadowMapIndex].SampleCmpLevelZero(SampPCF, projectedCoords.xy, currentDepthBiased, int2(x, y));
+				shadow += Texture2DTable[shadowMapIndex].SampleCmpLevelZero(SampPCF, projectedCoords.xy, currentDepth, int2(x, y));
 			}
 		}
 		shadow /= (PCF_SAMPLE_RANGE * 2 + 1) * (PCF_SAMPLE_RANGE * 2 + 1);
@@ -131,9 +123,6 @@ float CalculatePointShadow(float3 lightToFrag, float angle, float farPlane, uint
 	}
 	else
 	{
-		float bias = GetSlopeBias(angle);
-		float currentDepthBiased = currentDepth + bias;
-
 		float2 textureSize;
 		TextureCubeTable[shadowMapIndex].GetDimensions(textureSize.x, textureSize.y);
 		float texelSize = 1.0f / textureSize.x;
@@ -148,7 +137,7 @@ float CalculatePointShadow(float3 lightToFrag, float angle, float farPlane, uint
 			{
 				float3 uvwOffset = (float3(x, y, 0.0f) * length(lightToFrag)) * texelSize;
 				float3 uvwSample = lightToFrag.xyz + uvwOffset;
-				shadow += TextureCubeTable[shadowMapIndex].SampleCmpLevelZero(SampPCF, uvwSample.xyz, currentDepthBiased);
+				shadow += TextureCubeTable[shadowMapIndex].SampleCmpLevelZero(SampPCF, uvwSample.xyz, currentDepth);
 			}
 		}
 		shadow /= (PCF_SAMPLE_RANGE * 2 + 1) * (PCF_SAMPLE_RANGE * 2 + 1);

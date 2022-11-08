@@ -529,6 +529,9 @@ void Renderer::MakeRenderPasses()
             0, 0);
         desc.DepthEnabled = true;
         desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_GREATER;
+        desc.DepthBias = -50;
+        desc.SlopeScaledDepthBias = -5.0f;
+        desc.DepthBiasClamp = 1.0f;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 

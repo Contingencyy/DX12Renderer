@@ -15,6 +15,9 @@ struct RenderPassDesc
 	
 	bool DepthEnabled = true;
 	D3D12_COMPARISON_FUNC DepthComparisonFunc = D3D12_COMPARISON_FUNC_GREATER;
+	int DepthBias = 0;
+	float SlopeScaledDepthBias = 0.0f;
+	float DepthBiasClamp = 1.0f;
 
 	D3D12_PRIMITIVE_TOPOLOGY Topology = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	D3D12_PRIMITIVE_TOPOLOGY_TYPE TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;

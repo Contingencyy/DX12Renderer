@@ -50,6 +50,9 @@ void PipelineState::Create(const std::string& name, const RenderPassDesc& render
 		psoDesc.DSVFormat = TextureFormatToDXGIFormat(renderPassDesc.DepthAttachmentDesc.Format);
 		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 		psoDesc.DepthStencilState.DepthFunc = renderPassDesc.DepthComparisonFunc;
+		psoDesc.RasterizerState.DepthBias = renderPassDesc.DepthBias;
+		psoDesc.RasterizerState.SlopeScaledDepthBias = renderPassDesc.SlopeScaledDepthBias;
+		psoDesc.RasterizerState.DepthBiasClamp = renderPassDesc.DepthBiasClamp;
 	}
 
 	psoDesc.DepthStencilState.StencilEnable = FALSE;
