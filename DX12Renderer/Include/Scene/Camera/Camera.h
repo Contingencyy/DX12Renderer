@@ -8,9 +8,9 @@ public:
 	Camera() = default;
 	// Constructs a perspective camera with a normal near and far plane and normal z
 	Camera(const glm::vec3& pos, float fov, float width, float height, float near, float far);
-	// Constructs a perspective camera with a reverse-z projection and an infinite far plane
+	// Constructs a perspective camera with a reverse-z projection
 	Camera(const glm::mat4& view, float fov, float aspect, float near, float far);
-	// Constructs an orthographic camera with a reverse-z projection and an infinite far plane
+	// Constructs an orthographic camera with a reverse-z projection
 	Camera(const glm::mat4& view, float left, float right, float bottom, float top, float near, float far);
 	~Camera();
 

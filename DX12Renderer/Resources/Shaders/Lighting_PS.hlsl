@@ -33,7 +33,7 @@ ConstantBuffer<SpotLightBuffer> SpotLightCB : register(b3);
 Texture2D Texture2DTable[] : register(t0, space0);
 TextureCube TextureCubeTable[] : register(t0, space1);
 SamplerState Samp2DWrap : register(s0, space0);
-SamplerState Samp2DBorder : register(s0, space1);
+SamplerComparisonState SampPCF : register(s0, space1);
 
 float3 CalculateDirectionalLight(float4 fragPosWS, float3 fragNormalWS, float3 diffuseColor, DirectionalLight dirLight);
 float3 CalculatePointLight(float4 fragPosWS, float3 fragNormalWS, float3 diffuseColor, PointLight pointLight);
@@ -82,6 +82,8 @@ float GetSlopeBias(float angle)
 	return clamp(0.0000025f * tan(acos(angle)), 0.0f, 0.000005f);
 }
 
+#define PCF_SAMPLE_RANGE 2
+
 float CalculateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIndex)
 {
 	float3 projectedCoords = fragPosLS.xyz / fragPosLS.w;
@@ -91,12 +93,29 @@ float CalculateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIn
 
 	// Invert Y for D3D style screen coordinates
 	projectedCoords.y = 1.0f - projectedCoords.y;
-
-	float bias = GetSlopeBias(angle);
 	float shadow = 0.0f;
 
-	float closestDepth = Texture2DTable[shadowMapIndex].Sample(Samp2DBorder, projectedCoords.xy).r;
-	shadow = currentDepth + bias < closestDepth ? 1.0f : 0.0f;
+	if (projectedCoords.z > 1.0f || projectedCoords.z < 0.0f)
+	{
+		shadow = 1.0f;
+	}
+	else
+	{
+		float bias = GetSlopeBias(angle);
+		float currentDepthBiased = currentDepth + bias;
+
+		// Sample from -PCF_SAMPLE_RANGE to +PCF_SAMPLE_RANGE texels with a bilinear filter to obtain a multisampled and bilinearly filtered shadow
+		[unroll]
+		for (int x = -PCF_SAMPLE_RANGE; x <= PCF_SAMPLE_RANGE; ++x)
+		{
+			[unroll]
+			for (int y = -PCF_SAMPLE_RANGE; y <= PCF_SAMPLE_RANGE; ++y)
+			{
+				shadow += Texture2DTable[shadowMapIndex].SampleCmpLevelZero(SampPCF, projectedCoords.xy, currentDepthBiased, int2(x, y));
+			}
+		}
+		shadow /= (PCF_SAMPLE_RANGE * 2 + 1) * (PCF_SAMPLE_RANGE * 2 + 1);
+	}
 
 	return shadow;
 }
@@ -104,10 +123,36 @@ float CalculateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIn
 float CalculatePointShadow(float3 lightToFrag, float angle, float farPlane, uint shadowMapIndex)
 {
 	float currentDepth = DirectionToDepthValue(lightToFrag, farPlane, 0.1f);
-	float closestDepth = TextureCubeTable[shadowMapIndex].Sample(Samp2DBorder, lightToFrag).r;
+	float shadow = 0.0f;
 
-	float bias = GetSlopeBias(angle);
-	float shadow = currentDepth + bias < closestDepth ? 1.0f : 0.0f;
+	if (currentDepth > 1.0f || currentDepth < 0.0f)
+	{
+		shadow = 1.0f;
+	}
+	else
+	{
+		float bias = GetSlopeBias(angle);
+		float currentDepthBiased = currentDepth + bias;
+
+		float2 textureSize;
+		TextureCubeTable[shadowMapIndex].GetDimensions(textureSize.x, textureSize.y);
+		float texelSize = 1.0f / textureSize.x;
+
+		// Sample from -PCF_SAMPLE_RANGE to +PCF_SAMPLE_RANGE texels with a bilinear filter to obtain a multisampled and bilinearly filtered shadow
+		// For cubemaps we need to calculate the offset of texels manually since cube maps do not support an offset parameter by default.
+		[unroll]
+		for (int x = -PCF_SAMPLE_RANGE; x <= PCF_SAMPLE_RANGE; ++x)
+		{
+			[unroll]
+			for (int y = -PCF_SAMPLE_RANGE; y <= PCF_SAMPLE_RANGE; ++y)
+			{
+				float3 uvwOffset = (float3(x, y, 0.0f) * length(lightToFrag)) * texelSize;
+				float3 uvwSample = lightToFrag.xyz + uvwOffset;
+				shadow += TextureCubeTable[shadowMapIndex].SampleCmpLevelZero(SampPCF, uvwSample.xyz, currentDepthBiased);
+			}
+		}
+		shadow /= (PCF_SAMPLE_RANGE * 2 + 1) * (PCF_SAMPLE_RANGE * 2 + 1);
+	}
 
 	return shadow;
 }
