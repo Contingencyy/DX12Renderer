@@ -256,7 +256,7 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Source\Graphics\Renderer.cpp" />
-    <ClCompile Include="Source\Resource\ResourceLoader.cpp" />
+    <ClCompile Include="Source\Resource\FileLoader.cpp" />
     <ClCompile Include="Source\Resource\ResourceManager.cpp" />
     <ClCompile Include="Source\Scene\Scene.cpp" />
     <ClCompile Include="Source\Scene\SceneObject.cpp" />
@@ -301,7 +301,7 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\Graphics\Texture.h" />
     <ClInclude Include="Include\GUI.h" />
     <ClInclude Include="Include\InputHandler.h" />
-    <ClInclude Include="Include\Resource\ResourceLoader.h" />
+    <ClInclude Include="Include\Resource\FileLoader.h" />
     <ClInclude Include="Include\Resource\ResourceManager.h" />
     <ClInclude Include="Include\Scene\Scene.h" />
     <ClInclude Include="Include\Scene\SceneObject.h" />

@@ -84,7 +84,7 @@
     <ClCompile Include="Source\Graphics\Shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Resource\ResourceLoader.cpp">
+    <ClCompile Include="Source\Resource\FileLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\Backend\SwapChain.cpp">
@@ -233,7 +233,7 @@
     <ClInclude Include="Include\Graphics\Shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Resource\ResourceLoader.h">
+    <ClInclude Include="Include\Resource\FileLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Util\StringHelper.h">

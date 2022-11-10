@@ -9,7 +9,8 @@ enum class BufferUsage : uint32_t
 	BUFFER_USAGE_READ = (1 << 2),
 	BUFFER_USAGE_WRITE = (1 << 3),
 	BUFFER_USAGE_CONSTANT = (1 << 4),
-	BUFFER_USAGE_UPLOAD = (1 << 5)
+	BUFFER_USAGE_UPLOAD = (1 << 5),
+	BUFFER_USAGE_READBACK = (1 << 6),
 };
 
 inline bool operator&(BufferUsage lhs, BufferUsage rhs)
@@ -47,7 +48,17 @@ public:
 	// Might be a good idea to have a larger upload heap on the command list to suballocate from for copying/staging.
 	void SetBufferData(const void* data, std::size_t byteSize = 0);
 	void SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::size_t byteOffset);
+
+	template<typename T>
+	T ReadBackBytes(std::size_t index) const
+	{
+		T data = { 0 };
+		memcpy(&data, reinterpret_cast<T*>(m_CPUPtr) + index, sizeof(T));
+		return data;
+	}
+
 	bool IsValid() const;
+	bool IsCPUAccessible() const;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle(DescriptorType type) const;
 	uint32_t GetDescriptorIndex(DescriptorType type) const;

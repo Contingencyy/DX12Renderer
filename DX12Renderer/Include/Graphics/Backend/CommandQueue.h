@@ -23,10 +23,12 @@ public:
 	void SetD3D12Fence(ComPtr<ID3D12Fence> d3d12Fence) { m_d3d12Fence = d3d12Fence; }
 
 	ComPtr<ID3D12CommandQueue> GetD3D12CommandQueue() const { return m_d3d12CommandQueue; }
+	uint64_t GetTimestampFrequency() const { return m_TimestampFrequency; }
 
 private:
 	ComPtr<ID3D12CommandQueue> m_d3d12CommandQueue;
 	D3D12_COMMAND_LIST_TYPE m_d3d12CommandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	uint64_t m_TimestampFrequency = 0;
 
 	std::shared_ptr<Device> m_Device;
 

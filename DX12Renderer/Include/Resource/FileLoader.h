@@ -12,7 +12,7 @@ struct ImageInfo
 	int ChannelsPerPixel;
 };
 
-class ResourceLoader
+class FileLoader
 {
 public:
 	static ImageInfo LoadImage(const std::string& filepath);

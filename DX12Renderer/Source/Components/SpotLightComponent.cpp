@@ -24,8 +24,8 @@ SpotLightComponent::SpotLightComponent(const SpotLightData& spotLightData, const
 	m_SpotLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorIndex(DescriptorType::SRV);
 
 	m_GUIData.Direction = m_SpotLightData.Direction;
-	m_GUIData.InnerConeAngle = m_SpotLightData.InnerConeAngle;
-	m_GUIData.OuterConeAngle = m_SpotLightData.OuterConeAngle;
+	m_GUIData.InnerConeAngle = glm::degrees(m_SpotLightData.InnerConeAngle);
+	m_GUIData.OuterConeAngle = glm::degrees(m_SpotLightData.OuterConeAngle);
 }
 
 SpotLightComponent::~SpotLightComponent()
@@ -61,9 +61,9 @@ void SpotLightComponent::OnImGuiRender()
 		ImGui::Text("Range (from attenuation): %.3f", m_SpotLightData.Range);
 		if (ImGui::DragFloat3("Attenuation", glm::value_ptr(m_SpotLightData.Attenuation), 0.00001f, 0.0f, 100.0f, "%.7f"))
 			m_SpotLightData.Range = MathHelper::SolveQuadraticFunc(m_SpotLightData.Attenuation.z, m_SpotLightData.Attenuation.y, m_SpotLightData.Attenuation.x - LIGHT_RANGE_EPSILON);
-		if (ImGui::DragFloat("Inner cone angle", &m_GUIData.InnerConeAngle, 0.001f, 180.0f))
+		if (ImGui::DragFloat("Inner cone angle", &m_GUIData.InnerConeAngle, 0.1f, 180.0f))
 			m_SpotLightData.InnerConeAngle = glm::radians(m_GUIData.InnerConeAngle);
-		if (ImGui::DragFloat("Outer cone angle", &m_GUIData.OuterConeAngle, 0.001f, 180.0f))
+		if (ImGui::DragFloat("Outer cone angle", &m_GUIData.OuterConeAngle, 0.1f, 180.0f))
 			m_SpotLightData.OuterConeAngle = glm::radians(m_GUIData.OuterConeAngle);
 		ImGui::DragFloat3("Ambient", glm::value_ptr(m_SpotLightData.Ambient), 0.01f, 1000.0f);
 		ImGui::DragFloat3("Diffuse", glm::value_ptr(m_SpotLightData.Diffuse), 0.01f, 1000.0f);

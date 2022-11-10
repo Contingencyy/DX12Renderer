@@ -104,6 +104,10 @@ void Camera::OnImGuiRender()
 	{
 		m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), m_Width, m_Height, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
+
+		m_ViewFrustum.SetNearFarTangent(m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar(), (float)glm::tan(glm::pi<float>() / 180.0f * m_FOV * 0.5f));
+		m_ViewFrustum.UpdateBounds(m_AspectRatio);
+		m_ViewFrustum.UpdatePlanes(m_Transform);
 	}
 	ImGui::DragFloat("Exposure", &m_Exposure, 0.01f, 0.01f, 10.0f);
 	ImGui::DragFloat("Gamma", &m_Gamma, 0.01f, 0.01f, 10.0f);

@@ -1,6 +1,7 @@
 #pragma once
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
+#include "Graphics/Backend/RenderBackend.h"
 
 class DescriptorHeap;
 class DynamicDescriptorHeap;
@@ -12,6 +13,8 @@ class CommandList
 public:
 	CommandList(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE type);
 	~CommandList();
+
+	void SetBackBufferAssociation(uint32_t backBufferIndex);
 
 	void ClearRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE rtv, const float* clearColor);
 	void ClearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE dsv, float depth = 1.0f);
@@ -29,6 +32,10 @@ public:
 
 	void SetRootConstantBufferView(uint32_t rootParameterIndex, Buffer& buffer, D3D12_RESOURCE_STATES stateAfter);
 	void SetRootShaderResourceView(uint32_t rootParameterIndex, Texture& texture, D3D12_RESOURCE_STATES stateAfter);
+
+	void BeginTimestampQuery(const std::string& name);
+	void EndTimestampQuery(const std::string& name);
+	void ResolveTimestampQueries();
 	
 	void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex = 0, uint32_t startInstance = 0);
 	void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0);
@@ -56,11 +63,14 @@ private:
 	D3D12_COMMAND_LIST_TYPE m_d3d12CommandListType;
 	ComPtr<ID3D12CommandAllocator> m_d3d12CommandAllocator;
 
-	std::shared_ptr<Device> m_Device;
+	uint32_t m_BackBufferIndex = 0;
 
+	std::shared_ptr<Device> m_Device;
 	std::vector<ComPtr<ID3D12Object>> m_TrackedObjects;
 
 	ID3D12RootSignature* m_RootSignature;
 	ID3D12DescriptorHeap* DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+
+	std::unordered_map<std::string, TimestampQuery> m_TimestampQueries;
 
 };

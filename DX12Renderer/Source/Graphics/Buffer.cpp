@@ -28,14 +28,14 @@ Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc)
 
 Buffer::~Buffer()
 {
-	if (m_BufferDesc.Usage == BufferUsage::BUFFER_USAGE_CONSTANT || m_BufferDesc.Usage == BufferUsage::BUFFER_USAGE_UPLOAD)
+	if (IsCPUAccessible())
 		m_d3d12Resource->Unmap(0, nullptr);
 }
 
 void Buffer::SetBufferData(const void* data, std::size_t byteSize)
 {
 	std::size_t dataByteSize = byteSize == 0 ? m_ByteSize : byteSize;
-	if (m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_CONSTANT && m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_UPLOAD)
+	if (!IsCPUAccessible())
 	{
 		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, dataByteSize));
 		RenderBackend::CopyBuffer(uploadBuffer, *this, data);
@@ -48,7 +48,7 @@ void Buffer::SetBufferData(const void* data, std::size_t byteSize)
 
 void Buffer::SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::size_t byteOffset)
 {
-	if (m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_CONSTANT && m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_UPLOAD)
+	if (!IsCPUAccessible())
 	{
 		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, byteSize));
 		RenderBackend::CopyBufferRegion(uploadBuffer, 0, *this, byteOffset, byteSize);
@@ -62,6 +62,19 @@ void Buffer::SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::
 bool Buffer::IsValid() const
 {
 	return m_BufferDesc.Usage != BufferUsage::BUFFER_USAGE_NONE;
+}
+
+bool Buffer::IsCPUAccessible() const
+{
+	switch (m_BufferDesc.Usage)
+	{
+	case BufferUsage::BUFFER_USAGE_CONSTANT:
+	case BufferUsage::BUFFER_USAGE_UPLOAD:
+	case BufferUsage::BUFFER_USAGE_READBACK:
+		return true;
+	default:
+		return false;
+	}
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE Buffer::GetDescriptorHandle(DescriptorType type) const
@@ -99,11 +112,16 @@ void Buffer::Create()
 		heapType = D3D12_HEAP_TYPE_UPLOAD;
 		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
 	}
+	else if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_READBACK)
+	{
+		heapType = D3D12_HEAP_TYPE_READBACK;
+		initialState = D3D12_RESOURCE_STATE_COPY_DEST;
+	}
 
 	CD3DX12_RESOURCE_DESC d3d12ResourceDesc = CD3DX12_RESOURCE_DESC::Buffer(m_ByteSize);
 	RenderBackend::GetDevice()->CreateBuffer(*this, heapType, d3d12ResourceDesc, initialState);
 
-	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT || m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_UPLOAD)
+	if (IsCPUAccessible())
 	{
 		m_d3d12Resource->Map(0, nullptr, &m_CPUPtr);
 	}

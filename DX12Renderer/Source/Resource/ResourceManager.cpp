@@ -1,6 +1,6 @@
 #include "Pch.h"
 #include "Resource/ResourceManager.h"
-#include "Resource/ResourceLoader.h"
+#include "Resource/FileLoader.h"
 #include "Resource/Model.h"
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
@@ -19,7 +19,7 @@ ResourceManager::~ResourceManager()
 
 void ResourceManager::LoadTexture(const std::string& filepath, const std::string& name)
 {
-	ImageInfo imageInfo = ResourceLoader::LoadImage(filepath);
+	ImageInfo imageInfo = FileLoader::LoadImage(filepath);
 
 	TextureDesc textureDesc = {};
 	textureDesc.Usage = TextureUsage::TEXTURE_USAGE_READ;
@@ -35,7 +35,7 @@ void ResourceManager::LoadTexture(const std::string& filepath, const std::string
 
 void ResourceManager::LoadModel(const std::string& filepath, const std::string& name)
 {
-	const tinygltf::Model& tinygltf = ResourceLoader::LoadGLTFModel(filepath);
+	const tinygltf::Model& tinygltf = FileLoader::LoadGLTFModel(filepath);
 
 	// Create all textures
 	std::vector<std::vector<std::shared_ptr<Texture>>> textures;

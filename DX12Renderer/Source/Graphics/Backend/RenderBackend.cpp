@@ -5,11 +5,18 @@
 #include "Graphics/Backend/DescriptorHeap.h"
 #include "Graphics/Backend/CommandQueue.h"
 
+#include <imgui/imgui.h>
+
 struct InternalRenderBackendData
 {
 	std::shared_ptr<Device> Device;
 	std::unique_ptr<SwapChain> SwapChain;
 	std::unique_ptr<DescriptorHeap> DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+
+	ComPtr<ID3D12QueryHeap> D3D12QueryHeapTimestamp;
+	std::unique_ptr<Buffer> QueryResultBuffers[3];
+	uint32_t MaxQueriesPerFrame = 32;
+	uint32_t NextQueryIndex[3] = { 0, 0, 0 };
 
 	std::shared_ptr<CommandQueue> CommandQueueDirect;
 	std::unique_ptr<CommandQueue> CommandQueueCompute;
@@ -17,6 +24,9 @@ struct InternalRenderBackendData
 
 	std::thread ProcessInFlightCommandListsThread;
 	std::atomic_bool ProcessInFlightCommandLists;
+
+	std::unordered_map<std::string, TimestampQuery> TimestampQueries[3];
+	uint32_t CurrentBackBufferIndex = 0;
 };
 
 static InternalRenderBackendData s_Data;
@@ -24,7 +34,7 @@ static InternalRenderBackendData s_Data;
 void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 {
 	s_Data.Device = std::make_shared<Device>();
-	
+
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
 		s_Data.DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(s_Data.Device, static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
 
@@ -33,6 +43,18 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 	s_Data.CommandQueueCopy = std::make_unique<CommandQueue>(s_Data.Device, D3D12_COMMAND_LIST_TYPE_COPY);
 
 	s_Data.SwapChain = std::make_unique<SwapChain>(hWnd, s_Data.CommandQueueDirect, width, height);
+
+	D3D12_QUERY_HEAP_DESC queryHeapDesc = {};
+	queryHeapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+	queryHeapDesc.Count = s_Data.MaxQueriesPerFrame * s_Data.SwapChain->GetBackBufferCount();
+	queryHeapDesc.NodeMask = 0;
+	DX_CALL(s_Data.Device->GetD3D12Device()->CreateQueryHeap(&queryHeapDesc, IID_PPV_ARGS(&s_Data.D3D12QueryHeapTimestamp)));
+
+	for (uint32_t i = 0; i < s_Data.SwapChain->GetBackBufferCount(); ++i)
+	{
+		s_Data.QueryResultBuffers[i] = std::make_unique<Buffer>("Query result buffer", BufferDesc(BufferUsage::BUFFER_USAGE_READBACK,
+			s_Data.MaxQueriesPerFrame, 8));
+	}
 
 	s_Data.ProcessInFlightCommandLists = true;
 	s_Data.ProcessInFlightCommandListsThread = std::thread([]() {
@@ -45,6 +67,29 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 			std::this_thread::yield();
 		}
 		});
+}
+
+void RenderBackend::BeginFrame()
+{
+	s_Data.CurrentBackBufferIndex = s_Data.SwapChain->GetCurrentBackBufferIndex();
+	s_Data.TimestampQueries[s_Data.CurrentBackBufferIndex].clear();
+	s_Data.NextQueryIndex[s_Data.CurrentBackBufferIndex] = 0;
+}
+
+void RenderBackend::OnImGuiRender()
+{
+	ImGui::Text("DX12 render backend");
+	ImGui::Text("GPU timings");
+
+	for (auto& [name, timestampQuery] : s_Data.TimestampQueries[s_Data.CurrentBackBufferIndex])
+	{
+		timestampQuery.ReadFromBuffer(*s_Data.QueryResultBuffers[s_Data.CurrentBackBufferIndex]);
+		ImGui::Text((name + ": %f ms").c_str(), (timestampQuery.EndQueryTimestamp - timestampQuery.BeginQueryTimestamp) / (double)s_Data.CommandQueueDirect->GetTimestampFrequency() * 1000.0f);
+	}
+}
+
+void RenderBackend::EndFrame()
+{
 }
 
 void RenderBackend::Finalize()
@@ -79,6 +124,32 @@ void RenderBackend::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture
 	commandList->CopyTexture(intermediateBuffer, destTexture, textureData);
 	uint64_t fenceValue = s_Data.CommandQueueCopy->ExecuteCommandList(commandList);
 	s_Data.CommandQueueCopy->WaitForFenceValue(fenceValue);
+}
+
+ID3D12QueryHeap* RenderBackend::GetD3D12TimestampQueryHeap()
+{
+	return s_Data.D3D12QueryHeapTimestamp.Get();
+}
+
+const Buffer& RenderBackend::GetQueryResultBuffer(uint32_t backBufferIndex)
+{
+	return *s_Data.QueryResultBuffers[backBufferIndex];
+}
+
+void RenderBackend::TrackTimestampQueryResult(const std::string& name, const TimestampQuery& timestampQuery, uint32_t backBufferIndex)
+{
+	s_Data.TimestampQueries[backBufferIndex].emplace(name, timestampQuery);
+	ASSERT(s_Data.TimestampQueries[backBufferIndex].size() <= s_Data.MaxQueriesPerFrame / 2, "Exceeded the maximum amount of queries per frame");
+}
+
+uint32_t RenderBackend::GetMaxQueriesPerFrame()
+{
+	return s_Data.MaxQueriesPerFrame;
+}
+
+uint32_t RenderBackend::GetNextQueryIndex(uint32_t backBufferIndex)
+{
+	return s_Data.NextQueryIndex[backBufferIndex]++;
 }
 
 void RenderBackend::Resize(uint32_t width, uint32_t height)

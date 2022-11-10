@@ -1,5 +1,5 @@
 #include "Pch.h"
-#include "Resource/ResourceLoader.h"
+#include "Resource/FileLoader.h"
 
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_USE_CPP14
@@ -8,7 +8,7 @@
 #define STBI_MSC_SECURE_CRT
 #include <tinygltf/tiny_gltf.h>
 
-ImageInfo ResourceLoader::LoadImage(const std::string& filepath)
+ImageInfo FileLoader::LoadImage(const std::string& filepath)
 {
 	ImageInfo imageInfo = {};
 	imageInfo.Data = stbi_load(filepath.c_str(), &imageInfo.Width, &imageInfo.Height, &imageInfo.ChannelsPerPixel, STBI_rgb_alpha);
@@ -21,7 +21,7 @@ ImageInfo ResourceLoader::LoadImage(const std::string& filepath)
 	return imageInfo;
 }
 
-std::string ResourceLoader::LoadShader(const std::string& filepath)
+std::string FileLoader::LoadShader(const std::string& filepath)
 {
 	std::string shaderCode = "";
 	std::ifstream shaderFile(filepath);
@@ -43,7 +43,7 @@ std::string ResourceLoader::LoadShader(const std::string& filepath)
 	return shaderCode;
 }
 
-tinygltf::Model ResourceLoader::LoadGLTFModel(const std::string& filepath)
+tinygltf::Model FileLoader::LoadGLTFModel(const std::string& filepath)
 {
 	tinygltf::Model tinygltf;
 	tinygltf::TinyGLTF loader;

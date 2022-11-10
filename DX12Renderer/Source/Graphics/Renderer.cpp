@@ -15,6 +15,13 @@
 
 struct SceneData
 {
+    void Reset()
+    {
+        NumDirLights = 0;
+        NumPointLights = 0;
+        NumSpotLights = 0;
+    }
+
     glm::mat4 SceneCameraViewProjection = glm::identity<glm::mat4>();
     glm::vec3 Ambient = glm::vec3(0.0f);
 
@@ -30,17 +37,11 @@ struct RendererStatistics
         DrawCallCount = 0;
         TriangleCount = 0;
         MeshCount = 0;
-        DirectionalLightCount = 0;
-        PointLightCount = 0;
-        SpotLightCount = 0;
     }
 
     uint32_t DrawCallCount = 0;
     uint32_t TriangleCount = 0;
     uint32_t MeshCount = 0;
-    uint32_t DirectionalLightCount = 0;
-    uint32_t PointLightCount = 0;
-    uint32_t SpotLightCount = 0;
 };
 
 enum RenderPassType : uint32_t
@@ -140,6 +141,8 @@ struct InternalRendererData
     // Light cameras and light shadow maps
     std::array<Camera, 1 + 6 * 50 + 50> LightCameras;
     std::array<std::shared_ptr<Texture>, 101> LightShadowMaps;
+    
+    uint32_t CurrentBackBufferIndex = 0;
 };
 
 static InternalRendererData s_Data;
@@ -183,6 +186,10 @@ void Renderer::Render()
 {
     SCOPED_TIMER("Renderer::Render");
 
+    s_Data.RenderStatistics.MeshCount = s_Data.NumMeshes;
+    for (uint32_t i = 0; i < s_Data.NumMeshes; ++i)
+        s_Data.RenderStatistics.TriangleCount += s_Data.MeshDrawData[i].Mesh->GetNumIndices() / 3;
+
     PrepareInstanceBuffer();
     PrepareLightBuffers();
     PrepareShadowMaps();
@@ -195,6 +202,8 @@ void Renderer::Render()
     {
         /* Shadow mapping render pass */
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+        commandList->BeginTimestampQuery("Shadow mapping");
+
         commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
 
         CD3DX12_VIEWPORT shadowmapViewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.ShadowMapResolution.x),
@@ -226,8 +235,8 @@ void Renderer::Render()
             shadowMapIndex++;
         }
 
-        cameraIndex = s_Data.RenderSettings.MaxDirectionalLights + (s_Data.RenderSettings.MaxPointLights * 6);
-        shadowMapIndex = s_Data.RenderSettings.MaxDirectionalLights + s_Data.RenderSettings.MaxPointLights;
+        cameraIndex = static_cast<std::size_t>(s_Data.RenderSettings.MaxDirectionalLights + (s_Data.RenderSettings.MaxPointLights * 6));
+        shadowMapIndex = static_cast<std::size_t>(s_Data.RenderSettings.MaxDirectionalLights + s_Data.RenderSettings.MaxPointLights);
 
         for (uint32_t i = 0; i < s_Data.SceneData.NumSpotLights; ++i)
         {
@@ -237,12 +246,14 @@ void Renderer::Render()
             shadowMapIndex++;
         }
 
+        commandList->EndTimestampQuery("Shadow mapping");
         RenderBackend::ExecuteCommandList(commandList);
     }
 
     {
         /* Lighting render pass */
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+        commandList->BeginTimestampQuery("Lighting");
 
         auto& lightingColorTarget = s_Data.RenderPasses[RenderPassType::LIGHTING]->GetColorAttachment();
         auto& lightingDepthBuffer = s_Data.RenderPasses[RenderPassType::LIGHTING]->GetDepthAttachment();
@@ -317,19 +328,19 @@ void Renderer::Render()
             startInstance += static_cast<uint32_t>(meshInstanceData.size());*/
             commandList->DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), 1,
                 static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
-            startInstance++;
 
+            startInstance++;
             s_Data.RenderStatistics.DrawCallCount++;
-            s_Data.RenderStatistics.TriangleCount += (static_cast<uint32_t>(mesh->GetNumIndices()) / 3);// * static_cast<uint32_t>(meshInstanceData.size());
-            s_Data.RenderStatistics.MeshCount += 1;//static_cast<uint32_t>(meshInstanceData.size());
         }
 
+        commandList->EndTimestampQuery("Lighting");
         RenderBackend::ExecuteCommandList(commandList);
     }
 
     {
         /* Tone mapping render pass */
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+        commandList->BeginTimestampQuery("Tonemapping");
 
         auto& tmColorTarget = s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
         auto& tmDepthBuffer = s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetDepthAttachment();
@@ -361,6 +372,7 @@ void Renderer::Render()
 
         commandList->DrawIndexed(static_cast<uint32_t>(s_Data.TonemapIndexBuffer->GetBufferDesc().NumElements), 1);
 
+        commandList->EndTimestampQuery("Tonemapping");
         RenderBackend::ExecuteCommandList(commandList);
     }
 }
@@ -371,20 +383,24 @@ void Renderer::OnImGuiRender()
     ImGui::Text("Render resolution: %ux%u", s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
     ImGui::Text("VSync: %s", s_Data.RenderSettings.VSync ? "On" : "Off");
     ImGui::Text("Shadow map resolution: %ux%u", s_Data.RenderSettings.ShadowMapResolution, s_Data.RenderSettings.ShadowMapResolution);
-    ImGui::Text("Max model instances: %u", s_Data.RenderSettings.MaxInstances);
-    ImGui::Text("Max instances per draw: %u", s_Data.RenderSettings.MaxMeshes);
-    ImGui::Text("Max directional lights: %u", s_Data.RenderSettings.MaxDirectionalLights);
-    ImGui::Text("Max point lights: %u", s_Data.RenderSettings.MaxPointLights);
-    ImGui::Text("Max spot lights: %u", s_Data.RenderSettings.MaxSpotLights);
+
+    if (ImGui::CollapsingHeader("Max settings"))
+    {
+        ImGui::Text("Max model instances: %u", s_Data.RenderSettings.MaxInstances);
+        ImGui::Text("Max instances per draw: %u", s_Data.RenderSettings.MaxMeshes);
+        ImGui::Text("Max directional lights: %u", s_Data.RenderSettings.MaxDirectionalLights);
+        ImGui::Text("Max point lights: %u", s_Data.RenderSettings.MaxPointLights);
+        ImGui::Text("Max spot lights: %u", s_Data.RenderSettings.MaxSpotLights);
+    }
 
     if (ImGui::CollapsingHeader("Stats"))
     {
         ImGui::Text("Draw calls: %u", s_Data.RenderStatistics.DrawCallCount);
         ImGui::Text("Triangle count: %u", s_Data.RenderStatistics.TriangleCount);
         ImGui::Text("Mesh count: %u", s_Data.RenderStatistics.MeshCount);
-        ImGui::Text("Directional light count: %u", s_Data.RenderStatistics.DirectionalLightCount);
-        ImGui::Text("Point light count: %u", s_Data.RenderStatistics.PointLightCount);
-        ImGui::Text("Spot light count: %u", s_Data.RenderStatistics.SpotLightCount);
+        ImGui::Text("Directional light count: %u", s_Data.SceneData.NumDirLights);
+        ImGui::Text("Point light count: %u", s_Data.SceneData.NumPointLights);
+        ImGui::Text("Spot light count: %u", s_Data.SceneData.NumSpotLights);
     }
 
     if (ImGui::CollapsingHeader("Tonemapping"))
@@ -416,12 +432,10 @@ void Renderer::EndScene()
     RenderBackend::GetSwapChain().ResolveToBackBuffer(s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
     RenderBackend::GetSwapChain().SwapBuffers(s_Data.RenderSettings.VSync);
 
+    s_Data.CurrentBackBufferIndex = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex();
+
     s_Data.NumMeshes = 0;
-
-    s_Data.SceneData.NumDirLights = 0;
-    s_Data.SceneData.NumPointLights = 0;
-    s_Data.SceneData.NumSpotLights = 0;
-
+    s_Data.SceneData.Reset();
     s_Data.RenderStatistics.Reset();
 }
 
@@ -664,15 +678,12 @@ void Renderer::PrepareLightBuffers()
     // Set constant buffer data for directional lights/pointlights/spotlights
     if (s_Data.SceneData.NumDirLights > 0)
         s_Data.DirectionalLightConstantBuffer->SetBufferData(&s_Data.DirectionalLightDrawData[0], s_Data.DirectionalLightDrawData.size() * sizeof(DirectionalLightData));
-    s_Data.RenderStatistics.DirectionalLightCount += s_Data.SceneData.NumDirLights;
 
     if (s_Data.SceneData.NumPointLights > 0)
         s_Data.PointLightConstantBuffer->SetBufferData(&s_Data.PointLightDrawData[0], s_Data.PointLightDrawData.size() * sizeof(PointLightData));
-    s_Data.RenderStatistics.PointLightCount += s_Data.SceneData.NumPointLights;
 
     if (s_Data.SceneData.NumSpotLights > 0)
         s_Data.SpotLightConstantBuffer->SetBufferData(&s_Data.SpotLightDrawData[0], s_Data.SpotLightDrawData.size() * sizeof(SpotLightData));
-    s_Data.RenderStatistics.SpotLightCount += s_Data.SceneData.NumSpotLights;
 }
 
 void Renderer::PrepareShadowMaps()

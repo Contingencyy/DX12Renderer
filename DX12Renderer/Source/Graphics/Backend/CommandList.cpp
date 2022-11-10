@@ -22,6 +22,11 @@ CommandList::~CommandList()
 {
 }
 
+void CommandList::SetBackBufferAssociation(uint32_t backBufferIndex)
+{
+	m_BackBufferIndex = backBufferIndex;
+}
+
 void CommandList::ClearRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE rtv, const float* clearColor)
 {
 	m_d3d12CommandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
@@ -128,6 +133,30 @@ void CommandList::SetRootShaderResourceView(uint32_t rootParameterIndex, Texture
 
 	m_d3d12CommandList->SetGraphicsRootShaderResourceView(rootParameterIndex, texture.GetD3D12Resource()->GetGPUVirtualAddress());
 	TrackObject(texture.GetD3D12Resource());
+}
+
+void CommandList::BeginTimestampQuery(const std::string& name)
+{
+	uint32_t queryIndex = RenderBackend::GetNextQueryIndex(m_BackBufferIndex);
+	m_d3d12CommandList->EndQuery(RenderBackend::GetD3D12TimestampQueryHeap(), D3D12_QUERY_TYPE_TIMESTAMP, queryIndex);
+
+	auto query = m_TimestampQueries.find(name);
+	if (query == m_TimestampQueries.end())
+		query = m_TimestampQueries.insert(std::pair<std::string, TimestampQuery>(name, TimestampQuery())).first;
+
+	query->second.StartIndex = queryIndex;
+	query->second.NumQueries++;
+}
+
+void CommandList::EndTimestampQuery(const std::string& name)
+{
+	uint32_t queryIndex = RenderBackend::GetNextQueryIndex(m_BackBufferIndex);
+	m_d3d12CommandList->EndQuery(RenderBackend::GetD3D12TimestampQueryHeap(), D3D12_QUERY_TYPE_TIMESTAMP, queryIndex);
+
+	auto query = m_TimestampQueries.find(name);
+	ASSERT(query != m_TimestampQueries.end(), "A timestamp query was ended that has not been started");
+
+	query->second.NumQueries++;
 }
 
 void CommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance)
@@ -239,6 +268,7 @@ void CommandList::ReleaseTrackedObjects()
 
 void CommandList::Close()
 {
+	ResolveTimestampQueries();
 	m_d3d12CommandList->Close();
 }
 
@@ -248,11 +278,23 @@ void CommandList::Reset()
 	DX_CALL(m_d3d12CommandList->Reset(m_d3d12CommandAllocator.Get(), nullptr));
 
 	ReleaseTrackedObjects();
-
 	m_RootSignature = nullptr;
 
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
 	{
 		DescriptorHeaps[i] = nullptr;
 	}
+}
+
+void CommandList::ResolveTimestampQueries()
+{
+	for (auto& [name, query] : m_TimestampQueries)
+	{
+		std::size_t byteOffset = static_cast<std::size_t>(query.StartIndex * 8);
+		m_d3d12CommandList->ResolveQueryData(RenderBackend::GetD3D12TimestampQueryHeap(), D3D12_QUERY_TYPE_TIMESTAMP,
+			query.StartIndex, query.NumQueries, RenderBackend::GetQueryResultBuffer(m_BackBufferIndex).GetD3D12Resource().Get(), MathHelper::AlignUp(byteOffset, 8));
+		RenderBackend::TrackTimestampQueryResult(name, query, m_BackBufferIndex);
+	}
+
+	m_TimestampQueries.clear();
 }

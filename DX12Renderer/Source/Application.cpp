@@ -3,6 +3,7 @@
 #include "Window.h"
 #include "Graphics/Renderer.h"
 #include "Graphics/DebugRenderer.h"
+#include "Graphics/Backend/RenderBackend.h"
 #include "GUI.h"
 #include "Scene/Scene.h"
 #include "InputHandler.h"
@@ -135,6 +136,8 @@ void Application::Render()
 {
 	SCOPED_TIMER("Application::Render");
 
+	RenderBackend::BeginFrame();
+
 	const Camera& sceneCamera = m_Scene->GetActiveCamera();
 	Renderer::BeginScene(sceneCamera, m_Scene->GetAmbientLight());
 	DebugRenderer::BeginScene(sceneCamera);
@@ -150,6 +153,8 @@ void Application::Render()
 
 		ImGui::Begin("Rendering");
 		Renderer::OnImGuiRender();
+		ImGui::Separator();
+		RenderBackend::OnImGuiRender();
 		ImGui::Separator();
 		DebugRenderer::OnImGuiRender();
 		ImGui::End();
@@ -188,4 +193,6 @@ void Application::Render()
 
 	DebugRenderer::EndScene();
 	Renderer::EndScene();
+
+	RenderBackend::EndFrame();
 }
