@@ -3,22 +3,20 @@
 
 struct TimerResult
 {
-	const char* Name;
-	float Duration;
+	TimerResult() = default;
+
+	const char* Name = "";
+	float Duration = 0.0f;
 };
 
 class Profiler
 {
 public:
-	static Profiler& Get();
-
-	void AddTimerResult(const TimerResult& result);
-	void Reset();
-
-	const std::unordered_map<const char*, TimerResult>& GetTimerResults() const { return m_TimerResults; }
-
-private:
-	std::unordered_map<const char*, TimerResult> m_TimerResults;
+	static void AddFrameTime(const TimerResult& result);
+	static void AddCPUTimer(const TimerResult& result);
+	static void AddGPUTimer(const TimerResult& result);
+	static void OnImGuiRender();
+	static void Reset();
 
 };
 

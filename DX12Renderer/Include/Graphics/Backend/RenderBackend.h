@@ -50,6 +50,7 @@ public:
 
 	static void Resize(uint32_t width, uint32_t height);
 	static void Flush();
+	static void SetVSync(bool vSync);
 
 	static std::shared_ptr<Device> GetDevice();
 	static SwapChain& GetSwapChain();
@@ -60,5 +61,8 @@ public:
 	static std::shared_ptr<CommandList> GetCommandList(D3D12_COMMAND_LIST_TYPE type);
 	static void ExecuteCommandList(std::shared_ptr<CommandList> commandList);
 	static void ExecuteCommandListAndWait(std::shared_ptr<CommandList> commandList);
+
+private:
+	static void ProcessTimestampQueries();
 
 };

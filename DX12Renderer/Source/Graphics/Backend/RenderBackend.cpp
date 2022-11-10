@@ -27,6 +27,8 @@ struct InternalRenderBackendData
 
 	std::unordered_map<std::string, TimestampQuery> TimestampQueries[3];
 	uint32_t CurrentBackBufferIndex = 0;
+
+	bool VSync = true;
 };
 
 static InternalRenderBackendData s_Data;
@@ -71,7 +73,8 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 
 void RenderBackend::BeginFrame()
 {
-	s_Data.CurrentBackBufferIndex = s_Data.SwapChain->GetCurrentBackBufferIndex();
+	SCOPED_TIMER("RenderBackend::BeginFrame");
+
 	s_Data.TimestampQueries[s_Data.CurrentBackBufferIndex].clear();
 	s_Data.NextQueryIndex[s_Data.CurrentBackBufferIndex] = 0;
 }
@@ -79,17 +82,17 @@ void RenderBackend::BeginFrame()
 void RenderBackend::OnImGuiRender()
 {
 	ImGui::Text("DX12 render backend");
-	ImGui::Text("GPU timings");
-
-	for (auto& [name, timestampQuery] : s_Data.TimestampQueries[s_Data.CurrentBackBufferIndex])
-	{
-		timestampQuery.ReadFromBuffer(*s_Data.QueryResultBuffers[s_Data.CurrentBackBufferIndex]);
-		ImGui::Text((name + ": %f ms").c_str(), (timestampQuery.EndQueryTimestamp - timestampQuery.BeginQueryTimestamp) / (double)s_Data.CommandQueueDirect->GetTimestampFrequency() * 1000.0f);
-	}
+	ImGui::Text("API calls (WIP)");
 }
 
 void RenderBackend::EndFrame()
 {
+	SCOPED_TIMER("RenderBackend::EndFrame");
+
+	s_Data.SwapChain->SwapBuffers(s_Data.VSync);
+	s_Data.CurrentBackBufferIndex = s_Data.SwapChain->GetCurrentBackBufferIndex();
+
+	ProcessTimestampQueries();
 }
 
 void RenderBackend::Finalize()
@@ -169,6 +172,11 @@ void RenderBackend::Flush()
 	s_Data.CommandQueueCopy->Flush();
 }
 
+void RenderBackend::SetVSync(bool vSync)
+{
+	s_Data.VSync = vSync;
+}
+
 std::shared_ptr<Device> RenderBackend::GetDevice()
 {
 	return s_Data.Device;
@@ -244,4 +252,20 @@ void RenderBackend::ExecuteCommandListAndWait(std::shared_ptr<CommandList> comma
 	}
 
 	ASSERT(false, "Tried to execute command list on a command queue type that is not supported.");
+}
+
+void RenderBackend::ProcessTimestampQueries()
+{
+	uint32_t nextFrameBufferIndex = (s_Data.CurrentBackBufferIndex + 1) % s_Data.SwapChain->GetBackBufferCount();
+
+	for (auto& [name, timestampQuery] : s_Data.TimestampQueries[nextFrameBufferIndex])
+	{
+		timestampQuery.ReadFromBuffer(*s_Data.QueryResultBuffers[nextFrameBufferIndex]);
+
+		TimerResult timer = {};
+		timer.Name = name.c_str();
+		timer.Duration = (timestampQuery.EndQueryTimestamp - timestampQuery.BeginQueryTimestamp) / (double)s_Data.CommandQueueDirect->GetTimestampFrequency() * 1000.0f;
+
+		Profiler::AddGPUTimer(timer);
+	}
 }

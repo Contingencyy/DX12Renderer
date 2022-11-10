@@ -90,7 +90,7 @@ void Application::Run()
 		PollEvents();
 		Update(deltaTime.count());
 		Render();
-		
+
 		last = current;
 	}
 }
@@ -159,34 +159,8 @@ void Application::Render()
 		DebugRenderer::OnImGuiRender();
 		ImGui::End();
 
-		// Profiler
-		{
-			ImGui::Begin("Profiler");
-
-			auto& timerResults = Profiler::Get().GetTimerResults();
-			auto frameTimeIter = timerResults.find("Frametime");
-
-			if (frameTimeIter != timerResults.end())
-			{
-				ImGui::Text("Frametime: %.3f ms", frameTimeIter->second.Duration);
-				ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / (frameTimeIter->second.Duration)));
-			}
-
-			for (auto& timerResult : timerResults)
-			{
-				if (strcmp(timerResult.first, "Frametime") == 0)
-					continue;
-
-				char buf[50];
-				strcpy_s(buf, timerResult.second.Name);
-				strcat_s(buf, ": %.3fms");
-
-				ImGui::Text(buf, timerResult.second.Duration);
-			}
-
-			ImGui::End();
-			Profiler::Get().Reset();
-		}
+		Profiler::OnImGuiRender();
+		Profiler::Reset();
 
 		m_GUI->EndFrame();
 	}

@@ -166,6 +166,8 @@ void Renderer::Finalize()
 void Renderer::BeginScene(const Camera& sceneCamera, const glm::vec3& ambient)
 {
     SCOPED_TIMER("Renderer::BeginScene");
+
+    s_Data.CurrentBackBufferIndex = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex();
     
     s_Data.SceneCamera = sceneCamera;
     s_Data.SceneData.SceneCameraViewProjection = sceneCamera.GetViewProjection();
@@ -430,9 +432,6 @@ void Renderer::EndScene()
     SCOPED_TIMER("Renderer::EndScene");
 
     RenderBackend::GetSwapChain().ResolveToBackBuffer(s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
-    RenderBackend::GetSwapChain().SwapBuffers(s_Data.RenderSettings.VSync);
-
-    s_Data.CurrentBackBufferIndex = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex();
 
     s_Data.NumMeshes = 0;
     s_Data.SceneData.Reset();
@@ -505,6 +504,7 @@ void Renderer::Resize(uint32_t width, uint32_t height)
 void Renderer::ToggleVSync()
 {
     s_Data.RenderSettings.VSync = !s_Data.RenderSettings.VSync;
+    RenderBackend::SetVSync(s_Data.RenderSettings.VSync);
 }
 
 bool Renderer::IsVSyncEnabled()
