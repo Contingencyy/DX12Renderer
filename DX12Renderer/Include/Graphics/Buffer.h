@@ -50,10 +50,10 @@ public:
 	void SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::size_t byteOffset);
 
 	template<typename T>
-	T ReadBackBytes(std::size_t index) const
+	T ReadBackBytes(std::size_t numBytes, std::size_t byteOffset) const
 	{
 		T data = { 0 };
-		memcpy(&data, reinterpret_cast<T*>(m_CPUPtr) + index, sizeof(T));
+		memcpy(&data, static_cast<unsigned char*>(m_CPUPtr) + byteOffset, numBytes);
 		return data;
 	}
 

@@ -13,8 +13,8 @@ struct TimestampQuery
 {
 	void ReadFromBuffer(const Buffer& queryResultBuffer)
 	{
-		BeginQueryTimestamp = queryResultBuffer.ReadBackBytes<uint64_t>(StartIndex);
-		EndQueryTimestamp = queryResultBuffer.ReadBackBytes<uint64_t>(StartIndex + 1);
+		BeginQueryTimestamp = queryResultBuffer.ReadBackBytes<uint64_t>(sizeof(uint64_t), StartIndex * sizeof(uint64_t));
+		EndQueryTimestamp = queryResultBuffer.ReadBackBytes<uint64_t>(sizeof(uint64_t), (StartIndex + 1) * sizeof(uint64_t));
 	}
 
 	uint64_t GetTicks()
