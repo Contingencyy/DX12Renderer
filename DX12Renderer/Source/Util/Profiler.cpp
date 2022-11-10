@@ -25,18 +25,18 @@ void Profiler::AddFrameTime(const TimerResult& result)
 
 void Profiler::AddCPUTimer(const TimerResult& result)
 {
-	s_Data.Timers[TimerType::CPU][s_Data.TimerCounts[TimerType::CPU]] = result;
-	s_Data.TimerCounts[TimerType::CPU]++;
+	s_Data.Timers[CPU][s_Data.TimerCounts[CPU]] = result;
+	s_Data.TimerCounts[CPU]++;
 
-	ASSERT(s_Data.TimerCounts[TimerType::CPU] <= 50, "CPU timers exceeded the maximum allowed amount of 50 timer entries");
+	ASSERT(s_Data.TimerCounts[CPU] <= 50, "CPU timers exceeded the maximum allowed amount of 50 timer entries");
 }
 
 void Profiler::AddGPUTimer(const TimerResult& result)
 {
-	s_Data.Timers[TimerType::GPU][s_Data.TimerCounts[TimerType::GPU]] = result;
-	s_Data.TimerCounts[TimerType::GPU]++;
+	s_Data.Timers[GPU][s_Data.TimerCounts[GPU]] = result;
+	s_Data.TimerCounts[GPU]++;
 
-	ASSERT(s_Data.TimerCounts[TimerType::GPU] <= 50, "GPU timers exceeded the maximum allowed amount of 50 timer entries");
+	ASSERT(s_Data.TimerCounts[GPU] <= 50, "GPU timers exceeded the maximum allowed amount of 50 timer entries");
 }
 
 void Profiler::OnImGuiRender()
@@ -45,11 +45,15 @@ void Profiler::OnImGuiRender()
 	ImGui::Text("Frametime: %.3f ms", s_Data.FrameTime.Duration);
 	ImGui::Text("FPS: %u", static_cast<uint32_t>(1000.0f / (s_Data.FrameTime.Duration)));
 
-	if (ImGui::CollapsingHeader("CPU Timers"))
+	std::sort(s_Data.Timers[CPU].begin(), s_Data.Timers[CPU].begin() + s_Data.TimerCounts[CPU], [](TimerResult& lhs, TimerResult& rhs) {
+		return lhs.Duration > rhs.Duration;
+	});
+
+	if (ImGui::CollapsingHeader("CPU Timers"), ImGuiTreeNodeFlags_DefaultOpen)
 	{
 		uint32_t currentTimer = 0;
 
-		for (auto& timerResult : s_Data.Timers[TimerType::CPU])
+		for (auto& timerResult : s_Data.Timers[CPU])
 		{
 			char buf[50];
 			strcpy_s(buf, timerResult.Name);
@@ -58,16 +62,20 @@ void Profiler::OnImGuiRender()
 			ImGui::Text(buf, timerResult.Duration);
 
 			currentTimer++;
-			if (currentTimer >= s_Data.TimerCounts[TimerType::CPU])
+			if (currentTimer >= s_Data.TimerCounts[CPU])
 				break;
 		}
 	}
 
-	if (ImGui::CollapsingHeader("GPU Timers"))
+	std::sort(s_Data.Timers[GPU].begin(), s_Data.Timers[GPU].begin() + s_Data.TimerCounts[GPU], [](TimerResult& lhs, TimerResult& rhs) {
+		return lhs.Duration > rhs.Duration;
+	});
+
+	if (ImGui::CollapsingHeader("GPU Timers"), ImGuiTreeNodeFlags_DefaultOpen)
 	{
 		uint32_t currentTimer = 0;
 
-		for (auto& timerResult : s_Data.Timers[TimerType::GPU])
+		for (auto& timerResult : s_Data.Timers[GPU])
 		{
 			char buf[50];
 			strcpy_s(buf, timerResult.Name);
@@ -76,7 +84,7 @@ void Profiler::OnImGuiRender()
 			ImGui::Text(buf, timerResult.Duration);
 
 			currentTimer++;
-			if (currentTimer >= s_Data.TimerCounts[TimerType::GPU])
+			if (currentTimer >= s_Data.TimerCounts[GPU])
 				break;
 		}
 	}
@@ -86,8 +94,8 @@ void Profiler::OnImGuiRender()
 
 void Profiler::Reset()
 {
-	s_Data.TimerCounts[TimerType::CPU] = 0;
-	s_Data.TimerCounts[TimerType::GPU] = 0;
+	s_Data.TimerCounts[CPU] = 0;
+	s_Data.TimerCounts[GPU] = 0;
 }
 
 Timer::Timer(const char* name)
