@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics/Backend/DescriptorAllocation.h"
+#include "Graphics/Resource.h"
 
 enum class BufferUsage : uint32_t
 {
@@ -37,12 +37,12 @@ struct BufferDesc
 	std::size_t ElementSize = 0;
 };
 
-class Buffer
+class Buffer : public Resource
 {
 public:
 	Buffer(const std::string& name, const BufferDesc& bufferdesc, const void* data);
 	Buffer(const std::string& name, const BufferDesc& bufferDesc);
-	~Buffer();
+	virtual ~Buffer();
 
 	// This should not be called every frame, since it allocates another heap/buffer for upload in this function
 	// Might be a good idea to have a larger upload heap on the command list to suballocate from for copying/staging.
@@ -60,15 +60,7 @@ public:
 	bool IsValid() const;
 	bool IsCPUAccessible() const;
 
-	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle(DescriptorType type) const;
-	uint32_t GetDescriptorIndex(DescriptorType type) const;
-
 	BufferDesc GetBufferDesc() const { return m_BufferDesc; }
-	std::size_t GetByteSize() const { return m_ByteSize; }
-	std::string GetName() const { return m_Name; }
-	void SetName(const std::string& name);
-	ComPtr<ID3D12Resource> GetD3D12Resource() const { return m_d3d12Resource; }
-	void SetD3D12Resource(ComPtr<ID3D12Resource> resource) { m_d3d12Resource = resource; }
 
 private:
 	void Create();
@@ -76,12 +68,6 @@ private:
 
 private:
 	BufferDesc m_BufferDesc = {};
-	DescriptorAllocation m_DescriptorAllocations[DescriptorType::NUM_DESCRIPTOR_TYPES] = {};
-
-	std::size_t m_ByteSize = 0;
-	std::string m_Name = "";
-
-	ComPtr<ID3D12Resource> m_d3d12Resource;
 	void* m_CPUPtr = nullptr;
 
 };

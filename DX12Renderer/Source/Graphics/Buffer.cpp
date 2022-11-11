@@ -4,25 +4,23 @@
 #include "Graphics/Backend/RenderBackend.h"
 
 Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc, const void* data)
-	: m_BufferDesc(bufferDesc)
+	: Resource(name), m_BufferDesc(bufferDesc)
 {
 	if (IsValid())
 	{
 		Create();
 		CreateViews();
-		SetName(name);
 		SetBufferData(data);
 	}
 }
 
 Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc)
-	: m_BufferDesc(bufferDesc)
+	: Resource(name), m_BufferDesc(bufferDesc)
 {
 	if (IsValid())
 	{
 		Create();
 		CreateViews();
-		SetName(name);
 	}
 }
 
@@ -77,22 +75,6 @@ bool Buffer::IsCPUAccessible() const
 	}
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Buffer::GetDescriptorHandle(DescriptorType type) const
-{
-	return m_DescriptorAllocations[type].GetCPUDescriptorHandle();
-}
-
-uint32_t Buffer::GetDescriptorIndex(DescriptorType type) const
-{
-	return m_DescriptorAllocations[type].GetOffsetInDescriptorHeap();
-}
-
-void Buffer::SetName(const std::string& name)
-{
-	m_Name = name;
-	m_d3d12Resource->SetName(StringHelper::StringToWString(name).c_str());
-}
-
 void Buffer::Create()
 {
 	D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
@@ -125,6 +107,8 @@ void Buffer::Create()
 	{
 		m_d3d12Resource->Map(0, nullptr, &m_CPUPtr);
 	}
+
+	SetName(m_Name);
 }
 
 void Buffer::CreateViews()

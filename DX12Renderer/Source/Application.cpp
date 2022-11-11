@@ -160,10 +160,11 @@ void Application::Render()
 		ImGui::End();
 
 		Profiler::OnImGuiRender();
-		Profiler::Reset();
 
 		m_GUI->EndFrame();
 	}
+
+	Profiler::Reset();
 
 	DebugRenderer::EndScene();
 	Renderer::EndScene();

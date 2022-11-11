@@ -217,7 +217,7 @@ void Renderer::Render()
 
         for (uint32_t i = 0; i < s_Data.SceneData.NumDirLights; ++i)
         {
-            RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], s_Data.LightShadowMaps[shadowMapIndex]->GetDescriptorHandle(DescriptorType::DSV));
+            RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], s_Data.LightShadowMaps[shadowMapIndex]->GetDescriptor(DescriptorType::DSV));
 
             cameraIndex++;
             shadowMapIndex++;
@@ -230,7 +230,7 @@ void Renderer::Render()
         {
             for (uint32_t face = 0; face < 6; ++face)
             {
-                RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], s_Data.LightShadowMaps[shadowMapIndex]->GetCubeDepthDescriptorHandle(DescriptorType::DSV, face));
+                RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], s_Data.LightShadowMaps[shadowMapIndex]->GetDescriptor(DescriptorType::DSV, 1 + face));
                 cameraIndex++;
             }
 
@@ -242,7 +242,7 @@ void Renderer::Render()
 
         for (uint32_t i = 0; i < s_Data.SceneData.NumSpotLights; ++i)
         {
-            RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], s_Data.LightShadowMaps[shadowMapIndex]->GetDescriptorHandle(DescriptorType::DSV));
+            RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], s_Data.LightShadowMaps[shadowMapIndex]->GetDescriptor(DescriptorType::DSV));
 
             cameraIndex++;
             shadowMapIndex++;
@@ -260,8 +260,8 @@ void Renderer::Render()
         auto& lightingColorTarget = s_Data.RenderPasses[RenderPassType::LIGHTING]->GetColorAttachment();
         auto& lightingDepthBuffer = s_Data.RenderPasses[RenderPassType::LIGHTING]->GetDepthAttachment();
 
-        auto rtv = lightingColorTarget.GetDescriptorHandle(DescriptorType::RTV);
-        auto dsv = lightingDepthBuffer.GetDescriptorHandle(DescriptorType::DSV);
+        auto rtv = lightingColorTarget.GetDescriptor(DescriptorType::RTV);
+        auto dsv = lightingDepthBuffer.GetDescriptor(DescriptorType::DSV);
 
         // Set viewports, scissor rects and render targets
         commandList->SetViewports(1, &viewport);
@@ -347,8 +347,8 @@ void Renderer::Render()
         auto& tmColorTarget = s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
         auto& tmDepthBuffer = s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetDepthAttachment();
 
-        auto tmRtv = tmColorTarget.GetDescriptorHandle(DescriptorType::RTV);
-        auto tmDsv = tmDepthBuffer.GetDescriptorHandle(DescriptorType::DSV);
+        auto tmRtv = tmColorTarget.GetDescriptor(DescriptorType::RTV);
+        auto tmDsv = tmDepthBuffer.GetDescriptor(DescriptorType::DSV);
 
         // Set viewports, scissor rects and render targets
         commandList->SetViewports(1, &viewport);
@@ -360,7 +360,7 @@ void Renderer::Render()
         // Set pipeline state and root signature
         commandList->SetPipelineState(s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetPipelineState());
 
-        uint32_t pbrColorTargetIndex = s_Data.RenderPasses[RenderPassType::LIGHTING]->GetColorAttachment().GetDescriptorIndex(DescriptorType::SRV);
+        uint32_t pbrColorTargetIndex = s_Data.RenderPasses[RenderPassType::LIGHTING]->GetColorAttachment().GetDescriptorHeapIndex(DescriptorType::SRV);
         s_Data.TonemapSettings.HDRTargetIndex = pbrColorTargetIndex;
         s_Data.TonemapConstantBuffer->SetBufferData(&s_Data.TonemapSettings);
         commandList->SetRootConstantBufferView(0, *s_Data.TonemapConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -440,8 +440,8 @@ void Renderer::EndScene()
 
 void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform)
 {
-    uint32_t baseColorTexIndex = mesh->GetTexture(MeshTextureType::TEX_BASE_COLOR)->GetDescriptorIndex(DescriptorType::SRV);
-    uint32_t normalTexIndex = mesh->GetTexture(MeshTextureType::TEX_NORMAL)->GetDescriptorIndex(DescriptorType::SRV);
+    uint32_t baseColorTexIndex = mesh->GetTexture(MeshTextureType::TEX_BASE_COLOR)->GetDescriptorHeapIndex(DescriptorType::SRV);
+    uint32_t normalTexIndex = mesh->GetTexture(MeshTextureType::TEX_NORMAL)->GetDescriptorHeapIndex(DescriptorType::SRV);
 
     s_Data.MeshDrawData[s_Data.NumMeshes].Mesh = mesh;
     s_Data.MeshDrawData[s_Data.NumMeshes].InstanceData.Transform = transform;
@@ -693,7 +693,7 @@ void Renderer::PrepareShadowMaps()
     for (auto& shadowMap : s_Data.LightShadowMaps)
     {
         if (shadowMap)
-            commandList->ClearDepthStencilView(shadowMap->GetDescriptorHandle(DescriptorType::DSV), 0.0f);
+            commandList->ClearDepthStencilView(shadowMap->GetDescriptor(DescriptorType::DSV), 0.0f);
     }
 
     RenderBackend::ExecuteCommandListAndWait(commandList);

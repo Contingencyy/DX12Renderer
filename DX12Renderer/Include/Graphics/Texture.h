@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics/Backend/DescriptorAllocation.h"
+#include "Graphics/Resource.h"
 
 enum class TextureUsage : uint32_t
 {
@@ -57,27 +57,17 @@ DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format);
 D3D12_RESOURCE_DIMENSION TextureDimensionToD3DDimension(TextureDimension dimension);
 D3D12_SRV_DIMENSION TextureDimensionToD3DSRVDimension(TextureDimension dimension);
 
-class Texture
+class Texture : public Resource
 {
 public:
 	Texture(const std::string& name, const TextureDesc& textureDesc, const void* data);
 	Texture(const std::string& name, const TextureDesc& textureDesc);
-	~Texture();
+	virtual ~Texture();
 
 	void Resize(uint32_t width, uint32_t height);
 	bool IsValid() const;
 
-	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptorHandle(DescriptorType type) const;
-	D3D12_CPU_DESCRIPTOR_HANDLE GetCubeDepthDescriptorHandle(DescriptorType type, uint32_t face) const;
-	uint32_t GetDescriptorIndex(DescriptorType type) const;
-
 	const TextureDesc& GetTextureDesc() const { return m_TextureDesc; }
-	std::size_t GetByteSize() const { return m_ByteSize; }
-	const std::string& GetName() const { return m_Name; }
-	void SetName(const std::string& name);
-
-	ComPtr<ID3D12Resource> GetD3D12Resource() const { return m_d3d12Resource; }
-	void SetD3D12Resource(ComPtr<ID3D12Resource> resource) { m_d3d12Resource = resource; }
 
 protected:
 	void Create();
@@ -85,12 +75,5 @@ protected:
 
 protected:
 	TextureDesc m_TextureDesc = {};
-	std::string m_Name = "";
-	ComPtr<ID3D12Resource> m_d3d12Resource;
-
-	DescriptorAllocation m_DescriptorAllocations[DescriptorType::NUM_DESCRIPTOR_TYPES] = {};
-	DescriptorAllocation m_CubeDescriptorAllocations[DescriptorType::NUM_DESCRIPTOR_TYPES] = {};
-
-	std::size_t m_ByteSize = 0;
 
 };

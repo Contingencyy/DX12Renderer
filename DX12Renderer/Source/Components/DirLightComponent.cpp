@@ -20,7 +20,7 @@ DirLightComponent::DirLightComponent(const DirectionalLightData& dirLightData)
 	m_ShadowMap = std::make_shared<Texture>("Directional light shadow map", TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_DEPTH32,
 		renderSettings.ShadowMapResolution.x, renderSettings.ShadowMapResolution.y));
 
-	m_DirectionalLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorIndex(DescriptorType::SRV);
+	m_DirectionalLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorHeapIndex(DescriptorType::SRV);
 	m_DirectionalLightData.ViewProjection = m_Camera.GetViewProjection();
 
 	m_GUIData.Direction = m_DirectionalLightData.Direction;

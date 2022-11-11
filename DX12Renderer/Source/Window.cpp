@@ -38,6 +38,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 case 0x56:
                     Renderer::ToggleVSync();
                     break;
+                case VK_F3:
+                    Application::Get().ToggleRenderGUI();
+                    break;
                 default:
                     InputHandler::OnKeyPressed(InputHandler::WParamToKeyCode(wParam));
                     break;

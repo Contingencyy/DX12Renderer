@@ -43,7 +43,7 @@ public:
 	static void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
 
 	static ID3D12QueryHeap* GetD3D12TimestampQueryHeap();
-	static const Buffer& GetQueryResultBuffer(uint32_t backBufferIndex);
+	static const Buffer& GetQueryReadbackBuffer(uint32_t backBufferIndex);
 	static void TrackTimestampQueryResult(const std::string& name, const TimestampQuery& timestampQuery, uint32_t backBufferIndex);
 	static uint32_t GetMaxQueriesPerFrame();
 	static uint32_t GetNextQueryIndex(uint32_t backBufferIndex);

@@ -21,7 +21,7 @@ SpotLightComponent::SpotLightComponent(const SpotLightData& spotLightData, const
 		renderSettings.ShadowMapResolution.x, renderSettings.ShadowMapResolution.y));
 
 	m_SpotLightData.ViewProjection = m_Camera.GetViewProjection();
-	m_SpotLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorIndex(DescriptorType::SRV);
+	m_SpotLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorHeapIndex(DescriptorType::SRV);
 
 	m_GUIData.Direction = m_SpotLightData.Direction;
 	m_GUIData.InnerConeAngle = glm::degrees(m_SpotLightData.InnerConeAngle);

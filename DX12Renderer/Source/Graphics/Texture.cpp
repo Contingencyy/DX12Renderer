@@ -47,13 +47,12 @@ D3D12_SRV_DIMENSION TextureDimensionToD3DSRVDimension(TextureDimension dimension
 }
 
 Texture::Texture(const std::string& name, const TextureDesc& textureDesc, const void* data)
-	: m_TextureDesc(textureDesc)
+	: Resource(name), m_TextureDesc(textureDesc)
 {
 	if (IsValid())
 	{
 		Create();
 		CreateViews();
-		SetName(name);
 
 		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, m_ByteSize));
 		RenderBackend::CopyTexture(uploadBuffer, *this, data);
@@ -61,13 +60,12 @@ Texture::Texture(const std::string& name, const TextureDesc& textureDesc, const 
 }
 
 Texture::Texture(const std::string& name, const TextureDesc& textureDesc)
-	: m_TextureDesc(textureDesc)
+	: Resource(name), m_TextureDesc(textureDesc)
 {
 	if (IsValid())
 	{
 		Create();
 		CreateViews();
-		SetName(name);
 	}
 }
 
@@ -90,27 +88,6 @@ void Texture::Resize(uint32_t width, uint32_t height)
 bool Texture::IsValid() const
 {
 	return m_TextureDesc.Usage != TextureUsage::TEXTURE_USAGE_NONE && m_TextureDesc.Format != TextureFormat::TEXTURE_FORMAT_UNSPECIFIED;
-}
-
-D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetDescriptorHandle(DescriptorType type) const
-{
-	return m_DescriptorAllocations[type].GetCPUDescriptorHandle();
-}
-
-D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetCubeDepthDescriptorHandle(DescriptorType type, uint32_t face) const
-{
-	return m_CubeDescriptorAllocations[type].GetCPUDescriptorHandle(face);
-}
-
-uint32_t Texture::GetDescriptorIndex(DescriptorType type) const
-{
-	return m_DescriptorAllocations[type].GetOffsetInDescriptorHeap();
-}
-
-void Texture::SetName(const std::string& name)
-{
-	m_Name = name;
-	m_d3d12Resource->SetName(StringHelper::StringToWString(name).c_str());
 }
 
 void Texture::Create()
@@ -164,6 +141,7 @@ void Texture::Create()
 
 	RenderBackend::GetDevice()->CreateTexture(*this, d3d12ResourceDesc, initialState, hasClearValue ? &clearValue : nullptr);
 	m_ByteSize = GetRequiredIntermediateSize(m_d3d12Resource.Get(), 0, 1);
+	SetName(m_Name);
 }
 
 void Texture::CreateViews()
@@ -199,7 +177,10 @@ void Texture::CreateViews()
 		// Create unordered access view (read/write)
 		auto& uav = m_DescriptorAllocations[DescriptorType::UAV];
 		if (uav.IsNull())
-			uav = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		{
+			uint32_t numDescriptors = m_TextureDesc.Dimension == TextureDimension::TEXTURE_DIMENSION_CUBE ? 7 : 1;
+			uav = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, numDescriptors);
+		}
 
 		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 		uavDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
@@ -213,14 +194,10 @@ void Texture::CreateViews()
 			D3D12_UNORDERED_ACCESS_VIEW_DESC cubeFaceUAVDesc = uavDesc;
 			cubeFaceUAVDesc.Texture2DArray.ArraySize = 1;
 
-			auto& cubeFaceUAV = m_CubeDescriptorAllocations[DescriptorType::UAV];
-			if (cubeFaceUAV.IsNull())
-				RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 6);
-
-			for (uint32_t i = 0; i < 6; ++i)
+			for (uint32_t i = 1; i < 7; ++i)
 			{
-				cubeFaceUAVDesc.Texture2DArray.FirstArraySlice = i;
-				RenderBackend::GetDevice()->CreateUnorderedAccessView(*this, cubeFaceUAVDesc, cubeFaceUAV.GetCPUDescriptorHandle(i));
+				cubeFaceUAVDesc.Texture2DArray.FirstArraySlice = i - 1;
+				RenderBackend::GetDevice()->CreateUnorderedAccessView(*this, cubeFaceUAVDesc, m_DescriptorAllocations[DescriptorType::UAV].GetCPUDescriptorHandle(i));
 			}
 		}
 
@@ -231,7 +208,10 @@ void Texture::CreateViews()
 		// Create render target view
 		auto& rtv = m_DescriptorAllocations[DescriptorType::RTV];
 		if (rtv.IsNull())
-			rtv = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		{
+			uint32_t numDescriptors = m_TextureDesc.Dimension == TextureDimension::TEXTURE_DIMENSION_CUBE ? 7 : 1;
+			rtv = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, numDescriptors);
+		}
 
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 		rtvDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
@@ -245,14 +225,10 @@ void Texture::CreateViews()
 			D3D12_RENDER_TARGET_VIEW_DESC cubeFaceRTVDesc = rtvDesc;
 			cubeFaceRTVDesc.Texture2DArray.ArraySize = 1;
 
-			auto& cubeFaceRTV = m_CubeDescriptorAllocations[DescriptorType::RTV];
-			if (cubeFaceRTV.IsNull())
-				RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 6);
-
-			for (uint32_t i = 0; i < 6; ++i)
+			for (uint32_t i = 1; i < 7; ++i)
 			{
-				cubeFaceRTVDesc.Texture2DArray.FirstArraySlice = i;
-				RenderBackend::GetDevice()->CreateRenderTargetView(*this, cubeFaceRTVDesc, cubeFaceRTV.GetCPUDescriptorHandle(i));
+				cubeFaceRTVDesc.Texture2DArray.FirstArraySlice = i - 1;
+				RenderBackend::GetDevice()->CreateRenderTargetView(*this, cubeFaceRTVDesc, m_DescriptorAllocations[DescriptorType::RTV].GetCPUDescriptorHandle(i));
 			}
 		}
 
@@ -263,7 +239,10 @@ void Texture::CreateViews()
 		// Create depth stencil view
 		auto& dsv = m_DescriptorAllocations[DescriptorType::DSV];
 		if (dsv.IsNull())
-			dsv = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+		{
+			uint32_t numDescriptors = m_TextureDesc.Dimension == TextureDimension::TEXTURE_DIMENSION_CUBE ? 7 : 1;
+			dsv = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, numDescriptors);
+		}
 
 		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 		dsvDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
@@ -278,14 +257,10 @@ void Texture::CreateViews()
 			D3D12_DEPTH_STENCIL_VIEW_DESC cubeFaceDSVDesc = dsvDesc;
 			cubeFaceDSVDesc.Texture2DArray.ArraySize = 1;
 
-			auto& cubeFaceDSV = m_CubeDescriptorAllocations[DescriptorType::DSV];
-			if (cubeFaceDSV.IsNull())
-				cubeFaceDSV = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 6);
-
-			for (uint32_t i = 0; i < 6; ++i)
+			for (uint32_t i = 1; i < 7; ++i)
 			{
-				cubeFaceDSVDesc.Texture2DArray.FirstArraySlice = i;
-				RenderBackend::GetDevice()->CreateDepthStencilView(*this, cubeFaceDSVDesc, cubeFaceDSV.GetCPUDescriptorHandle(i));
+				cubeFaceDSVDesc.Texture2DArray.FirstArraySlice = i - 1;
+				RenderBackend::GetDevice()->CreateDepthStencilView(*this, cubeFaceDSVDesc, m_DescriptorAllocations[DescriptorType::DSV].GetCPUDescriptorHandle(i));
 			}
 		}
 

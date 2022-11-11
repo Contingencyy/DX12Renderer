@@ -14,7 +14,7 @@ struct InternalRenderBackendData
 	std::unique_ptr<DescriptorHeap> DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 
 	ComPtr<ID3D12QueryHeap> D3D12QueryHeapTimestamp;
-	std::unique_ptr<Buffer> QueryResultBuffers[3];
+	std::unique_ptr<Buffer> QueryReadbackBuffers[3];
 	uint32_t MaxQueriesPerFrame = 32;
 	uint32_t NextQueryIndex[3] = { 0, 0, 0 };
 
@@ -54,7 +54,7 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 
 	for (uint32_t i = 0; i < s_Data.SwapChain->GetBackBufferCount(); ++i)
 	{
-		s_Data.QueryResultBuffers[i] = std::make_unique<Buffer>("Query result buffer", BufferDesc(BufferUsage::BUFFER_USAGE_READBACK,
+		s_Data.QueryReadbackBuffers[i] = std::make_unique<Buffer>("Query result buffer", BufferDesc(BufferUsage::BUFFER_USAGE_READBACK,
 			s_Data.MaxQueriesPerFrame, 8));
 	}
 
@@ -134,9 +134,9 @@ ID3D12QueryHeap* RenderBackend::GetD3D12TimestampQueryHeap()
 	return s_Data.D3D12QueryHeapTimestamp.Get();
 }
 
-const Buffer& RenderBackend::GetQueryResultBuffer(uint32_t backBufferIndex)
+const Buffer& RenderBackend::GetQueryReadbackBuffer(uint32_t backBufferIndex)
 {
-	return *s_Data.QueryResultBuffers[backBufferIndex];
+	return *s_Data.QueryReadbackBuffers[backBufferIndex];
 }
 
 void RenderBackend::TrackTimestampQueryResult(const std::string& name, const TimestampQuery& timestampQuery, uint32_t backBufferIndex)
@@ -260,7 +260,7 @@ void RenderBackend::ProcessTimestampQueries()
 
 	for (auto& [name, timestampQuery] : s_Data.TimestampQueries[nextFrameBufferIndex])
 	{
-		timestampQuery.ReadFromBuffer(*s_Data.QueryResultBuffers[nextFrameBufferIndex]);
+		timestampQuery.ReadFromBuffer(*s_Data.QueryReadbackBuffers[nextFrameBufferIndex]);
 
 		TimerResult timer = {};
 		timer.Name = name.c_str();

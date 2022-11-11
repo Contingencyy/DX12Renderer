@@ -292,7 +292,7 @@ void CommandList::ResolveTimestampQueries()
 	{
 		std::size_t byteOffset = static_cast<std::size_t>(query.StartIndex * 8);
 		m_d3d12CommandList->ResolveQueryData(RenderBackend::GetD3D12TimestampQueryHeap(), D3D12_QUERY_TYPE_TIMESTAMP,
-			query.StartIndex, query.NumQueries, RenderBackend::GetQueryResultBuffer(m_BackBufferIndex).GetD3D12Resource().Get(), MathHelper::AlignUp(byteOffset, 8));
+			query.StartIndex, query.NumQueries, RenderBackend::GetQueryReadbackBuffer(m_BackBufferIndex).GetD3D12Resource().Get(), MathHelper::AlignUp(byteOffset, 8));
 		RenderBackend::TrackTimestampQueryResult(name, query, m_BackBufferIndex);
 	}
 

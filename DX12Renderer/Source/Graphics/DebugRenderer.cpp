@@ -86,8 +86,8 @@ void DebugRenderer::Render()
     auto& colorAttachment = Renderer::GetFinalColorOutput();
     auto& depthAttachment = Renderer::GetFinalDepthOutput();
 
-    auto rtv = colorAttachment.GetDescriptorHandle(DescriptorType::RTV);
-    auto dsv = depthAttachment.GetDescriptorHandle(DescriptorType::DSV);
+    auto rtv = colorAttachment.GetDescriptor(DescriptorType::RTV);
+    auto dsv = depthAttachment.GetDescriptor(DescriptorType::DSV);
 
     // Set viewports, scissor rects and render targets
     commandList->SetViewports(1, &s_Data.Viewport);

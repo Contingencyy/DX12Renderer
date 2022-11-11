@@ -21,6 +21,7 @@ public:
 	void OnWindowResize(uint32_t width, uint32_t height);
 
 	bool IsInitialized() const { return m_Initialized; }
+	void ToggleRenderGUI() { m_RenderGUI = !m_RenderGUI; }
 
 	Window* GetWindow() const { return m_Window.get(); }
 	ResourceManager* GetResourceManager() const { return m_ResourceManager.get(); }
