@@ -3,24 +3,29 @@
 #include "Graphics/Backend/Device.h"
 #include "Graphics/Backend/RenderBackend.h"
 
-Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc, const void* data)
-	: Resource(name), m_BufferDesc(bufferDesc)
-{
-	if (IsValid())
-	{
-		Create();
-		CreateViews();
-		SetBufferData(data);
-	}
-}
-
 Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc)
 	: Resource(name), m_BufferDesc(bufferDesc)
 {
 	if (IsValid())
 	{
-		Create();
+		CreateD3D12Resource();
+		AllocateDescriptors();
 		CreateViews();
+		SetName(name);
+	}
+}
+
+Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc, const void* data)
+	: Resource(name), m_BufferDesc(bufferDesc)
+{
+	if (IsValid())
+	{
+		CreateD3D12Resource();
+		AllocateDescriptors();
+		CreateViews();
+		SetName(name);
+
+		SetBufferData(data);
 	}
 }
 
@@ -28,33 +33,6 @@ Buffer::~Buffer()
 {
 	if (IsCPUAccessible())
 		m_d3d12Resource->Unmap(0, nullptr);
-}
-
-void Buffer::SetBufferData(const void* data, std::size_t byteSize)
-{
-	std::size_t dataByteSize = byteSize == 0 ? m_ByteSize : byteSize;
-	if (!IsCPUAccessible())
-	{
-		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, dataByteSize));
-		RenderBackend::CopyBuffer(uploadBuffer, *this, data);
-	}
-	else
-	{
-		memcpy(m_CPUPtr, data, dataByteSize);
-	}
-}
-
-void Buffer::SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::size_t byteOffset)
-{
-	if (!IsCPUAccessible())
-	{
-		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, byteSize));
-		RenderBackend::CopyBufferRegion(uploadBuffer, 0, *this, byteOffset, byteSize);
-	}
-	else
-	{
-		memcpy(static_cast<unsigned char*>(m_CPUPtr) + byteOffset, data, byteSize);
-	}
 }
 
 bool Buffer::IsValid() const
@@ -75,7 +53,48 @@ bool Buffer::IsCPUAccessible() const
 	}
 }
 
-void Buffer::Create()
+void Buffer::Invalidate()
+{
+	if (IsValid())
+	{
+		CreateD3D12Resource();
+
+		ResetDescriptorAllocations();
+		AllocateDescriptors();
+
+		CreateViews();
+		SetName(m_Name);
+	}
+}
+
+void Buffer::SetBufferData(const void* data, std::size_t byteSize)
+{
+	std::size_t dataByteSize = byteSize == 0 ? m_ByteSize : byteSize;
+	if (IsCPUAccessible())
+	{
+		memcpy(m_CPUPtr, data, dataByteSize);
+	}
+	else
+	{
+		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, dataByteSize));
+		RenderBackend::CopyBuffer(uploadBuffer, *this, data);
+	}
+}
+
+void Buffer::SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::size_t byteOffset)
+{
+	if (IsCPUAccessible())
+	{
+		memcpy(static_cast<unsigned char*>(m_CPUPtr) + byteOffset, data, byteSize);
+	}
+	else
+	{
+		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, byteSize));
+		RenderBackend::CopyBufferRegion(uploadBuffer, 0, *this, byteOffset, byteSize);
+	}
+}
+
+void Buffer::CreateD3D12Resource()
 {
 	D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
 	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
@@ -107,20 +126,31 @@ void Buffer::Create()
 	{
 		m_d3d12Resource->Map(0, nullptr, &m_CPUPtr);
 	}
+}
 
-	SetName(m_Name);
+void Buffer::AllocateDescriptors()
+{
+	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_READ)
+	{
+		m_DescriptorAllocations[DescriptorType::SRV] = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	}
+	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_WRITE)
+	{
+		m_DescriptorAllocations[DescriptorType::UAV] = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	}
+	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT)
+	{
+		m_DescriptorAllocations[DescriptorType::CBV] = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	}
 }
 
 void Buffer::CreateViews()
 {
-	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_READ || m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT)
+	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_READ)
 	{
+		// Create shader resource view (read-only)
 		auto& srv = m_DescriptorAllocations[DescriptorType::SRV];
 
-		// Create shader resource view (read-only)
-		if (srv.IsNull())
-			srv = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -134,11 +164,8 @@ void Buffer::CreateViews()
 	}
 	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_WRITE)
 	{
-		auto& uav = m_DescriptorAllocations[DescriptorType::UAV];
-
 		// Create unordered access view (read/write)
-		if (uav.IsNull())
-			uav = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		auto& uav = m_DescriptorAllocations[DescriptorType::UAV];
 
 		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
@@ -151,17 +178,15 @@ void Buffer::CreateViews()
 
 		RenderBackend::GetDevice()->CreateUnorderedAccessView(*this, uavDesc, uav.GetCPUDescriptorHandle());
 	}
-	/*if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT)
+	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT)
 	{
+		// Create constant buffer view
 		auto& cbv = m_DescriptorAllocations[DescriptorType::CBV];
-
-		if (cbv.IsNull())
-			cbv = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
 		cbvDesc.BufferLocation = m_d3d12Resource->GetGPUVirtualAddress();
 		cbvDesc.SizeInBytes = m_ByteSize;
 
-		RenderBackend::GetDevice()->CreateConstantBufferView(*this, cbvDesc, cbv.GetCPUDescriptorHandle());
-	}*/
+		RenderBackend::GetDevice()->CreateConstantBufferView(cbvDesc, cbv.GetCPUDescriptorHandle());
+	}
 }

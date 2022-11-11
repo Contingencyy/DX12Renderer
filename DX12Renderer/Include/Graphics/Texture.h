@@ -60,18 +60,23 @@ D3D12_SRV_DIMENSION TextureDimensionToD3DSRVDimension(TextureDimension dimension
 class Texture : public Resource
 {
 public:
-	Texture(const std::string& name, const TextureDesc& textureDesc, const void* data);
 	Texture(const std::string& name, const TextureDesc& textureDesc);
+	Texture(const std::string& name, const TextureDesc& textureDesc, const void* data);
 	virtual ~Texture();
 
-	void Resize(uint32_t width, uint32_t height);
-	bool IsValid() const;
+	virtual bool IsValid() const;
+	virtual bool IsCPUAccessible() const;
+	virtual void Invalidate();
 
+	void Resize(uint32_t width, uint32_t height);
+
+	TextureDesc& GetTextureDesc() { return m_TextureDesc; }
 	const TextureDesc& GetTextureDesc() const { return m_TextureDesc; }
 
 protected:
-	void Create();
-	void CreateViews();
+	virtual void CreateD3D12Resource();
+	virtual void AllocateDescriptors();
+	virtual void CreateViews();
 
 protected:
 	TextureDesc m_TextureDesc = {};

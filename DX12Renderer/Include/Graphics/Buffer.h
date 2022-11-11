@@ -40,9 +40,13 @@ struct BufferDesc
 class Buffer : public Resource
 {
 public:
-	Buffer(const std::string& name, const BufferDesc& bufferdesc, const void* data);
 	Buffer(const std::string& name, const BufferDesc& bufferDesc);
+	Buffer(const std::string& name, const BufferDesc& bufferdesc, const void* data);
 	virtual ~Buffer();
+
+	virtual bool IsValid() const;
+	virtual bool IsCPUAccessible() const;
+	virtual void Invalidate();
 
 	// This should not be called every frame, since it allocates another heap/buffer for upload in this function
 	// Might be a good idea to have a larger upload heap on the command list to suballocate from for copying/staging.
@@ -57,17 +61,15 @@ public:
 		return data;
 	}
 
-	bool IsValid() const;
-	bool IsCPUAccessible() const;
+	BufferDesc& GetBufferDesc() { return m_BufferDesc; }
+	const BufferDesc& GetBufferDesc() const { return m_BufferDesc; }
 
-	BufferDesc GetBufferDesc() const { return m_BufferDesc; }
+protected:
+	virtual void CreateD3D12Resource();
+	virtual void AllocateDescriptors();
+	virtual void CreateViews();
 
-private:
-	void Create();
-	void CreateViews();
-
-private:
+protected:
 	BufferDesc m_BufferDesc = {};
-	void* m_CPUPtr = nullptr;
 
 };

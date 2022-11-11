@@ -2,7 +2,6 @@
 #include "Graphics/Resource.h"
 
 Resource::Resource(const std::string& name)
-	: m_Name(name)
 {
 }
 
@@ -29,4 +28,12 @@ void Resource::SetName(const std::string& name)
 {
 	m_Name = name;
 	m_d3d12Resource->SetName(StringHelper::StringToWString(name).c_str());
+}
+
+void Resource::ResetDescriptorAllocations()
+{
+	for (uint32_t i = 0; i < DescriptorType::NUM_DESCRIPTOR_TYPES; ++i)
+	{
+		m_DescriptorAllocations[i].~DescriptorAllocation();
+	}
 }

@@ -46,26 +46,30 @@ D3D12_SRV_DIMENSION TextureDimensionToD3DSRVDimension(TextureDimension dimension
 	return D3D12_SRV_DIMENSION_TEXTURE2D;
 }
 
-Texture::Texture(const std::string& name, const TextureDesc& textureDesc, const void* data)
-	: Resource(name), m_TextureDesc(textureDesc)
-{
-	if (IsValid())
-	{
-		Create();
-		CreateViews();
-
-		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, m_ByteSize));
-		RenderBackend::CopyTexture(uploadBuffer, *this, data);
-	}
-}
-
 Texture::Texture(const std::string& name, const TextureDesc& textureDesc)
 	: Resource(name), m_TextureDesc(textureDesc)
 {
 	if (IsValid())
 	{
-		Create();
+		CreateD3D12Resource();
+		AllocateDescriptors();
 		CreateViews();
+		SetName(name);
+	}
+}
+
+Texture::Texture(const std::string& name, const TextureDesc& textureDesc, const void* data)
+	: Resource(name), m_TextureDesc(textureDesc)
+{
+	if (IsValid())
+	{
+		CreateD3D12Resource();
+		AllocateDescriptors();
+		CreateViews();
+		SetName(name);
+
+		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, m_ByteSize));
+		RenderBackend::CopyTexture(uploadBuffer, *this, data);
 	}
 }
 
@@ -73,24 +77,40 @@ Texture::~Texture()
 {
 }
 
-void Texture::Resize(uint32_t width, uint32_t height)
-{
-	m_TextureDesc.Width = width;
-	m_TextureDesc.Height = height;
-
-	if (IsValid())
-	{
-		Create();
-		CreateViews();
-	}
-}
-
 bool Texture::IsValid() const
 {
 	return m_TextureDesc.Usage != TextureUsage::TEXTURE_USAGE_NONE && m_TextureDesc.Format != TextureFormat::TEXTURE_FORMAT_UNSPECIFIED;
 }
 
-void Texture::Create()
+bool Texture::IsCPUAccessible() const
+{
+	// If readback textures are implemented, this needs to change
+	return false;
+}
+
+void Texture::Invalidate()
+{
+	if (IsValid())
+	{
+		CreateD3D12Resource();
+
+		ResetDescriptorAllocations();
+		AllocateDescriptors();
+
+		CreateViews();
+		SetName(m_Name);
+	}
+}
+
+void Texture::Resize(uint32_t width, uint32_t height)
+{
+	m_TextureDesc.Width = width;
+	m_TextureDesc.Height = height;
+
+	Invalidate();
+}
+
+void Texture::CreateD3D12Resource()
 {
 	D3D12_RESOURCE_DESC d3d12ResourceDesc = {};
 	d3d12ResourceDesc.MipLevels = 1;
@@ -141,7 +161,28 @@ void Texture::Create()
 
 	RenderBackend::GetDevice()->CreateTexture(*this, d3d12ResourceDesc, initialState, hasClearValue ? &clearValue : nullptr);
 	m_ByteSize = GetRequiredIntermediateSize(m_d3d12Resource.Get(), 0, 1);
-	SetName(m_Name);
+}
+
+void Texture::AllocateDescriptors()
+{
+	uint32_t numDescriptors = m_TextureDesc.Dimension == TextureDimension::TEXTURE_DIMENSION_CUBE ? 7 : 1;
+
+	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_READ)
+	{
+		m_DescriptorAllocations[DescriptorType::SRV] = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	}
+	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_WRITE)
+	{
+		m_DescriptorAllocations[DescriptorType::UAV] = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, numDescriptors);
+	}
+	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_RENDER_TARGET)
+	{
+		m_DescriptorAllocations[DescriptorType::RTV] = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, numDescriptors);
+	}
+	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_DEPTH)
+	{
+		m_DescriptorAllocations[DescriptorType::DSV] = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, numDescriptors);
+	}
 }
 
 void Texture::CreateViews()
@@ -150,8 +191,6 @@ void Texture::CreateViews()
 	{
 		// Create shader resource view (read-only)
 		auto& srv = m_DescriptorAllocations[DescriptorType::SRV];
-		if (srv.IsNull())
-			srv = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -176,12 +215,7 @@ void Texture::CreateViews()
 	{
 		// Create unordered access view (read/write)
 		auto& uav = m_DescriptorAllocations[DescriptorType::UAV];
-		if (uav.IsNull())
-		{
-			uint32_t numDescriptors = m_TextureDesc.Dimension == TextureDimension::TEXTURE_DIMENSION_CUBE ? 7 : 1;
-			uav = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, numDescriptors);
-		}
-
+		
 		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 		uavDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
@@ -207,12 +241,7 @@ void Texture::CreateViews()
 	{
 		// Create render target view
 		auto& rtv = m_DescriptorAllocations[DescriptorType::RTV];
-		if (rtv.IsNull())
-		{
-			uint32_t numDescriptors = m_TextureDesc.Dimension == TextureDimension::TEXTURE_DIMENSION_CUBE ? 7 : 1;
-			rtv = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, numDescriptors);
-		}
-
+		
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 		rtvDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
@@ -238,11 +267,6 @@ void Texture::CreateViews()
 	{
 		// Create depth stencil view
 		auto& dsv = m_DescriptorAllocations[DescriptorType::DSV];
-		if (dsv.IsNull())
-		{
-			uint32_t numDescriptors = m_TextureDesc.Dimension == TextureDimension::TEXTURE_DIMENSION_CUBE ? 7 : 1;
-			dsv = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, numDescriptors);
-		}
 
 		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 		dsvDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
