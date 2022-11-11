@@ -36,6 +36,11 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Faster movement: LSHIFT
 - Rotate (yaw/pitch): Hold right mouse button + drag
 
+## Additional controls
+- Toggle VSync: V
+- Toggle fullscreen: F11/ALT + ENTER
+- Toggle GUI: F3
+
 ## Images
 ##### Directional light shadow mapping
 ![sponza_shadow_mapping_01](https://user-images.githubusercontent.com/34250026/194719281-e756dc51-b51b-430f-9ef6-9c5c2bb027f0.png)
