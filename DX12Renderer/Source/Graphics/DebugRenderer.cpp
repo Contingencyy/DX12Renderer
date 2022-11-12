@@ -4,6 +4,7 @@
 #include "Graphics/RenderPass.h"
 #include "Graphics/Backend/RenderBackend.h"
 #include "Graphics/Backend/CommandList.h"
+#include "Graphics/Backend/SwapChain.h"
 
 #include <imgui/imgui.h>
 
@@ -36,6 +37,7 @@ struct LineVertex
 struct InternalDebugRendererData
 {
     std::unique_ptr<RenderPass> RenderPass;
+    std::vector<std::shared_ptr<Texture>> FrameBuffers[3];
 
     DebugRendererSettings DebugRenderSettings;
     DebugRendererStatistics DebugRenderStatistics;
@@ -47,6 +49,8 @@ struct InternalDebugRendererData
     std::unique_ptr<Buffer> LineBuffer;
 
     glm::mat4 CameraViewProjection = glm::identity<glm::mat4>();
+
+    uint32_t CurrentBackBufferIndex = 0;
 };
 
 static InternalDebugRendererData s_Data;
@@ -58,6 +62,7 @@ void DebugRenderer::Initialize(uint32_t width, uint32_t height)
 
     MakeRenderPasses();
     MakeBuffers();
+    MakeFrameBuffers();
 }
 
 void DebugRenderer::Finalize()
@@ -68,10 +73,21 @@ void DebugRenderer::BeginScene(const Camera& sceneCamera)
 {
     SCOPED_TIMER("DebugRenderer::BeginFrame");
 
+    s_Data.CurrentBackBufferIndex = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex();
+
     s_Data.CameraViewProjection = sceneCamera.GetViewProjection();
 
     auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-    s_Data.RenderPass->ClearViews(commandList);
+    
+    for (auto& frameBuffer : s_Data.FrameBuffers[s_Data.CurrentBackBufferIndex])
+    {
+        const TextureDesc& frameBufferDesc = frameBuffer->GetTextureDesc();
+        if (frameBufferDesc.Usage & TextureUsage::TEXTURE_USAGE_RENDER_TARGET)
+            commandList->ClearRenderTargetView(frameBuffer->GetDescriptor(DescriptorType::RTV), glm::value_ptr<float>(frameBufferDesc.ClearColor));
+        else if (frameBufferDesc.Usage & TextureUsage::TEXTURE_USAGE_DEPTH)
+            commandList->ClearDepthStencilView(frameBuffer->GetDescriptor(DescriptorType::DSV), frameBufferDesc.ClearDepthStencil.x);
+    }
+
     RenderBackend::ExecuteCommandList(commandList);
 }
 
@@ -138,7 +154,11 @@ void DebugRenderer::Resize(uint32_t width, uint32_t height)
     s_Data.Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width),
         static_cast<float>(height), 0.0f, 1.0f);
 
-    s_Data.RenderPass->Resize(width, height);
+    for (auto& frameBuffers : s_Data.FrameBuffers)
+    {
+        for (auto& frameBuffer : frameBuffers)
+            frameBuffer->Resize(width, height);
+    }
 }
 
 void DebugRenderer::MakeRenderPasses()
@@ -172,4 +192,8 @@ void DebugRenderer::MakeRenderPasses()
 void DebugRenderer::MakeBuffers()
 {
     s_Data.LineBuffer = std::make_unique<Buffer>("Line vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 10000, sizeof(LineVertex)));
+}
+
+void DebugRenderer::MakeFrameBuffers()
+{
 }

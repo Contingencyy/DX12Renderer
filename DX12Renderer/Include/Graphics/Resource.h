@@ -18,7 +18,7 @@ public:
 
 	const DescriptorAllocation& GetDescriptorAllocation(DescriptorType type) const;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDescriptor(DescriptorType type, uint32_t offset = 0) const;
-	uint32_t GetDescriptorHeapIndex(DescriptorType type, uint32_t offset = 0);
+	uint32_t GetDescriptorHeapIndex(DescriptorType type, uint32_t offset = 0) const;
 
 	ComPtr<ID3D12Resource> GetD3D12Resource() const { return m_d3d12Resource; }
 	void SetD3D12Resource(ComPtr<ID3D12Resource> resource) { m_d3d12Resource = resource; }

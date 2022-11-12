@@ -1,9 +1,8 @@
 #pragma once
 #include "Graphics/Texture.h"
 
+class FrameBuffer;
 class PipelineState;
-class Texture;
-class CommandList;
 
 struct RenderPassDesc
 {
@@ -32,24 +31,14 @@ public:
 	RenderPass(const std::string& name, const RenderPassDesc& desc);
 	~RenderPass();
 
-	void Resize(uint32_t width, uint32_t height);
-	void ClearViews(const std::shared_ptr<CommandList>& commandList);
-
-	Texture& GetColorAttachment() { return *m_ColorAttachment; }
-	const Texture& GetColorAttachment() const { return *m_ColorAttachment; }
-	Texture& GetDepthAttachment() { return *m_DepthAttachment; }
-	const Texture& GetDepthAttachment() const { return *m_DepthAttachment; }
-
-	// Temp
+	RenderPassDesc& GetRenderPassDesc() { return m_RenderPassDesc; }
+	const RenderPassDesc& GetRenderPassDesc() const { return m_RenderPassDesc; }
 	const PipelineState& GetPipelineState() const { return *m_PipelineState; }
 
 private:
+	RenderPassDesc m_RenderPassDesc;
 	std::string m_Name;
-	RenderPassDesc m_Desc;
 
 	std::unique_ptr<PipelineState> m_PipelineState;
-
-	std::unique_ptr<Texture> m_ColorAttachment;
-	std::unique_ptr<Texture> m_DepthAttachment;
 
 };

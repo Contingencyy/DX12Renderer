@@ -60,6 +60,7 @@ public:
 private:
 	static void MakeRenderPasses();
 	static void MakeBuffers();
+	static void MakeFrameBuffers();
 
 	static void PrepareInstanceBuffer();
 	static void PrepareLightBuffers();

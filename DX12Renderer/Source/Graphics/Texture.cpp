@@ -75,7 +75,7 @@ Texture::Texture(const std::string& name, const TextureDesc& textureDesc, const 
 
 Texture::~Texture()
 {
-	if (IsCPUAccessible)
+	if (IsCPUAccessible())
 		m_d3d12Resource->Unmap(0, nullptr);
 }
 

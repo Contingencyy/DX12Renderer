@@ -19,7 +19,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Resource::GetDescriptor(DescriptorType type, uint32_
 	return m_DescriptorAllocations[type].GetCPUDescriptorHandle(offset);
 }
 
-uint32_t Resource::GetDescriptorHeapIndex(DescriptorType type, uint32_t offset)
+uint32_t Resource::GetDescriptorHeapIndex(DescriptorType type, uint32_t offset) const
 {
 	return m_DescriptorAllocations[type].GetOffsetInDescriptorHeap() + offset;
 }

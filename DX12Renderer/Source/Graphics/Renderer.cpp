@@ -1,10 +1,12 @@
 #include "Pch.h"
 #include "Graphics/Renderer.h"
 #include "Graphics/Buffer.h"
+#include "Graphics/Texture.h"
 #include "Graphics/Mesh.h"
 #include "Graphics/Shader.h"
 #include "Resource/Model.h"
 #include "Graphics/RenderPass.h"
+#include "Graphics/FrameBuffer.h"
 #include "Graphics/Backend/CommandList.h"
 #include "Graphics/Backend/Device.h"
 #include "Graphics/Backend/SwapChain.h"
@@ -107,6 +109,7 @@ struct InternalRendererData
 {
     // Render passes
     std::unique_ptr<RenderPass> RenderPasses[RenderPassType::NUM_RENDER_PASSES];
+    std::array<std::shared_ptr<FrameBuffer>, RenderPassType::NUM_RENDER_PASSES> FrameBuffers;
 
     // Renderer settings and statistics
     Renderer::RenderSettings RenderSettings;
@@ -156,6 +159,7 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 
     MakeRenderPasses();
     MakeBuffers();
+    MakeFrameBuffers();
 }
 
 void Renderer::Finalize()
@@ -176,12 +180,11 @@ void Renderer::BeginScene(const Camera& sceneCamera, const glm::vec3& ambient)
     s_Data.TonemapSettings.Exposure = sceneCamera.GetExposure();
     s_Data.TonemapSettings.Gamma = sceneCamera.GetGamma();
 
-    auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-
-    for (auto& renderPass : s_Data.RenderPasses)
-        renderPass->ClearViews(commandList);
-
-    RenderBackend::ExecuteCommandList(commandList);
+    for (auto& frameBuffer : s_Data.FrameBuffers)
+    {
+        if (frameBuffer)
+            frameBuffer->ClearAttachments();
+    }
 }
 
 void Renderer::Render()
@@ -257,11 +260,11 @@ void Renderer::Render()
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         commandList->BeginTimestampQuery("Lighting");
 
-        auto& lightingColorTarget = s_Data.RenderPasses[RenderPassType::LIGHTING]->GetColorAttachment();
-        auto& lightingDepthBuffer = s_Data.RenderPasses[RenderPassType::LIGHTING]->GetDepthAttachment();
+        auto& hdrColorTarget = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetColorAttachment();
+        auto& hdrDepthTarget = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetDepthAttachment();
 
-        auto rtv = lightingColorTarget.GetDescriptor(DescriptorType::RTV);
-        auto dsv = lightingDepthBuffer.GetDescriptor(DescriptorType::DSV);
+        auto rtv = hdrColorTarget.GetDescriptor(DescriptorType::RTV);
+        auto dsv = hdrDepthTarget.GetDescriptor(DescriptorType::DSV);
 
         // Set viewports, scissor rects and render targets
         commandList->SetViewports(1, &viewport);
@@ -344,8 +347,8 @@ void Renderer::Render()
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         commandList->BeginTimestampQuery("Tonemapping");
 
-        auto& tmColorTarget = s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
-        auto& tmDepthBuffer = s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetDepthAttachment();
+        auto& tmColorTarget = s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetColorAttachment();
+        auto& tmDepthBuffer = s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetDepthAttachment();
 
         auto tmRtv = tmColorTarget.GetDescriptor(DescriptorType::RTV);
         auto tmDsv = tmDepthBuffer.GetDescriptor(DescriptorType::DSV);
@@ -360,7 +363,7 @@ void Renderer::Render()
         // Set pipeline state and root signature
         commandList->SetPipelineState(s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetPipelineState());
 
-        uint32_t pbrColorTargetIndex = s_Data.RenderPasses[RenderPassType::LIGHTING]->GetColorAttachment().GetDescriptorHeapIndex(DescriptorType::SRV);
+        uint32_t pbrColorTargetIndex = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetColorAttachment().GetDescriptorHeapIndex(DescriptorType::SRV);
         s_Data.TonemapSettings.HDRTargetIndex = pbrColorTargetIndex;
         s_Data.TonemapConstantBuffer->SetBufferData(&s_Data.TonemapSettings);
         commandList->SetRootConstantBufferView(0, *s_Data.TonemapConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -431,7 +434,7 @@ void Renderer::EndScene()
 {
     SCOPED_TIMER("Renderer::EndScene");
 
-    RenderBackend::GetSwapChain().ResolveToBackBuffer(s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment());
+    RenderBackend::GetSwapChain().ResolveToBackBuffer(s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetColorAttachment());
 
     s_Data.NumMeshes = 0;
     s_Data.SceneData.Reset();
@@ -496,8 +499,13 @@ void Renderer::Resize(uint32_t width, uint32_t height)
 
         RenderBackend::Resize(width, height);
 
-        for (auto& renderPass : s_Data.RenderPasses)
-            renderPass->Resize(s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+        for (auto& frameBuffer : s_Data.FrameBuffers)
+        {
+            if (frameBuffer)
+            {
+                frameBuffer->Resize(s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+            }
+        }
     }
 }
 
@@ -520,13 +528,13 @@ const Renderer::RenderSettings& Renderer::GetSettings()
 // Temp
 Texture& Renderer::GetFinalColorOutput()
 {
-    return s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetColorAttachment();
+    return s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetColorAttachment();
 }
 
 // Temp
 Texture& Renderer::GetFinalDepthOutput()
 {
-    return s_Data.RenderPasses[RenderPassType::LIGHTING]->GetDepthAttachment();
+    return s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetDepthAttachment();
 }
 
 void Renderer::MakeRenderPasses()
@@ -538,7 +546,6 @@ void Renderer::MakeRenderPasses()
         desc.PixelShaderPath = "Resources/Shaders/ShadowMapping_PS.hlsl";
         desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_UNSPECIFIED,
             0, 0);
-        // Resolution of shadow maps should be adjustable at runtime
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
             0, 0);
         desc.DepthEnabled = true;
@@ -658,6 +665,23 @@ void Renderer::MakeBuffers()
     s_Data.TonemapIndexBuffer = std::make_unique<Buffer>("Tonemap index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, 6, sizeof(WORD)), &toneMappingIndices[0]);
 
     s_Data.SceneDataConstantBuffer = std::make_unique<Buffer>("Scene data constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(SceneData)));
+}
+
+void Renderer::MakeFrameBuffers()
+{
+    FrameBufferDesc hdrDesc = {};
+    hdrDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
+        s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+    hdrDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+        s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+    s_Data.FrameBuffers[RenderPassType::LIGHTING] = std::make_shared<FrameBuffer>("HDR frame buffer", hdrDesc);
+
+    FrameBufferDesc tonemapDesc = {};
+    tonemapDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+        s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+    tonemapDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+        s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+    s_Data.FrameBuffers[RenderPassType::TONE_MAPPING] = std::make_shared<FrameBuffer>("Tonemap color target", tonemapDesc);
 }
 
 void Renderer::PrepareInstanceBuffer()

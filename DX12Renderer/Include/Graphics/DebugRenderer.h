@@ -20,6 +20,7 @@ public:
 private:
 	static void MakeRenderPasses();
 	static void MakeBuffers();
+	static void MakeFrameBuffers();
 	
 
 };
