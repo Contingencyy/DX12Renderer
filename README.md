@@ -14,12 +14,10 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Render backend with platform agnostic renderers (debug and 3D renderer)
 - GPU validation
 - Directional light/spotlights/pointlights (ambient and diffuse lighting)
-- Shadow mapping (directional lights, spotlights, pointlights)
-
-## WIP
-- Shadow map improvements (Slope-scaled bias, PCF, draw call reductions)
+- Shadow mapping (Multisampled PCF, slope-scaled bias)
 
 ## Planned features
+- Multithreaded rendering/command list recording
 - Mipmap generation
 - Material system
 - Full PBR
