@@ -49,6 +49,7 @@ struct RendererStatistics
 enum RenderPassType : uint32_t
 {
     SHADOW_MAPPING,
+    DEPTH_PREPASS,
     LIGHTING,
     TONE_MAPPING,
     NUM_RENDER_PASSES = (TONE_MAPPING + 1)
@@ -200,6 +201,7 @@ void Renderer::Render()
     PrepareShadowMaps();
 
     auto& descriptorHeap = RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    s_Data.SceneDataConstantBuffer->SetBufferData(&s_Data.SceneData);
 
     CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.RenderResolution.x), static_cast<float>(s_Data.RenderSettings.RenderResolution.y), 0.0f, 1.0f);
     CD3DX12_RECT scissorRect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
@@ -256,15 +258,79 @@ void Renderer::Render()
     }
 
     {
+        /* Depth pre-pass render pass */
+        auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+        commandList->BeginTimestampQuery("Depth pre-pass");
+
+        auto& depthPrepassDepthTarget = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment();
+        auto dsv = depthPrepassDepthTarget.GetDescriptor(DescriptorType::DSV);
+
+        commandList->SetViewports(1, &viewport);
+        commandList->SetScissorRects(1, &scissorRect);
+        commandList->SetRenderTargets(0, nullptr, &dsv);
+
+        commandList->SetPipelineState(s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS]->GetPipelineState());
+
+        commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
+
+        // Set instance buffer
+        commandList->SetVertexBuffers(1, 1, *s_Data.MeshInstanceBuffer);
+        uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Data.RenderSettings.MaxMeshes;
+
+        std::shared_ptr<Buffer> currentVertexBuffer = nullptr, currentIndexBuffer = nullptr;
+
+        for (uint32_t i = 0; i < s_Data.NumMeshes; ++i)
+        {
+            auto& mesh = s_Data.MeshDrawData[i].Mesh;
+            auto& instanceData = s_Data.MeshDrawData[i].InstanceData;
+
+            // Cull mesh from light camera frustum
+            if (s_Data.SceneCamera.IsFrustumCullingEnabled())
+            {
+                BoundingBox boundingBox = mesh->GetBoundingBox();
+
+                boundingBox.Min = glm::vec4(boundingBox.Min, 1.0f) * instanceData.Transform;
+                boundingBox.Max = glm::vec4(boundingBox.Max, 1.0f) * instanceData.Transform;
+
+                if (!s_Data.SceneCamera.GetViewFrustum().IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
+                {
+                    startInstance++;
+                    continue;
+                }
+            }
+
+            auto vb = mesh->GetVertexBuffer();
+            auto ib = mesh->GetIndexBuffer();
+
+            if (vb != currentVertexBuffer)
+            {
+                commandList->SetVertexBuffers(0, 1, *vb);
+                currentVertexBuffer = vb;
+            }
+            if (ib != currentIndexBuffer)
+            {
+                commandList->SetIndexBuffer(*ib);
+                currentIndexBuffer = ib;
+            }
+
+            commandList->DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), 1,
+                static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
+        }
+
+        commandList->EndTimestampQuery("Depth pre-pass");
+        RenderBackend::ExecuteCommandList(commandList);
+    }
+
+    {
         /* Lighting render pass */
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         commandList->BeginTimestampQuery("Lighting");
 
         auto& hdrColorTarget = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetColorAttachment();
-        auto& hdrDepthTarget = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetDepthAttachment();
+        auto& depthPrepassDepthTarget = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment();
 
         auto rtv = hdrColorTarget.GetDescriptor(DescriptorType::RTV);
-        auto dsv = hdrDepthTarget.GetDescriptor(DescriptorType::DSV);
+        auto dsv = depthPrepassDepthTarget.GetDescriptor(DescriptorType::DSV);
 
         // Set viewports, scissor rects and render targets
         commandList->SetViewports(1, &viewport);
@@ -277,7 +343,6 @@ void Renderer::Render()
         commandList->SetPipelineState(s_Data.RenderPasses[RenderPassType::LIGHTING]->GetPipelineState());
 
         // Set root CBVs for scene data
-        s_Data.SceneDataConstantBuffer->SetBufferData(&s_Data.SceneData);
         commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
 
         // Set root CBVs for lights
@@ -534,7 +599,7 @@ Texture& Renderer::GetFinalColorOutput()
 // Temp
 Texture& Renderer::GetFinalDepthOutput()
 {
-    return s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetDepthAttachment();
+    return s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment();
 }
 
 void Renderer::MakeRenderPasses()
@@ -544,17 +609,11 @@ void Renderer::MakeRenderPasses()
         RenderPassDesc desc;
         desc.VertexShaderPath = "Resources/Shaders/ShadowMapping_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/ShadowMapping_PS.hlsl";
-        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_UNSPECIFIED,
-            0, 0);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
             0, 0);
-        desc.DepthEnabled = true;
-        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_GREATER;
         desc.DepthBias = -50;
         desc.SlopeScaledDepthBias = -5.0f;
         desc.DepthBiasClamp = 1.0f;
-        desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-        desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
         desc.RootParameters.resize(1);
         desc.RootParameters[0].InitAsConstants(16, 0); // Light VP
@@ -573,18 +632,40 @@ void Renderer::MakeRenderPasses()
     }
 
     {
+        // Depth pre-pass
+        RenderPassDesc desc;
+        desc.VertexShaderPath = "Resources/Shaders/DepthPrepass_VS.hlsl";
+        desc.PixelShaderPath = "Resources/Shaders/DepthPrepass_PS.hlsl";
+        desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+            s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
+
+        desc.RootParameters.resize(1);
+        desc.RootParameters[0].InitAsConstantBufferView(0); // Scene data
+
+        desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "TEX_INDICES", 0, DXGI_FORMAT_R32G32_UINT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+
+        s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS] = std::make_unique<RenderPass>("Depth pre-pass", desc);
+    }
+
+    {
         // Lighting render pass
         RenderPassDesc desc;
         desc.VertexShaderPath = "Resources/Shaders/Lighting_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/Lighting_PS.hlsl";
         desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
             s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
-        desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
-        desc.DepthEnabled = true;
-        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
-        desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-        desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+            0, 0);
+        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_EQUAL;
 
         // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
         CD3DX12_DESCRIPTOR_RANGE1 ranges[2] = {};
@@ -622,8 +703,6 @@ void Renderer::MakeRenderPasses()
             s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
         desc.DepthEnabled = false;
         desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
-        desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-        desc.TopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
         // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
         CD3DX12_DESCRIPTOR_RANGE1 ranges[1] = {};
@@ -669,10 +748,13 @@ void Renderer::MakeBuffers()
 
 void Renderer::MakeFrameBuffers()
 {
+    FrameBufferDesc depthPrepassDesc = {};
+    depthPrepassDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+        s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+    s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS] = std::make_shared<FrameBuffer>("Depth pre-pass frame buffer", depthPrepassDesc);
+
     FrameBufferDesc hdrDesc = {};
     hdrDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
-        s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
-    hdrDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
         s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
     s_Data.FrameBuffers[RenderPassType::LIGHTING] = std::make_shared<FrameBuffer>("HDR frame buffer", hdrDesc);
 

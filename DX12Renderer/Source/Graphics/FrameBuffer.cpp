@@ -27,10 +27,12 @@ void FrameBuffer::ClearAttachments()
 	auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 	for (auto& colorAttachment : m_ColorAttachments)
-		commandList->ClearRenderTargetView(colorAttachment->GetDescriptor(DescriptorType::RTV), glm::value_ptr<float>(colorAttachment->GetTextureDesc().ClearColor));
+		if (colorAttachment->IsValid())
+			commandList->ClearRenderTargetView(colorAttachment->GetDescriptor(DescriptorType::RTV), glm::value_ptr<float>(colorAttachment->GetTextureDesc().ClearColor));
 
 	for (auto& depthAttachment : m_DepthAttachments)
-		commandList->ClearDepthStencilView(depthAttachment->GetDescriptor(DescriptorType::DSV), depthAttachment->GetTextureDesc().ClearDepthStencil.x);
+		if (depthAttachment->IsValid())
+			commandList->ClearDepthStencilView(depthAttachment->GetDescriptor(DescriptorType::DSV), depthAttachment->GetTextureDesc().ClearDepthStencil.x);
 
 	RenderBackend::ExecuteCommandList(commandList);
 }
