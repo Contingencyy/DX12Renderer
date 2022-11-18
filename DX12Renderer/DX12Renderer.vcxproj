@@ -245,8 +245,6 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClCompile Include="Source\Graphics\Mesh.cpp" />
     <ClCompile Include="Source\Resource\Model.cpp" />
     <ClCompile Include="Source\Graphics\ParticleSystem.cpp" />
-    <ClCompile Include="Source\Graphics\Backend\PipelineState.cpp" />
-    <ClCompile Include="Source\Graphics\Backend\RootSignature.cpp" />
     <ClCompile Include="Source\Graphics\Shader.cpp" />
     <ClCompile Include="Source\Graphics\Backend\SwapChain.cpp" />
     <ClCompile Include="Source\Graphics\Texture.cpp" />
@@ -298,8 +296,6 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\Graphics\Mesh.h" />
     <ClInclude Include="Include\Resource\Model.h" />
     <ClInclude Include="Include\Graphics\ParticleSystem.h" />
-    <ClInclude Include="Include\Graphics\Backend\PipelineState.h" />
-    <ClInclude Include="Include\Graphics\Backend\RootSignature.h" />
     <ClInclude Include="Include\Graphics\Shader.h" />
     <ClInclude Include="Include\Graphics\Backend\SwapChain.h" />
     <ClInclude Include="Include\Graphics\Texture.h" />

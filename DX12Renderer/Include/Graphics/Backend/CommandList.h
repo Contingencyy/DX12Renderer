@@ -6,7 +6,7 @@
 class DescriptorHeap;
 class DynamicDescriptorHeap;
 class Device;
-class PipelineState;
+class RenderPass;
 
 class CommandList
 {
@@ -19,10 +19,10 @@ public:
 	void ClearRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE rtv, const float* clearColor);
 	void ClearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE dsv, float depth = 1.0f);
 
-	void SetViewports(uint32_t numViewports, const D3D12_VIEWPORT* viewports);
-	void SetScissorRects(uint32_t numRects, const D3D12_RECT* rects);
-	void SetRenderTargets(uint32_t numRTVs, const D3D12_CPU_DESCRIPTOR_HANDLE* rtv, const D3D12_CPU_DESCRIPTOR_HANDLE* dsv);
-	void SetPipelineState(const PipelineState& pipelineState);
+	void SetViewports(uint32_t numViewports, D3D12_VIEWPORT* viewports);
+	void SetScissorRects(uint32_t numRects, D3D12_RECT* rects);
+	void SetRenderTargets(uint32_t numRTVS, D3D12_CPU_DESCRIPTOR_HANDLE* rtvs, D3D12_CPU_DESCRIPTOR_HANDLE* dsv);
+	void SetRenderPassBindables(const RenderPass& renderPass);
 
 	void SetRootConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset);
 	void SetVertexBuffers(uint32_t slot, uint32_t numViews, const Buffer& vertexBuffer);

@@ -75,11 +75,8 @@ void GUI::EndFrame()
 
 	auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	
-	auto& colorTarget = Renderer::GetFinalColorOutput();
-	auto& depthBuffer = Renderer::GetFinalDepthOutput();
-
-	auto rtv = colorTarget.GetDescriptor(DescriptorType::RTV);
-	auto dsv = depthBuffer.GetDescriptor(DescriptorType::DSV);
+	D3D12_CPU_DESCRIPTOR_HANDLE rtv = Renderer::GetFinalColorOutput().GetDescriptor(DescriptorType::RTV);
+	D3D12_CPU_DESCRIPTOR_HANDLE dsv = Renderer::GetFinalDepthOutput().GetDescriptor(DescriptorType::DSV);
 
 	commandList->SetRenderTargets(1, &rtv, &dsv);
 	ID3D12DescriptorHeap* descriptorHeap = m_d3d12DescriptorHeap.Get();

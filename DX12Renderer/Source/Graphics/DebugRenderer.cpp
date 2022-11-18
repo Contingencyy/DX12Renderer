@@ -2,6 +2,7 @@
 #include "Graphics/DebugRenderer.h"
 #include "Graphics/Buffer.h"
 #include "Graphics/RenderPass.h"
+#include "Graphics/FrameBuffer.h"
 #include "Graphics/Backend/RenderBackend.h"
 #include "Graphics/Backend/CommandList.h"
 #include "Graphics/Backend/SwapChain.h"
@@ -37,13 +38,10 @@ struct LineVertex
 struct InternalDebugRendererData
 {
     std::unique_ptr<RenderPass> RenderPass;
-    std::vector<std::shared_ptr<Texture>> FrameBuffers[3];
+    std::shared_ptr<FrameBuffer> FrameBuffer;
 
     DebugRendererSettings DebugRenderSettings;
     DebugRendererStatistics DebugRenderStatistics;
-
-    D3D12_VIEWPORT Viewport = D3D12_VIEWPORT();
-    D3D12_RECT ScissorRect = D3D12_RECT();
 
     std::vector<LineVertex> LineVertexData;
     std::unique_ptr<Buffer> LineBuffer;
@@ -57,9 +55,6 @@ static InternalDebugRendererData s_Data;
 
 void DebugRenderer::Initialize(uint32_t width, uint32_t height)
 {
-    s_Data.Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f);
-    s_Data.ScissorRect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
-
     MakeRenderPasses();
     MakeBuffers();
     MakeFrameBuffers();
@@ -74,21 +69,9 @@ void DebugRenderer::BeginScene(const Camera& sceneCamera)
     SCOPED_TIMER("DebugRenderer::BeginFrame");
 
     s_Data.CurrentBackBufferIndex = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex();
-
     s_Data.CameraViewProjection = sceneCamera.GetViewProjection();
 
-    auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-    
-    for (auto& frameBuffer : s_Data.FrameBuffers[s_Data.CurrentBackBufferIndex])
-    {
-        const TextureDesc& frameBufferDesc = frameBuffer->GetTextureDesc();
-        if (frameBufferDesc.Usage & TextureUsage::TEXTURE_USAGE_RENDER_TARGET)
-            commandList->ClearRenderTargetView(frameBuffer->GetDescriptor(DescriptorType::RTV), glm::value_ptr<float>(frameBufferDesc.ClearColor));
-        else if (frameBufferDesc.Usage & TextureUsage::TEXTURE_USAGE_DEPTH)
-            commandList->ClearDepthStencilView(frameBuffer->GetDescriptor(DescriptorType::DSV), frameBufferDesc.ClearDepthStencil.x);
-    }
-
-    RenderBackend::ExecuteCommandList(commandList);
+    s_Data.FrameBuffer->ClearAttachments();
 }
 
 void DebugRenderer::Render()
@@ -99,19 +82,21 @@ void DebugRenderer::Render()
         return;
 
     auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-    auto& colorAttachment = Renderer::GetFinalColorOutput();
-    auto& depthAttachment = Renderer::GetFinalDepthOutput();
-
-    auto rtv = colorAttachment.GetDescriptor(DescriptorType::RTV);
-    auto dsv = depthAttachment.GetDescriptor(DescriptorType::DSV);
 
     // Set viewports, scissor rects and render targets
-    commandList->SetViewports(1, &s_Data.Viewport);
-    commandList->SetScissorRects(1, &s_Data.ScissorRect);
-    commandList->SetRenderTargets(1, &rtv, &dsv);
+    commandList->SetRenderPassBindables(*s_Data.RenderPass);
 
-    // Set pipeline state and root signature
-    commandList->SetPipelineState(s_Data.RenderPass->GetPipelineState());
+    const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
+    CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(renderSettings.RenderResolution.x),
+        static_cast<float>(renderSettings.RenderResolution.y), 0.0f, 1.0f);
+    CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
+
+    commandList->SetViewports(1, &viewport);
+    commandList->SetScissorRects(1, &scissorRect);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv = Renderer::GetFinalColorOutput().GetDescriptor(DescriptorType::RTV);
+    D3D12_CPU_DESCRIPTOR_HANDLE dsv = Renderer::GetFinalDepthOutput().GetDescriptor(DescriptorType::DSV);
+    commandList->SetRenderTargets(1, &rtv, &dsv);
 
     commandList->SetRootConstants(0, 16, &s_Data.CameraViewProjection, 0);
 
@@ -151,14 +136,7 @@ void DebugRenderer::Submit(const glm::vec3& lineStart, const glm::vec3& lineEnd,
 
 void DebugRenderer::Resize(uint32_t width, uint32_t height)
 {
-    s_Data.Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width),
-        static_cast<float>(height), 0.0f, 1.0f);
-
-    for (auto& frameBuffers : s_Data.FrameBuffers)
-    {
-        for (auto& frameBuffer : frameBuffers)
-            frameBuffer->Resize(width, height);
-    }
+    s_Data.FrameBuffer->Resize(width, height);
 }
 
 void DebugRenderer::MakeRenderPasses()
@@ -196,4 +174,12 @@ void DebugRenderer::MakeBuffers()
 
 void DebugRenderer::MakeFrameBuffers()
 {
+    auto& renderSettings = Renderer::GetSettings();
+
+    FrameBufferDesc debugDesc = {};
+    debugDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_UNSPECIFIED,
+        renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
+    debugDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_UNSPECIFIED,
+        renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
+    s_Data.FrameBuffer = std::make_shared<FrameBuffer>("Debug line frame buffer", debugDesc);
 }

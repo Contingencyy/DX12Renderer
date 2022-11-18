@@ -99,12 +99,6 @@
     <ClCompile Include="Source\Graphics\Backend\DescriptorAllocation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\Backend\PipelineState.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Graphics\Backend\RootSignature.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Util\Logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -258,12 +252,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\Backend\DescriptorAllocation.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Graphics\Backend\PipelineState.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Graphics\Backend\RootSignature.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Scene\SceneObject.h">

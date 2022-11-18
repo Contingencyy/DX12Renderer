@@ -183,8 +183,7 @@ void Renderer::BeginScene(const Camera& sceneCamera, const glm::vec3& ambient)
 
     for (auto& frameBuffer : s_Data.FrameBuffers)
     {
-        if (frameBuffer)
-            frameBuffer->ClearAttachments();
+        frameBuffer->ClearAttachments();
     }
 }
 
@@ -203,26 +202,21 @@ void Renderer::Render()
     auto& descriptorHeap = RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     s_Data.SceneDataConstantBuffer->SetBufferData(&s_Data.SceneData);
 
-    CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.RenderResolution.x), static_cast<float>(s_Data.RenderSettings.RenderResolution.y), 0.0f, 1.0f);
-    CD3DX12_RECT scissorRect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
-
     {
         /* Shadow mapping render pass */
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         commandList->BeginTimestampQuery("Shadow mapping");
 
+        // Set bindless descriptor heap
         commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
 
-        CD3DX12_VIEWPORT shadowmapViewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.ShadowMapResolution.x),
-            static_cast<float>(s_Data.RenderSettings.ShadowMapResolution.y), 0.0f, 1.0f);
-        commandList->SetViewports(1, &shadowmapViewport);
-        commandList->SetScissorRects(1, &scissorRect);
+        // Bind render pass bindables (sets viewport, scissor rect, render targets, pipeline state, root signature and primitive topology)
+        commandList->SetRenderPassBindables(*s_Data.RenderPasses[RenderPassType::SHADOW_MAPPING]);
 
         std::size_t cameraIndex = 0, shadowMapIndex = 0;
-
         for (uint32_t i = 0; i < s_Data.SceneData.NumDirLights; ++i)
         {
-            RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], s_Data.LightShadowMaps[shadowMapIndex]->GetDescriptor(DescriptorType::DSV));
+            RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], *s_Data.LightShadowMaps[shadowMapIndex]);
 
             cameraIndex++;
             shadowMapIndex++;
@@ -230,12 +224,11 @@ void Renderer::Render()
 
         cameraIndex = s_Data.RenderSettings.MaxDirectionalLights;
         shadowMapIndex = s_Data.RenderSettings.MaxDirectionalLights;
-
         for (uint32_t i = 0; i < s_Data.SceneData.NumPointLights; ++i)
         {
             for (uint32_t face = 0; face < 6; ++face)
             {
-                RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], s_Data.LightShadowMaps[shadowMapIndex]->GetDescriptor(DescriptorType::DSV, 1 + face));
+                RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], *s_Data.LightShadowMaps[shadowMapIndex], 1 + face);
                 cameraIndex++;
             }
 
@@ -244,10 +237,9 @@ void Renderer::Render()
 
         cameraIndex = static_cast<std::size_t>(s_Data.RenderSettings.MaxDirectionalLights + (s_Data.RenderSettings.MaxPointLights * 6));
         shadowMapIndex = static_cast<std::size_t>(s_Data.RenderSettings.MaxDirectionalLights + s_Data.RenderSettings.MaxPointLights);
-
         for (uint32_t i = 0; i < s_Data.SceneData.NumSpotLights; ++i)
         {
-            RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], s_Data.LightShadowMaps[shadowMapIndex]->GetDescriptor(DescriptorType::DSV));
+            RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], *s_Data.LightShadowMaps[shadowMapIndex]);
 
             cameraIndex++;
             shadowMapIndex++;
@@ -262,14 +254,18 @@ void Renderer::Render()
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         commandList->BeginTimestampQuery("Depth pre-pass");
 
-        auto& depthPrepassDepthTarget = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment();
-        auto dsv = depthPrepassDepthTarget.GetDescriptor(DescriptorType::DSV);
+        // Bind render pass bindables
+        commandList->SetRenderPassBindables(*s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS]);
+
+        CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.RenderResolution.x),
+            static_cast<float>(s_Data.RenderSettings.RenderResolution.y), 0.0f, 1.0f);
+        CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
 
         commandList->SetViewports(1, &viewport);
         commandList->SetScissorRects(1, &scissorRect);
-        commandList->SetRenderTargets(0, nullptr, &dsv);
 
-        commandList->SetPipelineState(s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS]->GetPipelineState());
+        D3D12_CPU_DESCRIPTOR_HANDLE dsv = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment().GetDescriptor(DescriptorType::DSV);
+        commandList->SetRenderTargets(0, nullptr, &dsv);
 
         commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
 
@@ -326,21 +322,22 @@ void Renderer::Render()
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         commandList->BeginTimestampQuery("Lighting");
 
-        auto& hdrColorTarget = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetColorAttachment();
-        auto& depthPrepassDepthTarget = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment();
-
-        auto rtv = hdrColorTarget.GetDescriptor(DescriptorType::RTV);
-        auto dsv = depthPrepassDepthTarget.GetDescriptor(DescriptorType::DSV);
-
-        // Set viewports, scissor rects and render targets
-        commandList->SetViewports(1, &viewport);
-        commandList->SetScissorRects(1, &scissorRect);
-        commandList->SetRenderTargets(1, &rtv, &dsv);
-
+        // Set bindless descriptor heap
         commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
 
-        // Set the pipeline state along with the root signature
-        commandList->SetPipelineState(s_Data.RenderPasses[RenderPassType::LIGHTING]->GetPipelineState());
+        // Bind render pass bindables (sets viewport, scissor rect, render targets, pipeline state, root signature and primitive topology)
+        commandList->SetRenderPassBindables(*s_Data.RenderPasses[RenderPassType::LIGHTING]);
+
+        CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.RenderResolution.x),
+            static_cast<float>(s_Data.RenderSettings.RenderResolution.y), 0.0f, 1.0f);
+        CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
+
+        commandList->SetViewports(1, &viewport);
+        commandList->SetScissorRects(1, &scissorRect);
+
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetColorAttachment().GetDescriptor(DescriptorType::RTV);
+        D3D12_CPU_DESCRIPTOR_HANDLE dsv = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment().GetDescriptor(DescriptorType::DSV);
+        commandList->SetRenderTargets(1, &rtv, &dsv);
 
         // Set root CBVs for scene data
         commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
@@ -412,21 +409,22 @@ void Renderer::Render()
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         commandList->BeginTimestampQuery("Tonemapping");
 
-        auto& tmColorTarget = s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetColorAttachment();
-        auto& tmDepthBuffer = s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetDepthAttachment();
-
-        auto tmRtv = tmColorTarget.GetDescriptor(DescriptorType::RTV);
-        auto tmDsv = tmDepthBuffer.GetDescriptor(DescriptorType::DSV);
-
-        // Set viewports, scissor rects and render targets
-        commandList->SetViewports(1, &viewport);
-        commandList->SetScissorRects(1, &scissorRect);
-        commandList->SetRenderTargets(1, &tmRtv, &tmDsv);
-
+        // Set bindless descriptor heap
         commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
 
-        // Set pipeline state and root signature
-        commandList->SetPipelineState(s_Data.RenderPasses[RenderPassType::TONE_MAPPING]->GetPipelineState());
+        // Bind render pass bindables (sets viewport, scissor rect, render targets, pipeline state, root signature and primitive topology)
+        commandList->SetRenderPassBindables(*s_Data.RenderPasses[RenderPassType::TONE_MAPPING]);
+
+        CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.RenderResolution.x),
+            static_cast<float>(s_Data.RenderSettings.RenderResolution.y), 0.0f, 1.0f);
+        CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
+
+        commandList->SetViewports(1, &viewport);
+        commandList->SetScissorRects(1, &scissorRect);
+
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv = s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetColorAttachment().GetDescriptor(DescriptorType::RTV);
+        D3D12_CPU_DESCRIPTOR_HANDLE dsv = s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetDepthAttachment().GetDescriptor(DescriptorType::DSV);
+        commandList->SetRenderTargets(1, &rtv, &dsv);
 
         uint32_t pbrColorTargetIndex = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetColorAttachment().GetDescriptorHeapIndex(DescriptorType::SRV);
         s_Data.TonemapSettings.HDRTargetIndex = pbrColorTargetIndex;
@@ -610,7 +608,7 @@ void Renderer::MakeRenderPasses()
         desc.VertexShaderPath = "Resources/Shaders/ShadowMapping_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/ShadowMapping_PS.hlsl";
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            0, 0);
+            s_Data.RenderSettings.ShadowMapResolution.x, s_Data.RenderSettings.ShadowMapResolution.y);
         desc.DepthBias = -50;
         desc.SlopeScaledDepthBias = -5.0f;
         desc.DepthBiasClamp = 1.0f;
@@ -748,6 +746,11 @@ void Renderer::MakeBuffers()
 
 void Renderer::MakeFrameBuffers()
 {
+    FrameBufferDesc shadowMappingDesc = {};
+    shadowMappingDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+        s_Data.RenderSettings.ShadowMapResolution.x, s_Data.RenderSettings.ShadowMapResolution.y);
+    s_Data.FrameBuffers[RenderPassType::SHADOW_MAPPING] = std::make_shared<FrameBuffer>("Shadow mapping frame buffer", shadowMappingDesc);
+
     FrameBufferDesc depthPrepassDesc = {};
     depthPrepassDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
         s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
@@ -805,12 +808,17 @@ void Renderer::PrepareShadowMaps()
     RenderBackend::ExecuteCommandListAndWait(commandList);
 }
 
-void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCamera, D3D12_CPU_DESCRIPTOR_HANDLE shadowMapDepthView)
+void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCamera, const Texture& shadowMap, uint32_t descriptorOffset)
 {
-    commandList.SetRenderTargets(0, nullptr, &shadowMapDepthView);
+    CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(shadowMap.GetTextureDesc().Width),
+        static_cast<float>(shadowMap.GetTextureDesc().Height), 0.0f, 1.0f);
+    CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
 
-    // Set the pipeline state along with the root signature
-    commandList.SetPipelineState(s_Data.RenderPasses[RenderPassType::SHADOW_MAPPING]->GetPipelineState());
+    commandList.SetViewports(1, &viewport);
+    commandList.SetScissorRects(1, &scissorRect);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE dsv = shadowMap.GetDescriptor(DescriptorType::DSV, descriptorOffset);
+    commandList.SetRenderTargets(0, nullptr, &dsv);
 
     // Set root constant (light VP)
     const glm::mat4& lightViewProjection = lightCamera.GetViewProjection();
@@ -856,9 +864,6 @@ void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCame
             currentIndexBuffer = ib;
         }
 
-        /*commandList.DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), static_cast<uint32_t>(meshInstanceData.size()),
-            static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
-        startInstance += static_cast<uint32_t>(meshInstanceData.size());*/
         commandList.DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), 1,
             static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
         startInstance += 1;

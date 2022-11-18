@@ -54,7 +54,6 @@ public:
 
 	// Temp
 	static Texture& GetFinalColorOutput();
-	// Temp
 	static Texture& GetFinalDepthOutput();
 
 private:
@@ -66,6 +65,6 @@ private:
 	static void PrepareLightBuffers();
 	static void PrepareShadowMaps();
 
-	static void RenderShadowMap(CommandList& commandList, const Camera& lightCamera, D3D12_CPU_DESCRIPTOR_HANDLE shadowMapDepthView);
+	static void RenderShadowMap(CommandList& commandList, const Camera& lightCamera, const Texture& shadowMap, uint32_t descriptorOffset = 0);
 
 };

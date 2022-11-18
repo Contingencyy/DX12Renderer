@@ -2,7 +2,7 @@
 #include "Graphics/Texture.h"
 
 class FrameBuffer;
-class PipelineState;
+class Shader;
 
 struct RenderPassDesc
 {
@@ -33,12 +33,22 @@ public:
 
 	RenderPassDesc& GetRenderPassDesc() { return m_RenderPassDesc; }
 	const RenderPassDesc& GetRenderPassDesc() const { return m_RenderPassDesc; }
-	const PipelineState& GetPipelineState() const { return *m_PipelineState; }
+
+	ID3D12PipelineState* GetD3D12PipelineState() const { return m_d3d12PipelineState.Get(); }
+	ID3D12RootSignature* GetD3D12RootSignature() const { return m_d3d12RootSignature.Get(); }
+
+private:
+	void CreateRootSignature();
+	void CreatePipelineState();
 
 private:
 	RenderPassDesc m_RenderPassDesc;
 	std::string m_Name;
 
-	std::unique_ptr<PipelineState> m_PipelineState;
+	ComPtr<ID3D12PipelineState> m_d3d12PipelineState;
+	ComPtr<ID3D12RootSignature> m_d3d12RootSignature;
+
+	std::unique_ptr<Shader> m_VertexShader;
+	std::unique_ptr<Shader> m_PixelShader;
 
 };

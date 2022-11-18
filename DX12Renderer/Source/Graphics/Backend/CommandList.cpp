@@ -1,10 +1,9 @@
 #include "Pch.h"
 #include "Graphics/Backend/CommandList.h"
 #include "Graphics/Buffer.h"
+#include "Graphics/RenderPass.h"
 #include "Graphics/Backend/Device.h"
 #include "Graphics/Backend/DescriptorHeap.h"
-#include "Graphics/Backend/PipelineState.h"
-#include "Graphics/Backend/RootSignature.h"
 
 CommandList::CommandList(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE type)
 	: m_d3d12CommandListType(type), m_Device(device)
@@ -37,33 +36,36 @@ void CommandList::ClearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE dsv, float d
 	m_d3d12CommandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, depth, 0, 0, nullptr);
 }
 
-void CommandList::SetViewports(uint32_t numViewports, const D3D12_VIEWPORT* viewports)
+void CommandList::SetViewports(uint32_t numViewports, D3D12_VIEWPORT* viewports)
 {
 	m_d3d12CommandList->RSSetViewports(numViewports, viewports);
 }
 
-void CommandList::SetScissorRects(uint32_t numRects, const D3D12_RECT* rects)
+void CommandList::SetScissorRects(uint32_t numRects, D3D12_RECT* rects)
 {
 	m_d3d12CommandList->RSSetScissorRects(numRects, rects);
 }
 
-void CommandList::SetRenderTargets(uint32_t numRTVs, const D3D12_CPU_DESCRIPTOR_HANDLE* rtv, const D3D12_CPU_DESCRIPTOR_HANDLE* dsv)
+void CommandList::SetRenderTargets(uint32_t numRTVS, D3D12_CPU_DESCRIPTOR_HANDLE* rtvs, D3D12_CPU_DESCRIPTOR_HANDLE* dsv)
 {
-	m_d3d12CommandList->OMSetRenderTargets(numRTVs, rtv, false, dsv);
+	m_d3d12CommandList->OMSetRenderTargets(numRTVS, rtvs, false, dsv);
 }
 
-void CommandList::SetPipelineState(const PipelineState& pipelineState)
+void CommandList::SetRenderPassBindables(const RenderPass& renderPass)
 {
-	m_d3d12CommandList->SetPipelineState(pipelineState.GetD3D12PipelineState().Get());
+	// Set the pipeline state
+	m_d3d12CommandList->SetPipelineState(renderPass.GetD3D12PipelineState());
 
-	ID3D12RootSignature* d3d12RootSignature = pipelineState.GetRootSignature()->GetD3D12RootSignature().Get();
+	// Set the root signature
+	ID3D12RootSignature* d3d12RootSignature = renderPass.GetD3D12RootSignature();
 	if (m_RootSignature != d3d12RootSignature)
 	{
 		m_RootSignature = d3d12RootSignature;
 		m_d3d12CommandList->SetGraphicsRootSignature(d3d12RootSignature);
 	}
 
-	m_d3d12CommandList->IASetPrimitiveTopology(pipelineState.GetPrimitiveTopology());
+	// Set the primitive topology
+	m_d3d12CommandList->IASetPrimitiveTopology(renderPass.GetRenderPassDesc().Topology);
 }
 
 void CommandList::SetRootConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset)
