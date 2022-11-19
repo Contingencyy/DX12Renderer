@@ -97,7 +97,6 @@ void Buffer::SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::
 void Buffer::CreateD3D12Resource()
 {
 	D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
-	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
 
 	uint32_t alignment = static_cast<uint32_t>(m_BufferDesc.ElementSize);
 
@@ -111,16 +110,16 @@ void Buffer::CreateD3D12Resource()
 	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT || m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
 		heapType = D3D12_HEAP_TYPE_UPLOAD;
-		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+		m_d3d12ResourceState = D3D12_RESOURCE_STATE_GENERIC_READ;
 	}
 	else if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_READBACK)
 	{
 		heapType = D3D12_HEAP_TYPE_READBACK;
-		initialState = D3D12_RESOURCE_STATE_COPY_DEST;
+		m_d3d12ResourceState = D3D12_RESOURCE_STATE_COPY_DEST;
 	}
 
 	CD3DX12_RESOURCE_DESC d3d12ResourceDesc = CD3DX12_RESOURCE_DESC::Buffer(m_ByteSize);
-	RenderBackend::GetDevice()->CreateBuffer(*this, heapType, d3d12ResourceDesc, initialState);
+	RenderBackend::GetDevice()->CreateBuffer(*this, heapType, d3d12ResourceDesc, m_d3d12ResourceState);
 
 	if (IsCPUAccessible())
 	{

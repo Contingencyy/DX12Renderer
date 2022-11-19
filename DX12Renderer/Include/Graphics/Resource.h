@@ -22,6 +22,8 @@ public:
 
 	ComPtr<ID3D12Resource> GetD3D12Resource() const { return m_d3d12Resource; }
 	void SetD3D12Resource(ComPtr<ID3D12Resource> resource) { m_d3d12Resource = resource; }
+	D3D12_RESOURCE_STATES GetD3D12ResourceState() const { return m_d3d12ResourceState; }
+	void SetD3D12Resourcestate(D3D12_RESOURCE_STATES newState) { m_d3d12ResourceState = newState; }
 	const std::string& GetName() const { return m_Name; }
 	void SetName(const std::string& name);
 	std::size_t GetByteSize() const { return m_ByteSize; }
@@ -34,6 +36,7 @@ protected:
 
 protected:
 	ComPtr<ID3D12Resource> m_d3d12Resource;
+	D3D12_RESOURCE_STATES m_d3d12ResourceState = D3D12_RESOURCE_STATE_COMMON;
 	DescriptorAllocation m_DescriptorAllocations[DescriptorType::NUM_DESCRIPTOR_TYPES] = {};
 
 	std::string m_Name = "";

@@ -7,7 +7,7 @@
 #include "Graphics/Backend/RenderBackend.h"
 
 SwapChain::SwapChain(HWND hWnd, std::shared_ptr<CommandQueue> commandQueue, uint32_t width, uint32_t height)
-    : CommandQueueDirect(commandQueue)
+    : m_CommandQueueDirect(commandQueue)
 {
     ComPtr<IDXGIFactory> dxgiFactory;
     ComPtr<IDXGIFactory5> dxgiFactory5;
@@ -35,7 +35,7 @@ SwapChain::SwapChain(HWND hWnd, std::shared_ptr<CommandQueue> commandQueue, uint
     swapChainDesc.Flags = m_TearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
     ComPtr<IDXGISwapChain1> dxgiSwapChain1;
-    DX_CALL(dxgiFactory5->CreateSwapChainForHwnd(CommandQueueDirect->GetD3D12CommandQueue().Get(),
+    DX_CALL(dxgiFactory5->CreateSwapChainForHwnd(m_CommandQueueDirect->GetD3D12CommandQueue().Get(),
         hWnd, &swapChainDesc, nullptr, nullptr, &dxgiSwapChain1));
     DX_CALL(dxgiSwapChain1.As(&m_dxgiSwapChain));
 
@@ -50,46 +50,31 @@ SwapChain::~SwapChain()
 {
 }
 
-void SwapChain::ResolveToBackBuffer(const Texture& texture)
+void SwapChain::ResolveToBackBuffer(Texture& texture)
 {
     SCOPED_TIMER("SwapChain::ResolveToBackBuffer");
 
-    auto commandList = CommandQueueDirect->GetCommandList();
-    auto& backBuffer = m_BackBuffers[m_CurrentBackBufferIndex];
-
-    CD3DX12_RESOURCE_BARRIER copyBarriers[] = {
-        CD3DX12_RESOURCE_BARRIER::Transition(backBuffer->GetD3D12Resource().Get(),
-        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST),
-        CD3DX12_RESOURCE_BARRIER::Transition(texture.GetD3D12Resource().Get(),
-        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE)
-    };
-    commandList->ResourceBarrier(2, copyBarriers);
-
-    commandList->ResolveTexture(texture, *backBuffer);
-
-    CD3DX12_RESOURCE_BARRIER renderBarriers[] = {
-        CD3DX12_RESOURCE_BARRIER::Transition(backBuffer->GetD3D12Resource().Get(),
-        D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT),
-        CD3DX12_RESOURCE_BARRIER::Transition(texture.GetD3D12Resource().Get(),
-        D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET)
-    };
-    commandList->ResourceBarrier(2, renderBarriers);
-
-    CommandQueueDirect->ExecuteCommandList(commandList);
+    auto commandList = m_CommandQueueDirect->GetCommandList();
+    commandList->ResolveTexture(texture, *m_BackBuffers[m_CurrentBackBufferIndex]);
+    m_CommandQueueDirect->ExecuteCommandList(commandList);
 }
 
 void SwapChain::SwapBuffers(bool vSync)
 {
     SCOPED_TIMER("SwapChain::SwapBuffers");
 
+    auto commandList = m_CommandQueueDirect->GetCommandList();
+    commandList->Transition(*m_BackBuffers[m_CurrentBackBufferIndex], D3D12_RESOURCE_STATE_PRESENT);
+    m_CommandQueueDirect->ExecuteCommandList(commandList);
+
     unsigned int syncInterval = vSync ? 1 : 0;
     unsigned int presentFlags = m_TearingSupported && !vSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
     DX_CALL(m_dxgiSwapChain->Present(syncInterval, presentFlags));
 
-    m_FenceValues[m_CurrentBackBufferIndex] = CommandQueueDirect->Signal();
+    m_FenceValues[m_CurrentBackBufferIndex] = m_CommandQueueDirect->Signal();
 
     m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();
-    CommandQueueDirect->WaitForFenceValue(m_FenceValues[m_CurrentBackBufferIndex]);
+    m_CommandQueueDirect->WaitForFenceValue(m_FenceValues[m_CurrentBackBufferIndex]);
 }
 
 void SwapChain::Resize(uint32_t width, uint32_t height)
@@ -110,6 +95,7 @@ void SwapChain::CreateBackBufferTextures()
         m_BackBuffers[i] = std::make_unique<Texture>("Back buffer", TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET,
             TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM, static_cast<uint32_t>(backBufferDesc.Width), static_cast<uint32_t>(backBufferDesc.Height)));
         m_BackBuffers[i]->SetD3D12Resource(backBuffer);
+        m_BackBuffers[i]->SetD3D12Resourcestate(D3D12_RESOURCE_STATE_PRESENT);
     }
 }
 

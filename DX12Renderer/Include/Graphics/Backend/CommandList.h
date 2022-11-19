@@ -43,9 +43,9 @@ public:
 	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
 	void CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
 	void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
-	void ResolveTexture(const Texture& srcTexture, const Texture& destTexture);
+	void ResolveTexture(Texture& srcTexture, Texture& destTexture);
 
-	void ResourceBarrier(uint32_t numBarriers, const D3D12_RESOURCE_BARRIER* barriers);
+	void Transition(Resource& resource, D3D12_RESOURCE_STATES stateAfter);
 	void TrackObject(ComPtr<ID3D12Object> object);
 	void ReleaseTrackedObjects();
 

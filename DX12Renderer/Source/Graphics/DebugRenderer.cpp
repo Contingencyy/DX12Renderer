@@ -94,8 +94,14 @@ void DebugRenderer::Render()
     commandList->SetViewports(1, &viewport);
     commandList->SetScissorRects(1, &scissorRect);
 
-    D3D12_CPU_DESCRIPTOR_HANDLE rtv = Renderer::GetFinalColorOutput().GetDescriptor(DescriptorType::RTV);
-    D3D12_CPU_DESCRIPTOR_HANDLE dsv = Renderer::GetFinalDepthOutput().GetDescriptor(DescriptorType::DSV);
+    auto& finalColorOutput = Renderer::GetFinalColorOutput();
+    auto& finalDepthOutput = Renderer::GetFinalDepthOutput();
+
+    commandList->Transition(finalColorOutput, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    commandList->Transition(finalDepthOutput, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv = finalColorOutput.GetDescriptor(DescriptorType::RTV);
+    D3D12_CPU_DESCRIPTOR_HANDLE dsv = finalDepthOutput.GetDescriptor(DescriptorType::DSV);
     commandList->SetRenderTargets(1, &rtv, &dsv);
 
     commandList->SetRootConstants(0, 16, &s_Data.CameraViewProjection, 0);

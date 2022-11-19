@@ -197,7 +197,6 @@ void Renderer::Render()
 
     PrepareInstanceBuffer();
     PrepareLightBuffers();
-    PrepareShadowMaps();
 
     auto& descriptorHeap = RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     s_Data.SceneDataConstantBuffer->SetBufferData(&s_Data.SceneData);
@@ -206,6 +205,16 @@ void Renderer::Render()
         /* Shadow mapping render pass */
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         commandList->BeginTimestampQuery("Shadow mapping");
+
+        // Clear all shadow map textures and transition them to the depth write state
+        for (auto& shadowMap : s_Data.LightShadowMaps)
+        {
+            if (shadowMap)
+            {
+                commandList->Transition(*shadowMap, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+                commandList->ClearDepthStencilView(shadowMap->GetDescriptor(DescriptorType::DSV), 0.0f);
+            }
+        }
 
         // Set bindless descriptor heap
         commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
@@ -254,6 +263,9 @@ void Renderer::Render()
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         commandList->BeginTimestampQuery("Depth pre-pass");
 
+        auto& depthTarget = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment();
+        commandList->Transition(depthTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
         // Bind render pass bindables
         commandList->SetRenderPassBindables(*s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS]);
 
@@ -264,7 +276,7 @@ void Renderer::Render()
         commandList->SetViewports(1, &viewport);
         commandList->SetScissorRects(1, &scissorRect);
 
-        D3D12_CPU_DESCRIPTOR_HANDLE dsv = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment().GetDescriptor(DescriptorType::DSV);
+        D3D12_CPU_DESCRIPTOR_HANDLE dsv = depthTarget.GetDescriptor(DescriptorType::DSV);
         commandList->SetRenderTargets(0, nullptr, &dsv);
 
         commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
@@ -321,6 +333,13 @@ void Renderer::Render()
         /* Lighting render pass */
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         commandList->BeginTimestampQuery("Lighting");
+
+        // Transition all shadow maps to the pixel shader resource state
+        for (auto& shadowMap : s_Data.LightShadowMaps)
+        {
+            if (shadowMap)
+                commandList->Transition(*shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        }
 
         // Set bindless descriptor heap
         commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
@@ -409,6 +428,10 @@ void Renderer::Render()
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         commandList->BeginTimestampQuery("Tonemapping");
 
+        // Transition the HDR render target to pixel shader resource state
+        auto& hdrColorTarget = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetColorAttachment();
+        commandList->Transition(hdrColorTarget, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
         // Set bindless descriptor heap
         commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
 
@@ -426,7 +449,7 @@ void Renderer::Render()
         D3D12_CPU_DESCRIPTOR_HANDLE dsv = s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetDepthAttachment().GetDescriptor(DescriptorType::DSV);
         commandList->SetRenderTargets(1, &rtv, &dsv);
 
-        uint32_t pbrColorTargetIndex = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetColorAttachment().GetDescriptorHeapIndex(DescriptorType::SRV);
+        uint32_t pbrColorTargetIndex = hdrColorTarget.GetDescriptorHeapIndex(DescriptorType::SRV);
         s_Data.TonemapSettings.HDRTargetIndex = pbrColorTargetIndex;
         s_Data.TonemapConstantBuffer->SetBufferData(&s_Data.TonemapSettings);
         commandList->SetRootConstantBufferView(0, *s_Data.TonemapConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -793,19 +816,6 @@ void Renderer::PrepareLightBuffers()
 
     if (s_Data.SceneData.NumSpotLights > 0)
         s_Data.SpotLightConstantBuffer->SetBufferData(&s_Data.SpotLightDrawData[0], s_Data.SpotLightDrawData.size() * sizeof(SpotLightData));
-}
-
-void Renderer::PrepareShadowMaps()
-{
-    auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-
-    for (auto& shadowMap : s_Data.LightShadowMaps)
-    {
-        if (shadowMap)
-            commandList->ClearDepthStencilView(shadowMap->GetDescriptor(DescriptorType::DSV), 0.0f);
-    }
-
-    RenderBackend::ExecuteCommandListAndWait(commandList);
 }
 
 void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCamera, const Texture& shadowMap, uint32_t descriptorOffset)

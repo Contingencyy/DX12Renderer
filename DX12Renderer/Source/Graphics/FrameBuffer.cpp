@@ -15,24 +15,25 @@ FrameBuffer::~FrameBuffer()
 
 void FrameBuffer::Resize(uint32_t width, uint32_t height)
 {
-	for (auto& colorAttachment : m_ColorAttachments)
-		colorAttachment->Resize(width, height);
-
-	for (auto& depthAttachment : m_DepthAttachments)
-		depthAttachment->Resize(width, height);
+	m_ColorAttachment->Resize(width, height);
+	m_DepthAttachment->Resize(width, height);
 }
 
 void FrameBuffer::ClearAttachments()
 {
 	auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-	for (auto& colorAttachment : m_ColorAttachments)
-		if (colorAttachment->IsValid())
-			commandList->ClearRenderTargetView(colorAttachment->GetDescriptor(DescriptorType::RTV), glm::value_ptr<float>(colorAttachment->GetTextureDesc().ClearColor));
+	if (m_ColorAttachment->IsValid())
+	{
+		commandList->Transition(*m_ColorAttachment, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		commandList->ClearRenderTargetView(m_ColorAttachment->GetDescriptor(DescriptorType::RTV), glm::value_ptr<float>(m_ColorAttachment->GetTextureDesc().ClearColor));
+	}
 
-	for (auto& depthAttachment : m_DepthAttachments)
-		if (depthAttachment->IsValid())
-			commandList->ClearDepthStencilView(depthAttachment->GetDescriptor(DescriptorType::DSV), depthAttachment->GetTextureDesc().ClearDepthStencil.x);
+	if (m_DepthAttachment->IsValid())
+	{
+		commandList->Transition(*m_DepthAttachment, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		commandList->ClearDepthStencilView(m_DepthAttachment->GetDescriptor(DescriptorType::DSV), m_DepthAttachment->GetTextureDesc().ClearDepthStencil.x);
+	}
 
 	RenderBackend::ExecuteCommandList(commandList);
 }
@@ -45,38 +46,32 @@ void FrameBuffer::Invalidate()
 
 Texture& FrameBuffer::GetColorAttachment()
 {
-	return *m_ColorAttachments[m_CurrentFrameIndex];
+	return *m_ColorAttachment;
 }
 
 const Texture& FrameBuffer::GetColorAttachment() const
 {
-	return *m_ColorAttachments[m_CurrentFrameIndex];
+	return *m_ColorAttachment;
 }
 
 Texture& FrameBuffer::GetDepthAttachment()
 {
-	return *m_DepthAttachments[m_CurrentFrameIndex];
+	return *m_DepthAttachment;
 }
 
 const Texture& FrameBuffer::GetDepthAttachment() const
 {
-	return *m_DepthAttachments[m_CurrentFrameIndex];
+	return *m_DepthAttachment;
 }
 
 void FrameBuffer::MakeTextures()
 {
-	for (auto& colorAttachment : m_ColorAttachments)
-		colorAttachment = std::make_unique<Texture>(m_Name + " color attachment", m_FrameBufferDesc.ColorAttachmentDesc);
-
-	for (auto& depthAttachment : m_DepthAttachments)
-		depthAttachment = std::make_unique<Texture>(m_Name + " depth attachment", m_FrameBufferDesc.DepthAttachmentDesc);
+	m_ColorAttachment = std::make_unique<Texture>(m_Name + " color attachment", m_FrameBufferDesc.ColorAttachmentDesc);
+	m_DepthAttachment = std::make_unique<Texture>(m_Name + " depth attachment", m_FrameBufferDesc.DepthAttachmentDesc);
 }
 
 void FrameBuffer::ReleaseTextures()
 {
-	for (auto& colorAttachment : m_ColorAttachments)
-		colorAttachment.release();
-
-	for (auto& depthAttachment : m_DepthAttachments)
-		depthAttachment.release();
+	m_ColorAttachment.release();
+	m_DepthAttachment.release();
 }

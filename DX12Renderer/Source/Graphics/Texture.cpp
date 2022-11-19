@@ -124,7 +124,6 @@ void Texture::CreateD3D12Resource()
 
 	d3d12ResourceDesc.Dimension = TextureDimensionToD3DDimension(m_TextureDesc.Dimension);
 	d3d12ResourceDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
-	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
 
 	D3D12_CLEAR_VALUE clearValue = {};
 	bool hasClearValue = false;
@@ -139,7 +138,7 @@ void Texture::CreateD3D12Resource()
 		memcpy(clearValue.Color, &m_TextureDesc.ClearColor, sizeof(float) * 4);
 
 		d3d12ResourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-		initialState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		m_d3d12ResourceState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		hasClearValue = true;
 	}
 	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_DEPTH)
@@ -152,7 +151,7 @@ void Texture::CreateD3D12Resource()
 			clearValue.DepthStencil = { 0.0f, 0 };
 
 		d3d12ResourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-		initialState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+		m_d3d12ResourceState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 		hasClearValue = true;
 	}
 
@@ -161,7 +160,7 @@ void Texture::CreateD3D12Resource()
 		d3d12ResourceDesc.DepthOrArraySize = 6;
 	}
 
-	RenderBackend::GetDevice()->CreateTexture(*this, d3d12ResourceDesc, initialState, hasClearValue ? &clearValue : nullptr);
+	RenderBackend::GetDevice()->CreateTexture(*this, d3d12ResourceDesc, m_d3d12ResourceState, hasClearValue ? &clearValue : nullptr);
 	m_ByteSize = GetRequiredIntermediateSize(m_d3d12Resource.Get(), 0, 1);
 }
 
