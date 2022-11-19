@@ -1,7 +1,6 @@
 #include "Pch.h"
 #include "Graphics/Backend/SwapChain.h"
 #include "Graphics/Texture.h"
-#include "Graphics/Backend/Device.h"
 #include "Graphics/Backend/CommandQueue.h"
 #include "Graphics/Backend/CommandList.h"
 #include "Graphics/Backend/RenderBackend.h"
@@ -12,7 +11,7 @@ SwapChain::SwapChain(HWND hWnd, std::shared_ptr<CommandQueue> commandQueue, uint
     ComPtr<IDXGIFactory> dxgiFactory;
     ComPtr<IDXGIFactory5> dxgiFactory5;
 
-    DX_CALL(RenderBackend::GetDevice()->GetDXGIAdapter()->GetParent(IID_PPV_ARGS(&dxgiFactory)));
+    DX_CALL(RenderBackend::GetDXGIAdapter()->GetParent(IID_PPV_ARGS(&dxgiFactory)));
     DX_CALL(dxgiFactory.As(&dxgiFactory5));
 
     BOOL allowTearing = false;

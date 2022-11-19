@@ -1,6 +1,5 @@
 #include "Pch.h"
 #include "Graphics/Texture.h"
-#include "Graphics/Backend/Device.h"
 #include "Graphics/Backend/RenderBackend.h"
 
 DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format)
@@ -160,7 +159,7 @@ void Texture::CreateD3D12Resource()
 		d3d12ResourceDesc.DepthOrArraySize = 6;
 	}
 
-	RenderBackend::GetDevice()->CreateTexture(*this, d3d12ResourceDesc, m_d3d12ResourceState, hasClearValue ? &clearValue : nullptr);
+	RenderBackend::CreateTexture(m_d3d12Resource, d3d12ResourceDesc, m_d3d12ResourceState, hasClearValue ? &clearValue : nullptr);
 	m_ByteSize = GetRequiredIntermediateSize(m_d3d12Resource.Get(), 0, 1);
 }
 
@@ -191,7 +190,7 @@ void Texture::CreateViews()
 	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_READ)
 	{
 		// Create shader resource view (read-only)
-		auto& srv = m_DescriptorAllocations[DescriptorType::SRV];
+		auto& srvAllocation = m_DescriptorAllocations[DescriptorType::SRV];
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -210,12 +209,12 @@ void Texture::CreateViews()
 			srvDesc.TextureCube.MipLevels = 1;
 		}
 
-		RenderBackend::GetDevice()->CreateShaderResourceView(*this, srvDesc, srv.GetCPUDescriptorHandle());
+		RenderBackend::GetD3D12Device()->CreateShaderResourceView(m_d3d12Resource.Get(), &srvDesc, srvAllocation.GetCPUDescriptorHandle());
 	}
 	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_WRITE)
 	{
 		// Create unordered access view (read/write)
-		auto& uav = m_DescriptorAllocations[DescriptorType::UAV];
+		auto& uavAllocation = m_DescriptorAllocations[DescriptorType::UAV];
 		
 		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 		uavDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
@@ -232,16 +231,16 @@ void Texture::CreateViews()
 			for (uint32_t i = 1; i < 7; ++i)
 			{
 				cubeFaceUAVDesc.Texture2DArray.FirstArraySlice = i - 1;
-				RenderBackend::GetDevice()->CreateUnorderedAccessView(*this, cubeFaceUAVDesc, m_DescriptorAllocations[DescriptorType::UAV].GetCPUDescriptorHandle(i));
+				RenderBackend::GetD3D12Device()->CreateUnorderedAccessView(m_d3d12Resource.Get(), nullptr, &cubeFaceUAVDesc, uavAllocation.GetCPUDescriptorHandle(i));
 			}
 		}
 
-		RenderBackend::GetDevice()->CreateUnorderedAccessView(*this, uavDesc, uav.GetCPUDescriptorHandle());
+		RenderBackend::GetD3D12Device()->CreateUnorderedAccessView(m_d3d12Resource.Get(), nullptr, &uavDesc, uavAllocation.GetCPUDescriptorHandle());
 	}
 	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_RENDER_TARGET)
 	{
 		// Create render target view
-		auto& rtv = m_DescriptorAllocations[DescriptorType::RTV];
+		auto& rtvAllocation = m_DescriptorAllocations[DescriptorType::RTV];
 		
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 		rtvDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
@@ -258,16 +257,16 @@ void Texture::CreateViews()
 			for (uint32_t i = 1; i < 7; ++i)
 			{
 				cubeFaceRTVDesc.Texture2DArray.FirstArraySlice = i - 1;
-				RenderBackend::GetDevice()->CreateRenderTargetView(*this, cubeFaceRTVDesc, m_DescriptorAllocations[DescriptorType::RTV].GetCPUDescriptorHandle(i));
+				RenderBackend::GetD3D12Device()->CreateRenderTargetView(m_d3d12Resource.Get(), &cubeFaceRTVDesc, rtvAllocation.GetCPUDescriptorHandle(i));
 			}
 		}
 
-		RenderBackend::GetDevice()->CreateRenderTargetView(*this, rtvDesc, rtv.GetCPUDescriptorHandle());
+		RenderBackend::GetD3D12Device()->CreateRenderTargetView(m_d3d12Resource.Get(), &rtvDesc, rtvAllocation.GetCPUDescriptorHandle());
 	}
 	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_DEPTH)
 	{
 		// Create depth stencil view
-		auto& dsv = m_DescriptorAllocations[DescriptorType::DSV];
+		auto& dsvAllocation = m_DescriptorAllocations[DescriptorType::DSV];
 
 		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 		dsvDesc.Format = TextureFormatToDXGIFormat(m_TextureDesc.Format);
@@ -285,10 +284,10 @@ void Texture::CreateViews()
 			for (uint32_t i = 1; i < 7; ++i)
 			{
 				cubeFaceDSVDesc.Texture2DArray.FirstArraySlice = i - 1;
-				RenderBackend::GetDevice()->CreateDepthStencilView(*this, cubeFaceDSVDesc, m_DescriptorAllocations[DescriptorType::DSV].GetCPUDescriptorHandle(i));
+				RenderBackend::GetD3D12Device()->CreateDepthStencilView(m_d3d12Resource.Get(), &cubeFaceDSVDesc, dsvAllocation.GetCPUDescriptorHandle(i));
 			}
 		}
 
-		RenderBackend::GetDevice()->CreateDepthStencilView(*this, dsvDesc, dsv.GetCPUDescriptorHandle());
+		RenderBackend::GetD3D12Device()->CreateDepthStencilView(m_d3d12Resource.Get(), &dsvDesc, dsvAllocation.GetCPUDescriptorHandle());
 	}
 }

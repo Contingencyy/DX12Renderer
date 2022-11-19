@@ -2,7 +2,6 @@
 #include "Graphics/Backend/DescriptorAllocation.h"
 #include "Graphics/Buffer.h";
 
-class Device;
 class SwapChain;
 class DescriptorHeap;
 class CommandQueue;
@@ -38,6 +37,9 @@ public:
 	static void EndFrame();
 	static void Finalize();
 
+	static void CreateBuffer(ComPtr<ID3D12Resource>& d3d12Resource, D3D12_HEAP_TYPE heapType, const D3D12_RESOURCE_DESC& bufferDesc, D3D12_RESOURCE_STATES initialState);
+	static void CreateTexture(ComPtr<ID3D12Resource>& d3d12Resource, const D3D12_RESOURCE_DESC& resourceDesc, D3D12_RESOURCE_STATES initialState, const D3D12_CLEAR_VALUE* clearValue);
+
 	static void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
 	static void CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
 	static void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
@@ -52,7 +54,8 @@ public:
 	static void Flush();
 	static void SetVSync(bool vSync);
 
-	static std::shared_ptr<Device> GetDevice();
+	static IDXGIAdapter4* GetDXGIAdapter();
+	static ID3D12Device2* GetD3D12Device();
 	static SwapChain& GetSwapChain();
 
 	static DescriptorAllocation AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors = 1);
@@ -63,6 +66,10 @@ public:
 	static void ExecuteCommandListAndWait(std::shared_ptr<CommandList> commandList);
 
 private:
+	static void EnableDebugLayer();
+	static void CreateAdapter();
+	static void CreateDevice();
+
 	static void ProcessTimestampQueries();
 
 };

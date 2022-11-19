@@ -1,15 +1,17 @@
 #include "Pch.h"
 #include "Graphics/Backend/RenderBackend.h"
-#include "Graphics/Backend/Device.h"
 #include "Graphics/Backend/SwapChain.h"
 #include "Graphics/Backend/DescriptorHeap.h"
 #include "Graphics/Backend/CommandQueue.h"
+#include "Graphics/Backend/CommandList.h"
 
 #include <imgui/imgui.h>
 
 struct InternalRenderBackendData
 {
-	std::shared_ptr<Device> Device;
+	ComPtr<IDXGIAdapter4> DXGIAdapter4;
+	ComPtr<ID3D12Device2> D3D12Device2;
+
 	std::unique_ptr<SwapChain> SwapChain;
 	std::unique_ptr<DescriptorHeap> DescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 
@@ -35,14 +37,16 @@ static InternalRenderBackendData s_Data;
 
 void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 {
-	s_Data.Device = std::make_shared<Device>();
+	EnableDebugLayer();
+	CreateAdapter();
+	CreateDevice();
 
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-		s_Data.DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(s_Data.Device, static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+		s_Data.DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
 
-	s_Data.CommandQueueDirect = std::make_shared<CommandQueue>(s_Data.Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
-	s_Data.CommandQueueCompute = std::make_unique<CommandQueue>(s_Data.Device, D3D12_COMMAND_LIST_TYPE_COMPUTE);
-	s_Data.CommandQueueCopy = std::make_unique<CommandQueue>(s_Data.Device, D3D12_COMMAND_LIST_TYPE_COPY);
+	s_Data.CommandQueueDirect = std::make_shared<CommandQueue>(D3D12_COMMAND_LIST_TYPE_DIRECT);
+	s_Data.CommandQueueCompute = std::make_unique<CommandQueue>(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+	s_Data.CommandQueueCopy = std::make_unique<CommandQueue>(D3D12_COMMAND_LIST_TYPE_COPY);
 
 	s_Data.SwapChain = std::make_unique<SwapChain>(hWnd, s_Data.CommandQueueDirect, width, height);
 
@@ -50,7 +54,7 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 	queryHeapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
 	queryHeapDesc.Count = s_Data.MaxQueriesPerFrame * s_Data.SwapChain->GetBackBufferCount();
 	queryHeapDesc.NodeMask = 0;
-	DX_CALL(s_Data.Device->GetD3D12Device()->CreateQueryHeap(&queryHeapDesc, IID_PPV_ARGS(&s_Data.D3D12QueryHeapTimestamp)));
+	DX_CALL(s_Data.D3D12Device2->CreateQueryHeap(&queryHeapDesc, IID_PPV_ARGS(&s_Data.D3D12QueryHeapTimestamp)));
 
 	for (uint32_t i = 0; i < s_Data.SwapChain->GetBackBufferCount(); ++i)
 	{
@@ -103,6 +107,32 @@ void RenderBackend::Finalize()
 
 	if (s_Data.ProcessInFlightCommandListsThread.joinable())
 		s_Data.ProcessInFlightCommandListsThread.join();
+}
+
+void RenderBackend::CreateBuffer(ComPtr<ID3D12Resource>& d3d12Resource, D3D12_HEAP_TYPE heapType, const D3D12_RESOURCE_DESC& bufferDesc, D3D12_RESOURCE_STATES initialState)
+{
+	CD3DX12_HEAP_PROPERTIES heapProps(heapType);
+	DX_CALL(s_Data.D3D12Device2->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&bufferDesc,
+		initialState,
+		nullptr,
+		IID_PPV_ARGS(&d3d12Resource)
+	));
+}
+
+void RenderBackend::CreateTexture(ComPtr<ID3D12Resource>& d3d12Resource, const D3D12_RESOURCE_DESC& resourceDesc, D3D12_RESOURCE_STATES initialState, const D3D12_CLEAR_VALUE* clearValue)
+{
+	CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
+	DX_CALL(s_Data.D3D12Device2->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		initialState,
+		clearValue,
+		IID_PPV_ARGS(&d3d12Resource)
+	));
 }
 
 void RenderBackend::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData)
@@ -177,9 +207,14 @@ void RenderBackend::SetVSync(bool vSync)
 	s_Data.VSync = vSync;
 }
 
-std::shared_ptr<Device> RenderBackend::GetDevice()
+IDXGIAdapter4* RenderBackend::GetDXGIAdapter()
 {
-	return s_Data.Device;
+	return s_Data.DXGIAdapter4.Get();
+}
+
+ID3D12Device2* RenderBackend::GetD3D12Device()
+{
+	return s_Data.D3D12Device2.Get();
 }
 
 SwapChain& RenderBackend::GetSwapChain()
@@ -268,4 +303,110 @@ void RenderBackend::ProcessTimestampQueries()
 
 		Profiler::AddGPUTimer(timer);
 	}
+}
+
+void RenderBackend::EnableDebugLayer()
+{
+#if defined(_DEBUG)
+	ComPtr<ID3D12Debug> d3d12DebugController0;
+	ComPtr<ID3D12Debug1> d3d12DebugController1;
+
+	DX_CALL(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12DebugController0)));
+	d3d12DebugController0->EnableDebugLayer();
+
+	if (GPU_VALIDATION_ENABLED)
+	{
+		DX_CALL(d3d12DebugController0->QueryInterface(IID_PPV_ARGS(&d3d12DebugController1)));
+		d3d12DebugController1->SetEnableGPUBasedValidation(true);
+		LOG_INFO("[Device] Enabled GPU based validation");
+	}
+#endif
+}
+
+void RenderBackend::CreateAdapter()
+{
+	ComPtr<IDXGIFactory4> dxgiFactory;
+	UINT createFactoryFlags = 0;
+
+#if defined(_DEBUG)
+	createFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
+#endif
+
+	DX_CALL(CreateDXGIFactory2(createFactoryFlags, IID_PPV_ARGS(&dxgiFactory)));
+
+	ComPtr<IDXGIAdapter1> dxgiAdapter1;
+
+	SIZE_T maxDedicatedVideoMemory = 0;
+	for (UINT i = 0; dxgiFactory->EnumAdapters1(i, &dxgiAdapter1) != DXGI_ERROR_NOT_FOUND; ++i)
+	{
+		DXGI_ADAPTER_DESC1 dxgiAdapterDesc1;
+		dxgiAdapter1->GetDesc1(&dxgiAdapterDesc1);
+
+		if ((dxgiAdapterDesc1.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0 &&
+			SUCCEEDED(D3D12CreateDevice(dxgiAdapter1.Get(), D3D_FEATURE_LEVEL_11_0,
+				__uuidof(ID3D12Device), nullptr)) && dxgiAdapterDesc1.DedicatedVideoMemory > maxDedicatedVideoMemory)
+		{
+			maxDedicatedVideoMemory = dxgiAdapterDesc1.DedicatedVideoMemory;
+			DX_CALL(dxgiAdapter1.As(&s_Data.DXGIAdapter4));
+		}
+	}
+}
+
+void RenderBackend::CreateDevice()
+{
+	DX_CALL(D3D12CreateDevice(s_Data.DXGIAdapter4.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&s_Data.D3D12Device2)));
+
+#if defined(_DEBUG)
+	if (GPU_VALIDATION_ENABLED)
+	{
+		// Set up GPU validation
+		ComPtr<ID3D12DebugDevice1> d3d12DebugDevice;
+		DX_CALL(s_Data.D3D12Device2->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
+
+		D3D12_DEBUG_DEVICE_GPU_BASED_VALIDATION_SETTINGS debugValidationSettings = {};
+		debugValidationSettings.MaxMessagesPerCommandList = 10;
+		debugValidationSettings.DefaultShaderPatchMode = D3D12_GPU_BASED_VALIDATION_SHADER_PATCH_MODE_GUARDED_VALIDATION;
+		debugValidationSettings.PipelineStateCreateFlags = D3D12_GPU_BASED_VALIDATION_PIPELINE_STATE_CREATE_FLAG_FRONT_LOAD_CREATE_GUARDED_VALIDATION_SHADERS;
+		DX_CALL(d3d12DebugDevice->SetDebugParameter(D3D12_DEBUG_DEVICE_PARAMETER_GPU_BASED_VALIDATION_SETTINGS, &debugValidationSettings, sizeof(D3D12_DEBUG_DEVICE_GPU_BASED_VALIDATION_SETTINGS)));
+	}
+
+	// Set up info queue with filters
+	ComPtr<ID3D12InfoQueue> pInfoQueue;
+
+	if (SUCCEEDED(s_Data.D3D12Device2.As(&pInfoQueue)))
+	{
+		pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+		pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+		pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+
+		// Suppress whole categories of messages
+		//D3D12_MESSAGE_CATEGORY categories[] = {};
+
+		// Suppress messages based on their severity level
+		D3D12_MESSAGE_SEVERITY severities[] =
+		{
+			D3D12_MESSAGE_SEVERITY_INFO
+		};
+
+		// Suppress individual messages by their ID
+		D3D12_MESSAGE_ID denyIds[] =
+		{
+			D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
+			D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,
+			D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE,
+			// This is a temporary fix for Windows 11 due to a bug that has not been fixed yet
+			D3D12_MESSAGE_ID_RESOURCE_BARRIER_MISMATCHING_COMMAND_LIST_TYPE,
+		};
+
+		D3D12_INFO_QUEUE_FILTER newFilter = {};
+		//newFilter.DenyList.NumCategories = _countof(categories);
+		//newFilter.DenyList.pCategoryList = categories;
+		newFilter.DenyList.NumSeverities = _countof(severities);
+		newFilter.DenyList.pSeverityList = severities;
+		newFilter.DenyList.NumIDs = _countof(denyIds);
+		newFilter.DenyList.pIDList = denyIds;
+
+		DX_CALL(pInfoQueue->PushStorageFilter(&newFilter));
+	}
+#endif
 }

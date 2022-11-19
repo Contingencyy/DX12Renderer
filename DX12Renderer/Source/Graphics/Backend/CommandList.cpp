@@ -2,13 +2,14 @@
 #include "Graphics/Backend/CommandList.h"
 #include "Graphics/Buffer.h"
 #include "Graphics/RenderPass.h"
-#include "Graphics/Backend/Device.h"
 #include "Graphics/Backend/DescriptorHeap.h"
 
-CommandList::CommandList(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE type)
-	: m_d3d12CommandListType(type), m_Device(device)
+CommandList::CommandList(D3D12_COMMAND_LIST_TYPE type)
+	: m_d3d12CommandListType(type)
 {
-	m_Device->CreateCommandList(*this);
+	auto d3d12Device = RenderBackend::GetD3D12Device();
+	DX_CALL(d3d12Device->CreateCommandAllocator(m_d3d12CommandListType, IID_PPV_ARGS(&m_d3d12CommandAllocator)));
+	DX_CALL(d3d12Device->CreateCommandList(0, m_d3d12CommandListType, m_d3d12CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_d3d12CommandList)));
 	
 	m_RootSignature = nullptr;
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)

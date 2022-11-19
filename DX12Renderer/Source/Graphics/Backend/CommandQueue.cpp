@@ -1,12 +1,11 @@
 #include "Pch.h"
 #include "Graphics/Backend/CommandQueue.h"
 #include "Graphics/Backend/CommandList.h"
-#include "Graphics/Backend/Device.h"
 #include "Graphics/Backend/RenderBackend.h"
 #include "Graphics/Backend/SwapChain.h"
 
-CommandQueue::CommandQueue(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_QUEUE_PRIORITY priority)
-    : m_d3d12CommandListType(type), m_Device(device)
+CommandQueue::CommandQueue(D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_QUEUE_PRIORITY priority)
+    : m_d3d12CommandListType(type)
 {
     D3D12_COMMAND_QUEUE_DESC queueDesc = {};
     queueDesc.Type = type;
@@ -14,7 +13,10 @@ CommandQueue::CommandQueue(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TY
     queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     queueDesc.NodeMask = 0;
 
-    m_Device->CreateCommandQueue(*this, queueDesc);
+    auto d3d12Device = RenderBackend::GetD3D12Device();
+
+    DX_CALL(d3d12Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_d3d12CommandQueue)));
+    DX_CALL(d3d12Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_d3d12Fence)));
     m_d3d12CommandQueue->GetTimestampFrequency(&m_TimestampFrequency);
 }
 
@@ -31,7 +33,7 @@ std::shared_ptr<CommandList> CommandQueue::GetCommandList()
     }
     else
     {
-        commandList = std::make_shared<CommandList>(m_Device, m_d3d12CommandListType);
+        commandList = std::make_shared<CommandList>(m_d3d12CommandListType);
     }
 
     commandList->SetBackBufferAssociation(RenderBackend::GetSwapChain().GetCurrentBackBufferIndex());

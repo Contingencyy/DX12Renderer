@@ -11,7 +11,7 @@ class RenderPass;
 class CommandList
 {
 public:
-	CommandList(std::shared_ptr<Device> device, D3D12_COMMAND_LIST_TYPE type);
+	CommandList(D3D12_COMMAND_LIST_TYPE type);
 	~CommandList();
 
 	void SetBackBufferAssociation(uint32_t backBufferIndex);
@@ -65,7 +65,6 @@ private:
 
 	uint32_t m_BackBufferIndex = 0;
 
-	std::shared_ptr<Device> m_Device;
 	std::vector<ComPtr<ID3D12Object>> m_TrackedObjects;
 
 	ID3D12RootSignature* m_RootSignature;

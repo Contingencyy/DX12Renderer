@@ -8,7 +8,6 @@
 #include "Graphics/RenderPass.h"
 #include "Graphics/FrameBuffer.h"
 #include "Graphics/Backend/CommandList.h"
-#include "Graphics/Backend/Device.h"
 #include "Graphics/Backend/SwapChain.h"
 #include "Graphics/Backend/DescriptorHeap.h"
 #include "Graphics/Backend/RenderBackend.h"

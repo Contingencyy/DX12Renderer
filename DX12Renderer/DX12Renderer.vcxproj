@@ -241,7 +241,6 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClCompile Include="Source\Graphics\Backend\CommandQueue.cpp" />
     <ClCompile Include="Source\Graphics\Backend\DescriptorAllocation.cpp" />
     <ClCompile Include="Source\Graphics\Backend\DescriptorHeap.cpp" />
-    <ClCompile Include="Source\Graphics\Backend\Device.cpp" />
     <ClCompile Include="Source\Graphics\Mesh.cpp" />
     <ClCompile Include="Source\Resource\Model.cpp" />
     <ClCompile Include="Source\Graphics\ParticleSystem.cpp" />
@@ -292,7 +291,6 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\Graphics\Backend\CommandQueue.h" />
     <ClInclude Include="Include\Graphics\Backend\DescriptorAllocation.h" />
     <ClInclude Include="Include\Graphics\Backend\DescriptorHeap.h" />
-    <ClInclude Include="Include\Graphics\Backend\Device.h" />
     <ClInclude Include="Include\Graphics\Mesh.h" />
     <ClInclude Include="Include\Resource\Model.h" />
     <ClInclude Include="Include\Graphics\ParticleSystem.h" />

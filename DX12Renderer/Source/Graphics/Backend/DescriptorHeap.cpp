@@ -1,9 +1,9 @@
 #include "Pch.h"
 #include "Graphics/Backend/DescriptorHeap.h"
-#include "Graphics/Backend/Device.h"
+#include "Graphics/Backend/RenderBackend.h"
 
-DescriptorHeap::DescriptorHeap(std::shared_ptr<Device> device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
-    : m_Device(device), m_Type(type), m_NumDescriptors(numDescriptors)
+DescriptorHeap::DescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
+    : m_Type(type), m_NumDescriptors(numDescriptors)
 {
     D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
     heapDesc.NumDescriptors = m_NumDescriptors;
@@ -12,8 +12,10 @@ DescriptorHeap::DescriptorHeap(std::shared_ptr<Device> device, D3D12_DESCRIPTOR_
     // Set the flag to shader visible if the descriptor heap is of type CBV_SRV_UAV for bindless rendering
     heapDesc.Flags = type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
-    m_Device->CreateDescriptorHeap(heapDesc, m_d3d12DescriptorHeap);
-    m_DescriptorHandleIncrementSize = m_Device->GetDescriptorIncrementSize(type);
+    auto d3d12Device = RenderBackend::GetD3D12Device();
+
+    DX_CALL(d3d12Device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_d3d12DescriptorHeap)));
+    m_DescriptorHandleIncrementSize = d3d12Device->GetDescriptorHandleIncrementSize(type);
 
     m_CPUBaseDescriptor = m_d3d12DescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 

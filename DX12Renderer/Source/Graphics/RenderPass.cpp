@@ -2,7 +2,6 @@
 #include "Graphics/RenderPass.h"
 #include "Graphics/Shader.h"
 #include "Graphics/Backend/RenderBackend.h"
-#include "Graphics/Backend/Device.h"
 
 RenderPass::RenderPass(const std::string& name, const RenderPassDesc& desc)
 	: m_Name(name), m_RenderPassDesc(desc)
@@ -60,7 +59,18 @@ void RenderPass::CreateRootSignature()
 	versionedRootSignatureDesc.Init_1_1(static_cast<uint32_t>(m_RenderPassDesc.RootParameters.size()),
 		&m_RenderPassDesc.RootParameters[0],_countof(staticSamplers), &staticSamplers[0], rootSignatureFlags);
 
-	RenderBackend::GetDevice()->CreateRootSignature(versionedRootSignatureDesc, m_d3d12RootSignature);
+	ComPtr<ID3DBlob> serializedRootSig;
+	ComPtr<ID3DBlob> errorBlob;
+
+	HRESULT hr = D3D12SerializeVersionedRootSignature(&versionedRootSignatureDesc, &serializedRootSig, &errorBlob);
+	if (!SUCCEEDED(hr) || errorBlob)
+	{
+		LOG_ERR(static_cast<const char*>(errorBlob->GetBufferPointer()));
+		errorBlob->Release();
+	}
+
+	DX_CALL(RenderBackend::GetD3D12Device()->CreateRootSignature(0, serializedRootSig->GetBufferPointer(),
+		serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&m_d3d12RootSignature)));
 	m_d3d12RootSignature->SetName(StringHelper::StringToWString(m_Name + " root signature").c_str());
 }
 
@@ -121,6 +131,6 @@ void RenderPass::CreatePipelineState()
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.pRootSignature = m_d3d12RootSignature.Get();
 
-	RenderBackend::GetDevice()->CreatePipelineState(psoDesc, m_d3d12PipelineState);
+	DX_CALL(RenderBackend::GetD3D12Device()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_d3d12PipelineState)));
 	m_d3d12PipelineState->SetName(StringHelper::StringToWString(m_Name + " pipeline state").c_str());
 }
