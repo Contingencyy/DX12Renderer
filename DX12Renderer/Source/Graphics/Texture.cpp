@@ -68,7 +68,7 @@ Texture::Texture(const std::string& name, const TextureDesc& textureDesc, const 
 		SetName(name);
 
 		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, m_ByteSize));
-		RenderBackend::CopyTexture(uploadBuffer, *this, data);
+		RenderBackend::UploadTexture(*this, data);
 	}
 }
 

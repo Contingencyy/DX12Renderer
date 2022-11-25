@@ -76,7 +76,7 @@ void Buffer::SetBufferData(const void* data, std::size_t byteSize)
 	else
 	{
 		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, dataByteSize));
-		RenderBackend::CopyBuffer(uploadBuffer, *this, data);
+		RenderBackend::UploadBufferData(*this, data);
 	}
 }
 
@@ -89,7 +89,7 @@ void Buffer::SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::
 	else
 	{
 		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, byteSize));
-		RenderBackend::CopyBufferRegion(uploadBuffer, 0, *this, byteOffset, byteSize);
+		RenderBackend::UploadBufferDataRegion(*this, byteOffset, byteSize);
 	}
 }
 

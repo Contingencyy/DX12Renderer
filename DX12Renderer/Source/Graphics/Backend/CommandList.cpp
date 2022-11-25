@@ -3,6 +3,7 @@
 #include "Graphics/Buffer.h"
 #include "Graphics/RenderPass.h"
 #include "Graphics/Backend/DescriptorHeap.h"
+#include "Graphics/Backend/UploadBuffer.h"
 
 CommandList::CommandList(D3D12_COMMAND_LIST_TYPE type)
 	: m_d3d12CommandListType(type)
@@ -172,9 +173,9 @@ void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint3
 	m_d3d12CommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndex, baseVertex, startInstance);
 }
 
-void CommandList::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData)
+void CommandList::CopyBuffer(const UploadBufferAllocation& uploadBuffer, Buffer& destBuffer, const void* bufferData)
 {
-	std::size_t alignedBufferSize = intermediateBuffer.GetByteSize();
+	std::size_t alignedBufferSize = destBuffer.GetByteSize();
 
 	if (alignedBufferSize > 0 && bufferData != nullptr)
 	{
@@ -186,30 +187,29 @@ void CommandList::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, con
 		subresourceData.SlicePitch = subresourceData.RowPitch;
 
 		UpdateSubresources(m_d3d12CommandList.Get(), destBuffer.GetD3D12Resource().Get(),
-			intermediateBuffer.GetD3D12Resource().Get(), 0, 0, 1, &subresourceData);
+			uploadBuffer.D3D12Resource, uploadBuffer.OffsetInBuffer, 0, 1, &subresourceData);
 
-		TrackObject(intermediateBuffer.GetD3D12Resource());
 		TrackObject(destBuffer.GetD3D12Resource());
 	}
 }
 
-void CommandList::CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes)
+void CommandList::CopyBufferRegion(const UploadBufferAllocation& uploadBuffer, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes)
 {
-	ASSERT(intermediateOffset + numBytes <= intermediateBuffer.GetByteSize(), "Intermediate offset is bigger than the intermediate buffer byte size");
 	ASSERT(destOffset + numBytes <= destBuffer.GetByteSize(), "Destination offset is bigger than the destination buffer byte size");
+	std::size_t alignedBufferSize = destBuffer.GetByteSize();
 
 	if (numBytes > 0)
 	{
 		Transition(destBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
 
-		m_d3d12CommandList->CopyBufferRegion(destBuffer.GetD3D12Resource().Get(), destOffset, intermediateBuffer.GetD3D12Resource().Get(), intermediateOffset, numBytes);
+		m_d3d12CommandList->CopyBufferRegion(destBuffer.GetD3D12Resource().Get(), destOffset,
+			uploadBuffer.D3D12Resource, uploadBuffer.OffsetInBuffer, numBytes);
 
-		TrackObject(intermediateBuffer.GetD3D12Resource());
 		TrackObject(destBuffer.GetD3D12Resource());
 	}
 }
 
-void CommandList::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData)
+void CommandList::CopyTexture(const UploadBufferAllocation& uploadBuffer, Texture& destTexture, const void* textureData)
 {
 	TextureDesc textureDesc = destTexture.GetTextureDesc();
 
@@ -223,9 +223,8 @@ void CommandList::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, 
 		subresourceData.SlicePitch = subresourceData.RowPitch * textureDesc.Height;
 
 		UpdateSubresources(m_d3d12CommandList.Get(), destTexture.GetD3D12Resource().Get(),
-			intermediateBuffer.GetD3D12Resource().Get(), 0, 0, 1, &subresourceData);
+			uploadBuffer.D3D12Resource, uploadBuffer.OffsetInBuffer, 0, 1, &subresourceData);
 
-		TrackObject(intermediateBuffer.GetD3D12Resource());
 		TrackObject(destTexture.GetD3D12Resource());
 	}
 }

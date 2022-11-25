@@ -7,6 +7,7 @@ class DescriptorHeap;
 class DynamicDescriptorHeap;
 class Device;
 class RenderPass;
+struct UploadBufferAllocation;
 
 class CommandList
 {
@@ -40,9 +41,9 @@ public:
 	void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex = 0, uint32_t startInstance = 0);
 	void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0);
 
-	void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
-	void CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
-	void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
+	void CopyBuffer(const UploadBufferAllocation& uploadBuffer, Buffer& destBuffer, const void* bufferData);
+	void CopyBufferRegion(const UploadBufferAllocation& uploadBuffer, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
+	void CopyTexture(const UploadBufferAllocation& uploadBuffer, Texture& destTexture, const void* textureData);
 	void ResolveTexture(Texture& srcTexture, Texture& destTexture);
 
 	void Transition(Resource& resource, D3D12_RESOURCE_STATES stateAfter);

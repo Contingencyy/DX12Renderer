@@ -40,9 +40,9 @@ public:
 	static void CreateBuffer(ComPtr<ID3D12Resource>& d3d12Resource, D3D12_HEAP_TYPE heapType, const D3D12_RESOURCE_DESC& bufferDesc, D3D12_RESOURCE_STATES initialState);
 	static void CreateTexture(ComPtr<ID3D12Resource>& d3d12Resource, const D3D12_RESOURCE_DESC& resourceDesc, D3D12_RESOURCE_STATES initialState, const D3D12_CLEAR_VALUE* clearValue);
 
-	static void CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData);
-	static void CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
-	static void CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData);
+	static void UploadBufferData(Buffer& destBuffer, const void* bufferData);
+	static void UploadBufferDataRegion(Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
+	static void UploadTexture(Texture& destTexture, const void* textureData);
 
 	static ID3D12QueryHeap* GetD3D12TimestampQueryHeap();
 	static const Buffer& GetQueryReadbackBuffer(uint32_t backBufferIndex);

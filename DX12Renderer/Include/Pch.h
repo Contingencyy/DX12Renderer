@@ -48,6 +48,8 @@
 #define CONCAT_IMPL(a, b) a##b
 #define CONCAT(a, b) CONCAT_IMPL(a, b)
 #define BYTE_PADDING(x) unsigned char CONCAT(_padding_, __LINE__)[x] = {0}
+#define MEGABYTE(x) x * 1024 * 1024
+#define KILOBYTE(x) x * 1024
 
 constexpr bool GPU_VALIDATION_ENABLED = false;
 

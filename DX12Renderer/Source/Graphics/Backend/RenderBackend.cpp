@@ -4,6 +4,7 @@
 #include "Graphics/Backend/DescriptorHeap.h"
 #include "Graphics/Backend/CommandQueue.h"
 #include "Graphics/Backend/CommandList.h"
+#include "Graphics/Backend/UploadBuffer.h"
 
 #include <imgui/imgui.h>
 
@@ -23,6 +24,8 @@ struct InternalRenderBackendData
 	std::shared_ptr<CommandQueue> CommandQueueDirect;
 	std::unique_ptr<CommandQueue> CommandQueueCompute;
 	std::unique_ptr<CommandQueue> CommandQueueCopy;
+
+	std::unique_ptr<UploadBuffer> UploadBuffer;
 
 	std::thread ProcessInFlightCommandListsThread;
 	std::atomic_bool ProcessInFlightCommandLists;
@@ -47,6 +50,8 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 	s_Data.CommandQueueDirect = std::make_shared<CommandQueue>(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	s_Data.CommandQueueCompute = std::make_unique<CommandQueue>(D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	s_Data.CommandQueueCopy = std::make_unique<CommandQueue>(D3D12_COMMAND_LIST_TYPE_COPY);
+
+	s_Data.UploadBuffer = std::make_unique<UploadBuffer>();
 
 	s_Data.SwapChain = std::make_unique<SwapChain>(hWnd, s_Data.CommandQueueDirect, width, height);
 
@@ -135,26 +140,32 @@ void RenderBackend::CreateTexture(ComPtr<ID3D12Resource>& d3d12Resource, const D
 	));
 }
 
-void RenderBackend::CopyBuffer(Buffer& intermediateBuffer, Buffer& destBuffer, const void* bufferData)
+void RenderBackend::UploadBufferData(Buffer& destBuffer, const void* bufferData)
 {
+	UploadBufferAllocation upload = s_Data.UploadBuffer->Allocate(destBuffer.GetByteSize());
+
 	auto commandList = s_Data.CommandQueueCopy->GetCommandList();
-	commandList->CopyBuffer(intermediateBuffer, destBuffer, bufferData);
+	commandList->CopyBuffer(upload, destBuffer, bufferData);
 	uint64_t fenceValue = s_Data.CommandQueueCopy->ExecuteCommandList(commandList);
 	s_Data.CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
 
-void RenderBackend::CopyBufferRegion(Buffer& intermediateBuffer, std::size_t intermediateOffset, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes)
+void RenderBackend::UploadBufferDataRegion(Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes)
 {
+	UploadBufferAllocation upload = s_Data.UploadBuffer->Allocate(destBuffer.GetByteSize());
+
 	auto commandList = s_Data.CommandQueueCopy->GetCommandList();
-	commandList->CopyBufferRegion(intermediateBuffer, intermediateOffset, destBuffer, destOffset, numBytes);
+	commandList->CopyBufferRegion(upload, destBuffer, destOffset, numBytes);
 	uint64_t fenceValue = s_Data.CommandQueueCopy->ExecuteCommandList(commandList);
 	s_Data.CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
 
-void RenderBackend::CopyTexture(Buffer& intermediateBuffer, Texture& destTexture, const void* textureData)
+void RenderBackend::UploadTexture(Texture& destTexture, const void* textureData)
 {
+	UploadBufferAllocation upload = s_Data.UploadBuffer->Allocate(destTexture.GetByteSize(), 512);
+
 	auto commandList = s_Data.CommandQueueCopy->GetCommandList();
-	commandList->CopyTexture(intermediateBuffer, destTexture, textureData);
+	commandList->CopyTexture(upload, destTexture, textureData);
 	uint64_t fenceValue = s_Data.CommandQueueCopy->ExecuteCommandList(commandList);
 	s_Data.CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
