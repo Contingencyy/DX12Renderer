@@ -10,7 +10,7 @@ struct UploadBufferAllocation
 class UploadBuffer
 {
 public:
-	UploadBuffer();
+	UploadBuffer(std::size_t totalByteSize);
 	~UploadBuffer();
 
 	UploadBufferAllocation Allocate(std::size_t byteSize, std::size_t align = 0);

@@ -25,7 +25,7 @@ public:
 	const glm::mat4& GetTransformMatrix() const { return m_TransformMatrix; }
 	Transform GetInverse() const;
 
-	const glm::vec3& GetPosition() const { return m_Position; }
+	const glm::vec3& GetPosition() const { return m_Translation; }
 	const glm::vec3& GetRotation() const { return m_Rotation; }
 	const glm::vec3& GetScale() const { return m_Scale; }
 
@@ -39,7 +39,7 @@ private:
 	glm::fquat m_QuatRotation = glm::fquat();
 	glm::mat4 m_ScaleMatrix = glm::identity<glm::mat4>();
 
-	glm::vec3 m_Position = glm::vec3(0.0f);
+	glm::vec3 m_Translation = glm::vec3(0.0f);
 	glm::vec3 m_Rotation = glm::vec3(0.0f);
 	glm::vec3 m_Scale = glm::vec3(1.0f);
 

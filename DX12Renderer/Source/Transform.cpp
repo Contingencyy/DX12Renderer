@@ -4,12 +4,17 @@
 Transform::Transform(const glm::mat4& transformMatrix)
 	: m_TransformMatrix(transformMatrix)
 {
+	glm::vec3 skew;
+	glm::vec4 perspective;
+
+	glm::decompose(m_TransformMatrix, m_Scale, m_QuatRotation, m_Translation, skew, perspective);
+	m_Rotation = glm::eulerAngles(m_QuatRotation);
 }
 
 void Transform::Translate(const glm::vec3& translation)
 {
-	m_Position += translation;
-	m_TranslationMatrix = glm::translate(glm::identity<glm::mat4>(), m_Position);
+	m_Translation += translation;
+	m_TranslationMatrix = glm::translate(glm::identity<glm::mat4>(), m_Translation);
 
 	MakeTransformMatrix();
 }
@@ -32,8 +37,8 @@ void Transform::Scale(const glm::vec3& scale)
 
 void Transform::SetTranslation(const glm::vec3& position)
 {
-	m_Position = position;
-	m_TranslationMatrix = glm::translate(glm::identity<glm::mat4>(), m_Position);
+	m_Translation = position;
+	m_TranslationMatrix = glm::translate(glm::identity<glm::mat4>(), m_Translation);
 
 	MakeTransformMatrix();
 }

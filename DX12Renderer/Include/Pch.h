@@ -36,6 +36,7 @@
 #include <glm/glm/glm.hpp>
 #include <glm/glm/gtx/compatibility.hpp>
 #include <glm/glm/gtc/matrix_transform.hpp>
+#include <glm/glm/gtx/matrix_decompose.hpp>
 #include <glm/glm/gtc/quaternion.hpp>
 #include <glm/glm/gtc/type_ptr.hpp>
 
