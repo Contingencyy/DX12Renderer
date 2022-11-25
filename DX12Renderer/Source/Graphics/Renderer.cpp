@@ -280,49 +280,7 @@ void Renderer::Render()
 
         commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
 
-        // Set instance buffer
-        commandList->SetVertexBuffers(1, 1, *s_Data.MeshInstanceBuffer);
-        uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Data.RenderSettings.MaxMeshes;
-
-        std::shared_ptr<Buffer> currentVertexBuffer = nullptr, currentIndexBuffer = nullptr;
-
-        for (uint32_t i = 0; i < s_Data.NumMeshes; ++i)
-        {
-            auto& mesh = s_Data.MeshDrawData[i].Mesh;
-            auto& instanceData = s_Data.MeshDrawData[i].InstanceData;
-
-            // Cull mesh from light camera frustum
-            if (s_Data.SceneCamera.IsFrustumCullingEnabled())
-            {
-                BoundingBox boundingBox = mesh->GetBoundingBox();
-
-                boundingBox.Min = glm::vec4(boundingBox.Min, 1.0f) * instanceData.Transform;
-                boundingBox.Max = glm::vec4(boundingBox.Max, 1.0f) * instanceData.Transform;
-
-                if (!s_Data.SceneCamera.GetViewFrustum().IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
-                {
-                    startInstance++;
-                    continue;
-                }
-            }
-
-            auto vb = mesh->GetVertexBuffer();
-            auto ib = mesh->GetIndexBuffer();
-
-            if (vb != currentVertexBuffer)
-            {
-                commandList->SetVertexBuffers(0, 1, *vb);
-                currentVertexBuffer = vb;
-            }
-            if (ib != currentIndexBuffer)
-            {
-                commandList->SetIndexBuffer(*ib);
-                currentIndexBuffer = ib;
-            }
-
-            commandList->DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), 1,
-                static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
-        }
+        RenderSceneFromCamera(*commandList, s_Data.SceneCamera);
 
         commandList->EndTimestampQuery("Depth pre-pass");
         RenderBackend::ExecuteCommandList(commandList);
@@ -368,55 +326,7 @@ void Renderer::Render()
         // Set root descriptor table for bindless CBV_SRV_UAV descriptor array
         commandList->SetRootDescriptorTable(4, descriptorHeap.GetGPUBaseDescriptor());
 
-        // Set instance buffer
-        commandList->SetVertexBuffers(1, 1, *s_Data.MeshInstanceBuffer);
-        uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Data.RenderSettings.MaxMeshes;
-
-        std::shared_ptr<Buffer> currentVertexBuffer = nullptr, currentIndexBuffer = nullptr;
-
-        for (uint32_t i = 0; i < s_Data.NumMeshes; ++i)
-        {
-            auto& mesh = s_Data.MeshDrawData[i].Mesh;
-            auto& instanceData = s_Data.MeshDrawData[i].InstanceData;
-
-            // Cull mesh from light camera frustum
-            if (s_Data.SceneCamera.IsFrustumCullingEnabled())
-            {
-                BoundingBox boundingBox = mesh->GetBoundingBox();
-
-                boundingBox.Min = glm::vec4(boundingBox.Min, 1.0f) * instanceData.Transform;
-                boundingBox.Max = glm::vec4(boundingBox.Max, 1.0f) * instanceData.Transform;
-
-                if (!s_Data.SceneCamera.GetViewFrustum().IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
-                {
-                    startInstance++;
-                    continue;
-                }
-            }
-
-            auto vb = mesh->GetVertexBuffer();
-            auto ib = mesh->GetIndexBuffer();
-
-            if (vb != currentVertexBuffer)
-            {
-                commandList->SetVertexBuffers(0, 1, *vb);
-                currentVertexBuffer = vb;
-            }
-            if (ib != currentIndexBuffer)
-            {
-                commandList->SetIndexBuffer(*ib);
-                currentIndexBuffer = ib;
-            }
-
-            /*commandList->DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), static_cast<uint32_t>(instanceData.size()),
-                static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
-            startInstance += static_cast<uint32_t>(meshInstanceData.size());*/
-            commandList->DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), 1,
-                static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
-
-            startInstance++;
-            s_Data.RenderStatistics.DrawCallCount++;
-        }
+        RenderSceneFromCamera(*commandList, s_Data.SceneCamera);
 
         commandList->EndTimestampQuery("Lighting");
         RenderBackend::ExecuteCommandList(commandList);
@@ -833,6 +743,11 @@ void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCame
     const glm::mat4& lightViewProjection = lightCamera.GetViewProjection();
     commandList.SetRootConstants(0, 16, &lightViewProjection[0][0], 0);
 
+    RenderSceneFromCamera(commandList, lightCamera);
+}
+
+void Renderer::RenderSceneFromCamera(CommandList& commandList, const Camera& camera)
+{
     // Set instance buffer
     commandList.SetVertexBuffers(1, 1, *s_Data.MeshInstanceBuffer);
     uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Data.RenderSettings.MaxMeshes;
@@ -845,19 +760,19 @@ void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCame
         auto& instanceData = s_Data.MeshDrawData[i].InstanceData;
 
         // Cull mesh from light camera frustum
-        /*if (lightCamera.IsFrustumCullingEnabled())
+        if (camera.IsFrustumCullingEnabled())
         {
-            Mesh::BoundingBox boundingBox = mesh->GetBoundingBox();
-            
-            boundingBox.Min = instanceData.Transform * glm::vec4(boundingBox.Min, 1.0f);
-            boundingBox.Max = instanceData.Transform * glm::vec4(boundingBox.Max, 1.0f);
+            BoundingBox boundingBox = mesh->GetBoundingBox();
 
-            if (!lightCamera.GetViewFrustum().IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
+            boundingBox.Min = glm::vec4(boundingBox.Min, 1.0f) * instanceData.Transform;
+            boundingBox.Max = glm::vec4(boundingBox.Max, 1.0f) * instanceData.Transform;
+
+            if (!camera.GetViewFrustum().IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
             {
                 startInstance++;
                 continue;
             }
-        }*/
+        }
 
         auto vb = mesh->GetVertexBuffer();
         auto ib = mesh->GetIndexBuffer();
@@ -873,10 +788,13 @@ void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCame
             currentIndexBuffer = ib;
         }
 
+        /*commandList.DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), static_cast<uint32_t>(instanceData.size()),
+            static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
+        startInstance += static_cast<uint32_t>(meshInstanceData.size());*/
         commandList.DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), 1,
             static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
-        startInstance += 1;
 
+        startInstance++;
         s_Data.RenderStatistics.DrawCallCount++;
     }
 }

@@ -65,5 +65,6 @@ private:
 	static void PrepareLightBuffers();
 
 	static void RenderShadowMap(CommandList& commandList, const Camera& lightCamera, const Texture& shadowMap, uint32_t descriptorOffset = 0);
+	static void RenderSceneFromCamera(CommandList& commandList, const Camera& camera);
 
 };

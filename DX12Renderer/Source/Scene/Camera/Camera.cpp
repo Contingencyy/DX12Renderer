@@ -10,6 +10,7 @@ Camera::Camera(const glm::vec3& pos, float fov, float width, float height, float
 	: m_FOV(fov), m_Width(width), m_Height(height)
 {
 	m_AspectRatio = m_Width / m_Height;
+	m_ReversedZ = (near > far);
 
 	m_ViewFrustum.SetNearFarTangent(near, far, (float)glm::tan(glm::pi<float>() / 180.0f * m_FOV * 0.5f));
 	m_ViewFrustum.UpdateBounds(m_AspectRatio);
@@ -17,7 +18,7 @@ Camera::Camera(const glm::vec3& pos, float fov, float width, float height, float
 	m_Transform.Translate(pos);
 
 	m_ViewMatrix = glm::inverse(m_Transform.GetTransformMatrix());
-	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), m_Width, m_Height, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
+	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), m_Width, m_Height, near, far);
 
 	m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 
@@ -28,6 +29,7 @@ Camera::Camera(const glm::mat4& view, float fov, float aspect, float near, float
 	: m_FOV(fov), m_Width(1.0f), m_Height(1.0f)
 {
 	m_AspectRatio = aspect;
+	m_ReversedZ = (near > far);
 
 	m_ViewFrustum.SetNearFarTangent(near, far, (float)glm::tan(glm::pi<float>() / 180.0f * m_FOV * 0.5f));
 	m_ViewFrustum.UpdateBounds(m_AspectRatio);
@@ -35,7 +37,7 @@ Camera::Camera(const glm::mat4& view, float fov, float aspect, float near, float
 	m_Transform = Transform(glm::inverse(view));
 
 	m_ViewMatrix = view;
-	m_ProjectionMatrix = glm::perspectiveLH_ZO(glm::radians(m_FOV), m_AspectRatio, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
+	m_ProjectionMatrix = glm::perspectiveLH_ZO(glm::radians(m_FOV), m_AspectRatio, near, far);
 	/*m_ProjectionMatrix[2][2] = 0.0f;
 	m_ProjectionMatrix[3][2] = m_ViewFrustum.GetFar();*/
 
@@ -45,8 +47,10 @@ Camera::Camera(const glm::mat4& view, float fov, float aspect, float near, float
 }
 
 Camera::Camera(const glm::mat4& view, float left, float right, float bottom, float top, float near, float far)
+	: m_EnableFrustumCulling(false)
 {
 	m_Transform = Transform(glm::inverse(view));
+	m_ReversedZ = (near > far);
 
 	m_ViewMatrix = view;
 	m_ProjectionMatrix = glm::orthoLH_ZO(left, right, bottom, top, near, far);
@@ -80,7 +84,11 @@ void Camera::ResizeProjection(float width, float height)
 	m_Height = height;
 
 	m_AspectRatio = m_Width / m_Height;
-	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), m_Width, m_Height, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
+
+	float near = m_ReversedZ ? m_ViewFrustum.GetFar() : m_ViewFrustum.GetNear();
+	float far = m_ReversedZ ? m_ViewFrustum.GetNear() : m_ViewFrustum.GetFar();
+
+	m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), m_Width, m_Height, near, far);
 	m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	
 	m_ViewFrustum.UpdateBounds(m_AspectRatio);
@@ -100,7 +108,7 @@ void Camera::OnImGuiRender()
 {
 	ImGui::Text("Camera");
 	ImGui::Checkbox("Frustum culling", &m_EnableFrustumCulling);
-	if (ImGui::DragFloat("FOV", &m_FOV, 1.0f, 10.0f, 150.0f, "%.0f"))
+	if (ImGui::DragFloat("FOV", &m_FOV, 1.0f, 1.0f, 150.0f, "%.0f"))
 	{
 		m_ProjectionMatrix = glm::perspectiveFovLH_ZO(glm::radians(m_FOV), m_Width, m_Height, m_ViewFrustum.GetNear(), m_ViewFrustum.GetFar());
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;

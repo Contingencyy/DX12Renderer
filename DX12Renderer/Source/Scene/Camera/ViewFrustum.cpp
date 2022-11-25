@@ -7,8 +7,8 @@ ViewFrustum::~ViewFrustum()
 
 void ViewFrustum::SetNearFarTangent(float near, float far, float tangent)
 {
-	m_Near = near;
-	m_Far = far;
+	m_Near = std::min(near, far);
+	m_Far = std::max(near, far);
 	m_Tangent = tangent;
 }
 

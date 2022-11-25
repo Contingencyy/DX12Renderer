@@ -45,6 +45,8 @@ private:
 	float m_Exposure = 1.5f;
 	float m_Gamma = 2.2f;
 
+	bool m_ReversedZ = false;
+
 	glm::vec2 m_RotationAnchorPoint = glm::vec2(0.0f);
 	bool m_SetAnchorPointOnClick = true;
 
