@@ -112,7 +112,7 @@ float CalculateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIn
 	return shadow;
 }
 
-float CalculatePointShadow(float3 lightToFrag, float angle, float farPlane, uint shadowMapIndex)
+float CalculateOmnidirectionalShadow(float3 lightToFrag, float angle, float farPlane, uint shadowMapIndex)
 {
 	float currentDepth = DirectionToDepthValue(lightToFrag, farPlane, 0.1f);
 	float shadow = 0.0f;
@@ -191,7 +191,7 @@ float3 CalculatePointLight(float4 fragPosWS, float3 fragNormalWS, float3 diffuse
 
 		float3 lightToFrag = (fragPosWS.xyz - pointLight.Position);
 		float angle = dot(fragNormalWS, ldirection);
-		shadow = CalculatePointShadow(lightToFrag, angle, pointLight.Range, pointLight.ShadowMapIndex);
+		shadow = CalculateOmnidirectionalShadow(lightToFrag, angle, pointLight.Range, pointLight.ShadowMapIndex);
 
 		float diff = max(angle, 0.0f);
 		diffuse = pointLight.Diffuse * diff * diffuseColor;

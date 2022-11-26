@@ -165,6 +165,9 @@ bool Camera::UpdateRotation(float deltaTime)
 			m_Yaw += yawSign * mouseDirectionFromCenter.x * m_RotationSpeed * rotationStrength * deltaTime;
 			m_Pitch += mouseDirectionFromCenter.y * m_RotationSpeed * rotationStrength * deltaTime;
 
+			m_Pitch = std::min(m_Pitch, glm::radians(90.0f));
+			m_Pitch = std::max(m_Pitch, glm::radians(-90.0f));
+
 			m_Transform.SetRotation(glm::vec3(m_Pitch, m_Yaw, 0.0f));
 
 			return true;
