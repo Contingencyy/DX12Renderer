@@ -3,26 +3,16 @@
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
 
-Mesh::Mesh(const std::vector<std::shared_ptr<Texture>>& textures, std::size_t startVertex, std::size_t startIndex, std::size_t numIndices,
+Mesh::Mesh(const Material& material, std::size_t startVertex, std::size_t startIndex, std::size_t numIndices,
 	const glm::vec3& minBounds, const glm::vec3& maxBounds, const std::string& name, std::size_t hash)
-	: m_Name(name), m_Hash(hash), m_StartVertex(startVertex), m_StartIndex(startIndex), m_NumIndices(numIndices)
+	: m_Material(material), m_Name(name), m_Hash(hash), m_StartVertex(startVertex), m_StartIndex(startIndex), m_NumIndices(numIndices)
 {
-	for (uint32_t i = 0; i < MeshTextureType::NUM_TEXTURE_TYPES; ++i)
-	{
-		m_Textures[i] = textures[i];
-	}
-
 	CreateBoundingBox(minBounds, maxBounds);
 	CreateBoundingSphere(minBounds, maxBounds);
 }
 
 Mesh::~Mesh()
 {
-}
-
-std::shared_ptr<Texture> Mesh::GetTexture(MeshTextureType type) const
-{
-	return m_Textures[type];
 }
 
 const std::string& Mesh::GetName() const

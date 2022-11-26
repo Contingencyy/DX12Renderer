@@ -233,6 +233,7 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClCompile Include="Source\Graphics\DebugRenderer.cpp" />
     <ClCompile Include="Source\Graphics\Backend\RenderBackend.cpp" />
     <ClCompile Include="Source\Graphics\FrameBuffer.cpp" />
+    <ClCompile Include="Source\Graphics\Material.cpp" />
     <ClCompile Include="Source\Graphics\RenderPass.cpp" />
     <ClCompile Include="Source\Graphics\Resource.cpp" />
     <ClCompile Include="Source\Scene\BoundingVolume.cpp" />
@@ -284,6 +285,7 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\Graphics\DebugRenderer.h" />
     <ClInclude Include="Include\Graphics\Backend\RenderBackend.h" />
     <ClInclude Include="Include\Graphics\FrameBuffer.h" />
+    <ClInclude Include="Include\Graphics\Material.h" />
     <ClInclude Include="Include\Graphics\RenderPass.h" />
     <ClInclude Include="Include\Graphics\Resource.h" />
     <ClInclude Include="Include\Scene\BoundingVolume.h" />

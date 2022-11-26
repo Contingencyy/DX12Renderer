@@ -24,12 +24,6 @@ public:
 		Resolution RenderResolution;
 		Resolution ShadowMapResolution = { 2048, 2048 };
 		bool VSync = true;
-
-		uint32_t MaxInstances = 1000;
-		uint32_t MaxMeshes = 1000;
-		uint32_t MaxDirectionalLights = 1;
-		uint32_t MaxPointLights = 50;
-		uint32_t MaxSpotLights = 50;
 	};
 
 public:
@@ -65,6 +59,6 @@ private:
 	static void PrepareLightBuffers();
 
 	static void RenderShadowMap(CommandList& commandList, const Camera& lightCamera, const Texture& shadowMap, uint32_t descriptorOffset = 0);
-	static void RenderSceneFromCamera(CommandList& commandList, const Camera& camera);
+	static void RenderGeometry(CommandList& commandList, const Camera& camera, uint32_t alphaMode);
 
 };

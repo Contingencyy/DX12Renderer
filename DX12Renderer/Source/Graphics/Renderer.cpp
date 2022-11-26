@@ -14,6 +14,12 @@
 
 #include <imgui/imgui.h>
 
+constexpr uint32_t MAX_MESH_INSTANCES = 1000;
+constexpr uint32_t MAX_MESHES = 1000;
+constexpr uint32_t MAX_DIR_LIGHTS = 1;
+constexpr uint32_t MAX_POINT_LIGHTS = 50;
+constexpr uint32_t MAX_SPOT_LIGHTS = 50;
+
 struct SceneData
 {
     void Reset()
@@ -127,9 +133,9 @@ struct InternalRendererData
     std::unique_ptr<Buffer> SceneDataConstantBuffer;
 
     // Mesh draw data and buffer
-    std::unique_ptr<Buffer> MeshInstanceBuffer;
-    std::array<MeshDrawData, 1000> MeshDrawData;
-    std::size_t NumMeshes = 0;
+    std::array<std::unique_ptr<Buffer>, AlphaMode::NUM_ALPHA_MODES> MeshInstanceBuffer;
+    std::array<std::array<MeshDrawData, 1000>, AlphaMode::NUM_ALPHA_MODES> MeshDrawData;
+    std::size_t NumMeshes[AlphaMode::NUM_ALPHA_MODES];
 
     // Directional/point/spotlight constant buffers
     std::unique_ptr<Buffer> DirectionalLightConstantBuffer;
@@ -137,13 +143,13 @@ struct InternalRendererData
     std::unique_ptr<Buffer> SpotLightConstantBuffer;
 
     // Directional/point/spotlight draw data
-    std::array<DirectionalLightData, 1> DirectionalLightDrawData;
-    std::array<PointLightData, 50> PointLightDrawData;
-    std::array<SpotLightData, 50> SpotLightDrawData;
+    std::array<DirectionalLightData, MAX_DIR_LIGHTS> DirectionalLightDrawData;
+    std::array<PointLightData, MAX_POINT_LIGHTS> PointLightDrawData;
+    std::array<SpotLightData, MAX_SPOT_LIGHTS> SpotLightDrawData;
 
     // Light cameras and light shadow maps
-    std::array<Camera, 1 + 6 * 50 + 50> LightCameras;
-    std::array<std::shared_ptr<Texture>, 101> LightShadowMaps;
+    std::array<Camera, MAX_DIR_LIGHTS + 6 * MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS> LightCameras;
+    std::array<std::shared_ptr<Texture>, MAX_DIR_LIGHTS + MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS> LightShadowMaps;
     
     uint32_t CurrentBackBufferIndex = 0;
 };
@@ -190,9 +196,13 @@ void Renderer::Render()
 {
     SCOPED_TIMER("Renderer::Render");
 
-    s_Data.RenderStatistics.MeshCount = s_Data.NumMeshes;
-    for (uint32_t i = 0; i < s_Data.NumMeshes; ++i)
-        s_Data.RenderStatistics.TriangleCount += s_Data.MeshDrawData[i].Mesh->GetNumIndices() / 3;
+    for (uint32_t i = 0; i < AlphaMode::NUM_ALPHA_MODES; ++i)
+    {
+        s_Data.RenderStatistics.MeshCount = s_Data.NumMeshes[i];
+
+        for (uint32_t j = 0; j < s_Data.NumMeshes[i]; ++j)
+            s_Data.RenderStatistics.TriangleCount += s_Data.MeshDrawData[i][j].Mesh->GetNumIndices() / 3;
+    }
 
     PrepareInstanceBuffer();
     PrepareLightBuffers();
@@ -230,8 +240,8 @@ void Renderer::Render()
             shadowMapIndex++;
         }
 
-        cameraIndex = s_Data.RenderSettings.MaxDirectionalLights;
-        shadowMapIndex = s_Data.RenderSettings.MaxDirectionalLights;
+        cameraIndex = MAX_DIR_LIGHTS;
+        shadowMapIndex = MAX_DIR_LIGHTS;
         for (uint32_t i = 0; i < s_Data.SceneData.NumPointLights; ++i)
         {
             for (uint32_t face = 0; face < 6; ++face)
@@ -243,8 +253,8 @@ void Renderer::Render()
             shadowMapIndex++;
         }
 
-        cameraIndex = static_cast<std::size_t>(s_Data.RenderSettings.MaxDirectionalLights + (s_Data.RenderSettings.MaxPointLights * 6));
-        shadowMapIndex = static_cast<std::size_t>(s_Data.RenderSettings.MaxDirectionalLights + s_Data.RenderSettings.MaxPointLights);
+        cameraIndex = static_cast<std::size_t>(MAX_DIR_LIGHTS + (MAX_POINT_LIGHTS * 6));
+        shadowMapIndex = static_cast<std::size_t>(MAX_DIR_LIGHTS + MAX_POINT_LIGHTS);
         for (uint32_t i = 0; i < s_Data.SceneData.NumSpotLights; ++i)
         {
             RenderShadowMap(*commandList, s_Data.LightCameras[cameraIndex], *s_Data.LightShadowMaps[shadowMapIndex]);
@@ -257,79 +267,82 @@ void Renderer::Render()
         RenderBackend::ExecuteCommandList(commandList);
     }
 
+    for (uint32_t i = 0; i < AlphaMode::NUM_ALPHA_MODES; ++i)
     {
-        /* Depth pre-pass render pass */
-        auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-        commandList->BeginTimestampQuery("Depth pre-pass");
-
-        auto& depthTarget = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment();
-        commandList->Transition(depthTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
-        // Bind render pass bindables
-        commandList->SetRenderPassBindables(*s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS]);
-
-        CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.RenderResolution.x),
-            static_cast<float>(s_Data.RenderSettings.RenderResolution.y), 0.0f, 1.0f);
-        CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
-
-        commandList->SetViewports(1, &viewport);
-        commandList->SetScissorRects(1, &scissorRect);
-
-        D3D12_CPU_DESCRIPTOR_HANDLE dsv = depthTarget.GetDescriptor(DescriptorType::DSV);
-        commandList->SetRenderTargets(0, nullptr, &dsv);
-
-        commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
-
-        RenderSceneFromCamera(*commandList, s_Data.SceneCamera);
-
-        commandList->EndTimestampQuery("Depth pre-pass");
-        RenderBackend::ExecuteCommandList(commandList);
-    }
-
-    {
-        /* Lighting render pass */
-        auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-        commandList->BeginTimestampQuery("Lighting");
-
-        // Transition all shadow maps to the pixel shader resource state
-        for (auto& shadowMap : s_Data.LightShadowMaps)
         {
-            if (shadowMap)
-                commandList->Transition(*shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            /* Depth pre-pass render pass */
+            auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+            commandList->BeginTimestampQuery("Depth pre-pass");
+
+            auto& depthTarget = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment();
+            commandList->Transition(depthTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+            // Bind render pass bindables
+            commandList->SetRenderPassBindables(*s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS]);
+
+            CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.RenderResolution.x),
+                static_cast<float>(s_Data.RenderSettings.RenderResolution.y), 0.0f, 1.0f);
+            CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
+
+            commandList->SetViewports(1, &viewport);
+            commandList->SetScissorRects(1, &scissorRect);
+
+            D3D12_CPU_DESCRIPTOR_HANDLE dsv = depthTarget.GetDescriptor(DescriptorType::DSV);
+            commandList->SetRenderTargets(0, nullptr, &dsv);
+
+            commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
+
+            RenderGeometry(*commandList, s_Data.SceneCamera, i);
+
+            commandList->EndTimestampQuery("Depth pre-pass");
+            RenderBackend::ExecuteCommandList(commandList);
         }
 
-        // Set bindless descriptor heap
-        commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
+        {
+            /* Lighting render pass */
+            auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+            commandList->BeginTimestampQuery("Lighting");
 
-        // Bind render pass bindables (sets viewport, scissor rect, render targets, pipeline state, root signature and primitive topology)
-        commandList->SetRenderPassBindables(*s_Data.RenderPasses[RenderPassType::LIGHTING]);
+            // Transition all shadow maps to the pixel shader resource state
+            for (auto& shadowMap : s_Data.LightShadowMaps)
+            {
+                if (shadowMap)
+                    commandList->Transition(*shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            }
 
-        CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.RenderResolution.x),
-            static_cast<float>(s_Data.RenderSettings.RenderResolution.y), 0.0f, 1.0f);
-        CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
+            // Set bindless descriptor heap
+            commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
 
-        commandList->SetViewports(1, &viewport);
-        commandList->SetScissorRects(1, &scissorRect);
+            // Bind render pass bindables (sets viewport, scissor rect, render targets, pipeline state, root signature and primitive topology)
+            commandList->SetRenderPassBindables(*s_Data.RenderPasses[RenderPassType::LIGHTING]);
 
-        D3D12_CPU_DESCRIPTOR_HANDLE rtv = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetColorAttachment().GetDescriptor(DescriptorType::RTV);
-        D3D12_CPU_DESCRIPTOR_HANDLE dsv = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment().GetDescriptor(DescriptorType::DSV);
-        commandList->SetRenderTargets(1, &rtv, &dsv);
+            CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.RenderResolution.x),
+                static_cast<float>(s_Data.RenderSettings.RenderResolution.y), 0.0f, 1.0f);
+            CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
 
-        // Set root CBVs for scene data
-        commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
+            commandList->SetViewports(1, &viewport);
+            commandList->SetScissorRects(1, &scissorRect);
 
-        // Set root CBVs for lights
-        commandList->SetRootConstantBufferView(1, *s_Data.DirectionalLightConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
-        commandList->SetRootConstantBufferView(2, *s_Data.PointLightConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
-        commandList->SetRootConstantBufferView(3, *s_Data.SpotLightConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+            D3D12_CPU_DESCRIPTOR_HANDLE rtv = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetColorAttachment().GetDescriptor(DescriptorType::RTV);
+            D3D12_CPU_DESCRIPTOR_HANDLE dsv = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment().GetDescriptor(DescriptorType::DSV);
+            commandList->SetRenderTargets(1, &rtv, &dsv);
 
-        // Set root descriptor table for bindless CBV_SRV_UAV descriptor array
-        commandList->SetRootDescriptorTable(4, descriptorHeap.GetGPUBaseDescriptor());
+            // Set root CBVs for scene data
+            commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
 
-        RenderSceneFromCamera(*commandList, s_Data.SceneCamera);
+            // Set root CBVs for lights
+            commandList->SetRootConstantBufferView(1, *s_Data.DirectionalLightConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+            commandList->SetRootConstantBufferView(2, *s_Data.PointLightConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+            commandList->SetRootConstantBufferView(3, *s_Data.SpotLightConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
 
-        commandList->EndTimestampQuery("Lighting");
-        RenderBackend::ExecuteCommandList(commandList);
+            // Set root descriptor table for bindless CBV_SRV_UAV descriptor array
+            commandList->SetRootDescriptorTable(4, descriptorHeap.GetGPUBaseDescriptor());
+
+            RenderGeometry(*commandList, s_Data.SceneCamera, i);
+
+            commandList->EndTimestampQuery("Lighting");
+            RenderBackend::ExecuteCommandList(commandList);
+        }
     }
 
     {
@@ -384,15 +397,6 @@ void Renderer::OnImGuiRender()
     ImGui::Text("VSync: %s", s_Data.RenderSettings.VSync ? "On" : "Off");
     ImGui::Text("Shadow map resolution: %ux%u", s_Data.RenderSettings.ShadowMapResolution, s_Data.RenderSettings.ShadowMapResolution);
 
-    if (ImGui::CollapsingHeader("Max settings"))
-    {
-        ImGui::Text("Max model instances: %u", s_Data.RenderSettings.MaxInstances);
-        ImGui::Text("Max instances per draw: %u", s_Data.RenderSettings.MaxMeshes);
-        ImGui::Text("Max directional lights: %u", s_Data.RenderSettings.MaxDirectionalLights);
-        ImGui::Text("Max point lights: %u", s_Data.RenderSettings.MaxPointLights);
-        ImGui::Text("Max spot lights: %u", s_Data.RenderSettings.MaxSpotLights);
-    }
-
     if (ImGui::CollapsingHeader("Stats"))
     {
         ImGui::Text("Draw calls: %u", s_Data.RenderStatistics.DrawCallCount);
@@ -431,23 +435,28 @@ void Renderer::EndScene()
 
     RenderBackend::GetSwapChain().ResolveToBackBuffer(s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetColorAttachment());
 
-    s_Data.NumMeshes = 0;
+    s_Data.NumMeshes[AlphaMode::OPAQUE] = 0;
+    s_Data.NumMeshes[AlphaMode::TRANSPARENT] = 0;
+
     s_Data.SceneData.Reset();
     s_Data.RenderStatistics.Reset();
 }
 
 void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform)
 {
-    uint32_t baseColorTexIndex = mesh->GetTexture(MeshTextureType::TEX_BASE_COLOR)->GetDescriptorHeapIndex(DescriptorType::SRV);
-    uint32_t normalTexIndex = mesh->GetTexture(MeshTextureType::TEX_NORMAL)->GetDescriptorHeapIndex(DescriptorType::SRV);
+    uint32_t baseColorTexIndex = mesh->GetMaterial().GetAlbedoTexture()->GetDescriptorHeapIndex(DescriptorType::SRV);
+    uint32_t normalTexIndex = mesh->GetMaterial().GetNormalTexture()->GetDescriptorHeapIndex(DescriptorType::SRV);
 
-    s_Data.MeshDrawData[s_Data.NumMeshes].Mesh = mesh;
-    s_Data.MeshDrawData[s_Data.NumMeshes].InstanceData.Transform = transform;
-    s_Data.MeshDrawData[s_Data.NumMeshes].InstanceData.BaseColorTexIndex = baseColorTexIndex;
-    s_Data.MeshDrawData[s_Data.NumMeshes].InstanceData.NormalTexIndex = normalTexIndex;
+    auto& meshDrawData = s_Data.MeshDrawData[mesh->GetMaterial().GetAlphaMode()];
+    std::size_t& numMeshes = s_Data.NumMeshes[mesh->GetMaterial().GetAlphaMode()];
 
-    s_Data.NumMeshes++;
-    ASSERT(s_Data.NumMeshes <= s_Data.RenderSettings.MaxMeshes, "Exceeded the maximum amount of meshes");
+    meshDrawData[numMeshes].Mesh = mesh;
+    meshDrawData[numMeshes].InstanceData.Transform = transform;
+    meshDrawData[numMeshes].InstanceData.BaseColorTexIndex = baseColorTexIndex;
+    meshDrawData[numMeshes].InstanceData.NormalTexIndex = normalTexIndex;
+
+    numMeshes++;
+    ASSERT(numMeshes <= MAX_MESHES, "Exceeded the maximum amount of meshes");
 }
 
 void Renderer::Submit(const DirectionalLightData& dirLightData, const Camera& lightCamera, const std::shared_ptr<Texture>& shadowMap)
@@ -457,12 +466,12 @@ void Renderer::Submit(const DirectionalLightData& dirLightData, const Camera& li
     s_Data.LightShadowMaps[s_Data.SceneData.NumDirLights] = shadowMap;
 
     s_Data.SceneData.NumDirLights++;
-    ASSERT(s_Data.SceneData.NumDirLights <= s_Data.RenderSettings.MaxDirectionalLights, "Exceeded the maximum amount of directional lights");
+    ASSERT(s_Data.SceneData.NumDirLights <= MAX_DIR_LIGHTS, "Exceeded the maximum amount of directional lights");
 }
 
 void Renderer::Submit(const PointLightData& pointLightData, const std::array<Camera, 6>& lightCameras, const std::shared_ptr<Texture>& shadowMap)
 {
-    std::size_t pointLightBaseIndex = s_Data.RenderSettings.MaxDirectionalLights;
+    std::size_t pointLightBaseIndex = MAX_DIR_LIGHTS;
 
     s_Data.PointLightDrawData[s_Data.SceneData.NumPointLights] = pointLightData;
     for (uint32_t i = 0; i < 6; ++i)
@@ -470,19 +479,19 @@ void Renderer::Submit(const PointLightData& pointLightData, const std::array<Cam
     s_Data.LightShadowMaps[pointLightBaseIndex + s_Data.SceneData.NumPointLights] = shadowMap;
 
     s_Data.SceneData.NumPointLights++;
-    ASSERT(s_Data.SceneData.NumPointLights <= s_Data.RenderSettings.MaxPointLights, "Exceeded the maximum amount of point lights");
+    ASSERT(s_Data.SceneData.NumPointLights <= MAX_POINT_LIGHTS, "Exceeded the maximum amount of point lights");
 }
 
 void Renderer::Submit(const SpotLightData& spotLightData, const Camera& lightCamera, const std::shared_ptr<Texture>& shadowMap)
 {
-    std::size_t spotLightBaseIndex = s_Data.RenderSettings.MaxDirectionalLights + s_Data.RenderSettings.MaxPointLights;
+    std::size_t spotLightBaseIndex = MAX_DIR_LIGHTS + MAX_POINT_LIGHTS;
 
     s_Data.SpotLightDrawData[s_Data.SceneData.NumSpotLights] = spotLightData;
-    s_Data.LightCameras[s_Data.RenderSettings.MaxDirectionalLights + (s_Data.RenderSettings.MaxPointLights * 6) + s_Data.SceneData.NumSpotLights] = lightCamera;
+    s_Data.LightCameras[MAX_DIR_LIGHTS + (MAX_POINT_LIGHTS * 6) + s_Data.SceneData.NumSpotLights] = lightCamera;
     s_Data.LightShadowMaps[spotLightBaseIndex + s_Data.SceneData.NumSpotLights] = shadowMap;
 
     s_Data.SceneData.NumSpotLights++;
-    ASSERT(s_Data.SceneData.NumSpotLights <= s_Data.RenderSettings.MaxSpotLights, "Exceeded the maximum amount of spot lights");
+    ASSERT(s_Data.SceneData.NumSpotLights <= MAX_SPOT_LIGHTS, "Exceeded the maximum amount of spot lights");
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)
@@ -651,12 +660,15 @@ void Renderer::MakeRenderPasses()
 
 void Renderer::MakeBuffers()
 {
-    s_Data.MeshInstanceBuffer = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD,
-        s_Data.RenderSettings.MaxMeshes * RenderBackend::GetSwapChain().GetBackBufferCount(), sizeof(MeshInstanceData)));
+    for (uint32_t i = 0; i < AlphaMode::NUM_ALPHA_MODES; ++i)
+    {
+        s_Data.MeshInstanceBuffer[i] = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD,
+            MAX_MESHES * RenderBackend::GetSwapChain().GetBackBufferCount(), sizeof(MeshInstanceData)));
+    }
 
-    s_Data.DirectionalLightConstantBuffer = std::make_unique<Buffer>("Directional lights constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Data.RenderSettings.MaxDirectionalLights, sizeof(DirectionalLightData)));
-    s_Data.PointLightConstantBuffer = std::make_unique<Buffer>("Pointlights constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Data.RenderSettings.MaxPointLights, sizeof(PointLightData)));
-    s_Data.SpotLightConstantBuffer = std::make_unique<Buffer>("Spotlights constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, s_Data.RenderSettings.MaxSpotLights, sizeof(SpotLightData)));
+    s_Data.DirectionalLightConstantBuffer = std::make_unique<Buffer>("Directional lights constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, MAX_DIR_LIGHTS, sizeof(DirectionalLightData)));
+    s_Data.PointLightConstantBuffer = std::make_unique<Buffer>("Pointlights constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, MAX_POINT_LIGHTS, sizeof(PointLightData)));
+    s_Data.SpotLightConstantBuffer = std::make_unique<Buffer>("Spotlights constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, MAX_POINT_LIGHTS, sizeof(SpotLightData)));
 
     // Tone mapping vertices, positions are in normalized device coordinates
     std::vector<float> toneMappingVertices = {
@@ -704,13 +716,18 @@ void Renderer::MakeFrameBuffers()
 void Renderer::PrepareInstanceBuffer()
 {
     uint32_t currentBackBufferIndex = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex();
-    std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * s_Data.RenderSettings.MaxMeshes) * sizeof(MeshInstanceData);
 
-    for (auto& [mesh, instanceData] : s_Data.MeshDrawData)
+    for (uint32_t i = 0; i < AlphaMode::NUM_ALPHA_MODES; ++i)
     {
-        std::size_t numBytes = sizeof(MeshInstanceData);
-        s_Data.MeshInstanceBuffer->SetBufferDataAtOffset(&instanceData, numBytes, currentByteOffset);
-        currentByteOffset += numBytes;
+        std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * MAX_MESHES) * sizeof(MeshInstanceData);
+        Buffer& instanceBuffer = *s_Data.MeshInstanceBuffer[i];
+
+        for (auto& [mesh, instanceData] : s_Data.MeshDrawData[i])
+        {
+            std::size_t numBytes = sizeof(MeshInstanceData);
+            instanceBuffer.SetBufferDataAtOffset(&instanceData, numBytes, currentByteOffset);
+            currentByteOffset += numBytes;
+        }
     }
 }
 
@@ -743,21 +760,22 @@ void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCame
     const glm::mat4& lightViewProjection = lightCamera.GetViewProjection();
     commandList.SetRootConstants(0, 16, &lightViewProjection[0][0], 0);
 
-    RenderSceneFromCamera(commandList, lightCamera);
+    RenderGeometry(commandList, lightCamera, AlphaMode::OPAQUE);
+    RenderGeometry(commandList, lightCamera, AlphaMode::TRANSPARENT);
 }
 
-void Renderer::RenderSceneFromCamera(CommandList& commandList, const Camera& camera)
+void Renderer::RenderGeometry(CommandList& commandList, const Camera& camera, uint32_t alphaMode)
 {
     // Set instance buffer
-    commandList.SetVertexBuffers(1, 1, *s_Data.MeshInstanceBuffer);
-    uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * s_Data.RenderSettings.MaxMeshes;
+    commandList.SetVertexBuffers(1, 1, *s_Data.MeshInstanceBuffer[alphaMode]);
+    uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * MAX_MESHES;
 
     std::shared_ptr<Buffer> currentVertexBuffer = nullptr, currentIndexBuffer = nullptr;
 
-    for (uint32_t i = 0; i < s_Data.NumMeshes; ++i)
+    for (uint32_t j = 0; j < s_Data.NumMeshes[alphaMode]; ++j)
     {
-        auto& mesh = s_Data.MeshDrawData[i].Mesh;
-        auto& instanceData = s_Data.MeshDrawData[i].InstanceData;
+        auto& mesh = s_Data.MeshDrawData[alphaMode][j].Mesh;
+        auto& instanceData = s_Data.MeshDrawData[alphaMode][j].InstanceData;
 
         // Cull mesh from light camera frustum
         if (camera.IsFrustumCullingEnabled())

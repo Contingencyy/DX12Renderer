@@ -5,6 +5,7 @@
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
 #include "Graphics/Mesh.h"
+#include "Graphics/Material.h"
 
 ResourceManager::ResourceManager()
 {
@@ -38,38 +39,42 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 	const tinygltf::Model& tinygltf = FileLoader::LoadGLTFModel(filepath);
 
 	// Create all textures
-	std::vector<std::vector<std::shared_ptr<Texture>>> textures;
+	std::vector<Material> materials;
+	materials.reserve(tinygltf.materials.size());
 
 	for (uint32_t matIndex = 0; matIndex < tinygltf.materials.size(); ++matIndex)
 	{
-		textures.emplace_back();
-		textures[matIndex].reserve(2);
-
 		auto& material = tinygltf.materials[matIndex];
 		int baseColorTextureIndex = material.pbrMetallicRoughness.baseColorTexture.index;
 		int normalTextureIndex = material.normalTexture.index;
 
+		std::shared_ptr<Texture> albedoTexture;
+		std::shared_ptr<Texture> normalTexture;
+		AlphaMode alphaMode = material.alphaMode.compare("OPAQUE") == 0 ? AlphaMode::OPAQUE : AlphaMode::TRANSPARENT;
+
 		if (baseColorTextureIndex >= 0)
 		{
 			uint32_t baseColorImageIndex = tinygltf.textures[baseColorTextureIndex].source;
-			textures[matIndex].push_back(std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				tinygltf.images[baseColorImageIndex].width, tinygltf.images[baseColorImageIndex].height), &tinygltf.images[baseColorImageIndex].image[0]));
+			albedoTexture = std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+				tinygltf.images[baseColorImageIndex].width, tinygltf.images[baseColorImageIndex].height), &tinygltf.images[baseColorImageIndex].image[0]);
 		}
 		else
 		{
-			textures[matIndex].push_back(m_Textures.at("WhiteTexture"));
+			albedoTexture = m_Textures.at("WhiteTexture");
 		}
 
 		if (normalTextureIndex >= 0)
 		{
 			uint32_t normalImageIndex = tinygltf.textures[normalTextureIndex].source;
-			textures[matIndex].push_back(std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				tinygltf.images[normalImageIndex].width, tinygltf.images[normalImageIndex].height), &tinygltf.images[normalImageIndex].image[0]));
+			normalTexture = std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+				tinygltf.images[normalImageIndex].width, tinygltf.images[normalImageIndex].height), &tinygltf.images[normalImageIndex].image[0]);
 		}
 		else
 		{
-			textures[matIndex].push_back(m_Textures.at("WhiteTexture"));
+			normalTexture = m_Textures.at("WhiteTexture");
 		}
+
+		materials.emplace_back(albedoTexture, normalTexture, alphaMode);
 	}
 
 	std::size_t totalVertexCount = 0;
@@ -204,7 +209,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			// Meshes need to know their byte offset in both the vertex and index buffer
 			std::string meshName = mesh.name.empty() ? name + std::to_string(meshes.size()) : mesh.name + std::to_string(meshes.size());
 			std::size_t meshHash = std::hash<std::string>{}(filepath + std::to_string(meshes.size()));
-			meshes.push_back(std::make_shared<Mesh>(textures[prim.material], currentStartVertex, currentStartIndex, numIndices, minBounds, maxBounds, meshName, meshHash));
+			meshes.push_back(std::make_shared<Mesh>(materials[prim.material], currentStartVertex, currentStartIndex, numIndices, minBounds, maxBounds, meshName, meshHash));
 		}
 	}
 

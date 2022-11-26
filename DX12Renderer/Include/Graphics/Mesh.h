@@ -1,28 +1,22 @@
 #pragma once
 #include "Scene/BoundingVolume.h"
+#include "Graphics/Material.h"
 
 class Buffer;
 class Texture;
 
-enum MeshTextureType : uint32_t
-{
-	TEX_BASE_COLOR,
-	TEX_NORMAL,
-	NUM_TEXTURE_TYPES
-};
-
 class Mesh
 {
 public:
-	Mesh(const std::vector<std::shared_ptr<Texture>>& textures, std::size_t startVertex, std::size_t startIndex, std::size_t numIndices,
+	Mesh(const Material& material, std::size_t startVertex, std::size_t startIndex, std::size_t numIndices,
 		const glm::vec3& minBounds, const glm::vec3& maxBounds, const std::string& name, std::size_t hash);
 	~Mesh();
 
-	std::shared_ptr<Texture> GetTexture(MeshTextureType type) const;
 	std::shared_ptr<Buffer> GetVertexBuffer() const { return m_VertexBuffer; }
 	void SetVertexBuffer(const std::shared_ptr<Buffer>& vertexBuffer) { m_VertexBuffer = vertexBuffer; }
 	std::shared_ptr<Buffer> GetIndexBuffer() const { return m_IndexBuffer; }
 	void SetIndexBuffer(const std::shared_ptr<Buffer>& indexBuffer) { m_IndexBuffer = indexBuffer; }
+	const Material& GetMaterial() const { return m_Material; }
 
 	std::size_t GetStartVertex() const { return m_StartVertex; }
 	std::size_t GetStartIndex() const { return m_StartIndex; }
@@ -48,7 +42,7 @@ private:
 	std::size_t m_StartIndex = 0;
 	std::size_t m_NumIndices = 0;
 
-	std::shared_ptr<Texture> m_Textures[MeshTextureType::NUM_TEXTURE_TYPES];
+	Material m_Material;
 
 	BoundingBox m_BoundingBox;
 	BoundingSphere m_BoundingSphere;

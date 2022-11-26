@@ -1,5 +1,6 @@
 #pragma once
 
+#define NOMINMAX
 #define WINDOWS_LEAN_AND_MEAN
 #include <Windows.h>
 
@@ -18,14 +19,6 @@ using namespace Microsoft::WRL;
 #undef CreateWindow
 #endif
 
-#if defined(min)
-#undef min
-#endif
-
-#if defined(max)
-#undef max
-#endif
-
 #if defined(near)
 #undef near
 #endif
@@ -36,4 +29,12 @@ using namespace Microsoft::WRL;
 
 #if defined(LoadImage)
 #undef LoadImage
+#endif
+
+#if defined(OPAQUE)
+#undef OPAQUE
+#endif
+
+#if defined(TRANSPARENT)
+#undef TRANSPARENT
 #endif
