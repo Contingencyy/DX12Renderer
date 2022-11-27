@@ -88,8 +88,6 @@ void Scene::Update(float deltaTime)
 
 void Scene::Render()
 {
-	SCOPED_TIMER("Scene::Render");
-
 	for (auto& sceneObject : m_SceneObjects)
 	{
 		sceneObject->Render();

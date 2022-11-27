@@ -267,12 +267,14 @@ void Renderer::Render()
         RenderBackend::ExecuteCommandList(commandList);
     }
 
+    const std::string timestampNames[4] = { "Depth pre-pass (opaque)", "Depth pre-pass (transparent)", "Lighting (opaque)", "Lighting (transparent)" };
+
     for (uint32_t i = 0; i < AlphaMode::NUM_ALPHA_MODES; ++i)
     {
         {
             /* Depth pre-pass render pass */
             auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-            commandList->BeginTimestampQuery("Depth pre-pass");
+            commandList->BeginTimestampQuery(timestampNames[i]);
 
             auto& depthTarget = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment();
             commandList->Transition(depthTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE);
@@ -294,14 +296,14 @@ void Renderer::Render()
 
             RenderGeometry(*commandList, s_Data.SceneCamera, i);
 
-            commandList->EndTimestampQuery("Depth pre-pass");
+            commandList->EndTimestampQuery(timestampNames[i]);
             RenderBackend::ExecuteCommandList(commandList);
         }
 
         {
             /* Lighting render pass */
             auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-            commandList->BeginTimestampQuery("Lighting");
+            commandList->BeginTimestampQuery(timestampNames[2 + i]);
 
             // Transition all shadow maps to the pixel shader resource state
             for (auto& shadowMap : s_Data.LightShadowMaps)
@@ -340,7 +342,7 @@ void Renderer::Render()
 
             RenderGeometry(*commandList, s_Data.SceneCamera, i);
 
-            commandList->EndTimestampQuery("Lighting");
+            commandList->EndTimestampQuery(timestampNames[2 + i]);
             RenderBackend::ExecuteCommandList(commandList);
         }
     }

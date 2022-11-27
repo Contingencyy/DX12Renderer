@@ -82,8 +82,6 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 
 void RenderBackend::BeginFrame()
 {
-	SCOPED_TIMER("RenderBackend::BeginFrame");
-
 	s_Data.TimestampQueries[s_Data.CurrentBackBufferIndex].clear();
 	s_Data.NextQueryIndex[s_Data.CurrentBackBufferIndex] = 0;
 }
@@ -96,8 +94,6 @@ void RenderBackend::OnImGuiRender()
 
 void RenderBackend::EndFrame()
 {
-	SCOPED_TIMER("RenderBackend::EndFrame");
-
 	s_Data.SwapChain->SwapBuffers(s_Data.VSync);
 	s_Data.CurrentBackBufferIndex = s_Data.SwapChain->GetCurrentBackBufferIndex();
 
