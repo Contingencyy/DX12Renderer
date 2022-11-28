@@ -163,7 +163,7 @@ void RenderBackend::UploadBufferDataRegion(Buffer& destBuffer, std::size_t destO
 	s_Data.CommandQueueCopy->WaitForFenceValue(fenceValue);
 }
 
-void RenderBackend::UploadTexture(Texture& destTexture, const void* textureData)
+void RenderBackend::UploadTextureData(Texture& destTexture, const void* textureData)
 {
 	UploadBufferAllocation upload = s_Data.UploadBuffer->Allocate(destTexture.GetByteSize(), 512);
 
@@ -171,14 +171,14 @@ void RenderBackend::UploadTexture(Texture& destTexture, const void* textureData)
 	copyCommandList->CopyTexture(upload, destTexture, textureData);
 	uint64_t copyFenceValue = s_Data.CommandQueueCopy->ExecuteCommandList(copyCommandList);
 	s_Data.CommandQueueCopy->WaitForFenceValue(copyFenceValue);
+}
 
-	if (destTexture.GetTextureDesc().NumMips > 1)
-	{
-		auto computeCommandList = s_Data.CommandQueueCompute->GetCommandList();
-		computeCommandList->GenerateMips(destTexture);
-		uint64_t computeFenceValue = s_Data.CommandQueueCompute->ExecuteCommandList(computeCommandList);
-		s_Data.CommandQueueCompute->WaitForFenceValue(computeFenceValue);
-	}
+void RenderBackend::GenerateMips(Texture& texture)
+{
+	auto computeCommandList = s_Data.CommandQueueCompute->GetCommandList();
+	computeCommandList->GenerateMips(texture);
+	uint64_t computeFenceValue = s_Data.CommandQueueCompute->ExecuteCommandList(computeCommandList);
+	s_Data.CommandQueueCompute->WaitForFenceValue(computeFenceValue);
 }
 
 ID3D12QueryHeap* RenderBackend::GetD3D12TimestampQueryHeap()

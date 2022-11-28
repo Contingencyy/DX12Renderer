@@ -42,7 +42,8 @@ public:
 
 	static void UploadBufferData(Buffer& destBuffer, const void* bufferData);
 	static void UploadBufferDataRegion(Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
-	static void UploadTexture(Texture& destTexture, const void* textureData);
+	static void UploadTextureData(Texture& destTexture, const void* textureData);
+	static void GenerateMips(Texture& texture);
 
 	static ID3D12QueryHeap* GetD3D12TimestampQueryHeap();
 	static const Buffer& GetQueryReadbackBuffer(uint32_t backBufferIndex);

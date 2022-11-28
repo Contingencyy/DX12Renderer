@@ -173,6 +173,17 @@ void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint3
 	m_d3d12CommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndex, baseVertex, startInstance);
 }
 
+void CommandList::CopyResource(Resource& destResource, Resource& srcResource)
+{
+	Transition(destResource, D3D12_RESOURCE_STATE_COPY_DEST);
+	Transition(srcResource, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+	m_d3d12CommandList->CopyResource(destResource.GetD3D12Resource().Get(), srcResource.GetD3D12Resource().Get());
+
+	TrackObject(destResource.GetD3D12Resource());
+	TrackObject(srcResource.GetD3D12Resource());
+}
+
 void CommandList::CopyBuffer(const UploadBufferAllocation& uploadBuffer, Buffer& destBuffer, const void* bufferData)
 {
 	std::size_t alignedBufferSize = destBuffer.GetByteSize();
@@ -243,7 +254,7 @@ void CommandList::GenerateMips(Texture& texture)
 		srcResourceDesc.DepthOrArraySize != 1 ||
 		srcResourceDesc.SampleDesc.Count > 1)
 	{
-		ASSERT(false, "Generating mips for texture dimensions that are not TEXTURE2D, texture arrays, or multisampled textures are not supported");
+		ASSERT(false, "Generating mips for texture dimensions that are not TEXTURE2D, texture arrays, or multisampled textures is not supported");
 		return;
 	}
 	
@@ -412,16 +423,9 @@ void CommandList::GenerateMips(Texture& texture)
 	}
 }
 
-void CommandList::ResolveTexture(Texture& srcTexture, Texture& destTexture)
+void CommandList::ResolveTexture(Texture& destTexture, Texture& srcTexture)
 {
-	Transition(srcTexture, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	Transition(destTexture, D3D12_RESOURCE_STATE_COPY_DEST);
-
-	m_d3d12CommandList->CopyResource(destTexture.GetD3D12Resource().Get(), srcTexture.GetD3D12Resource().Get());
-
-	TrackObject(destTexture.GetD3D12Resource());
-	TrackObject(srcTexture.GetD3D12Resource());
-
+	// Needs to be implemented still
 	//m_d3d12CommandList->ResolveSubresource();
 }
 

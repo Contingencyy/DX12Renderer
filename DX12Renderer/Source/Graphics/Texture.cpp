@@ -81,7 +81,9 @@ Texture::Texture(const std::string& name, const TextureDesc& textureDesc, const 
 		CreateViews();
 		SetName(name);
 
-		RenderBackend::UploadTexture(*this, data);
+		RenderBackend::UploadTextureData(*this, data);
+		if (m_TextureDesc.NumMips > 1)
+			RenderBackend::GenerateMips(*this);
 	}
 }
 

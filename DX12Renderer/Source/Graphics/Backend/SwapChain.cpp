@@ -54,7 +54,7 @@ void SwapChain::ResolveToBackBuffer(Texture& texture)
     SCOPED_TIMER("SwapChain::ResolveToBackBuffer");
 
     auto commandList = m_CommandQueueDirect->GetCommandList();
-    commandList->ResolveTexture(texture, *m_BackBuffers[m_CurrentBackBufferIndex]);
+    commandList->CopyResource(*m_BackBuffers[m_CurrentBackBufferIndex], texture);
     m_CommandQueueDirect->ExecuteCommandList(commandList);
 }
 

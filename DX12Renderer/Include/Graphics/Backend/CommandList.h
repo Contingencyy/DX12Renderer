@@ -41,11 +41,12 @@ public:
 	void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex = 0, uint32_t startInstance = 0);
 	void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0);
 
+	void CopyResource(Resource& destResource, Resource& srcResource);
 	void CopyBuffer(const UploadBufferAllocation& uploadBuffer, Buffer& destBuffer, const void* bufferData);
 	void CopyBufferRegion(const UploadBufferAllocation& uploadBuffer, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
 	void CopyTexture(const UploadBufferAllocation& uploadBuffer, Texture& destTexture, const void* textureData);
 	void GenerateMips(Texture& texture);
-	void ResolveTexture(Texture& srcTexture, Texture& destTexture);
+	void ResolveTexture(Texture& destTexture, Texture& srcTexture);
 
 	void Transition(Resource& resource, D3D12_RESOURCE_STATES stateAfter);
 	void TrackObject(ComPtr<ID3D12Object> object);
