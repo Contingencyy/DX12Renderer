@@ -56,7 +56,8 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		{
 			uint32_t baseColorImageIndex = tinygltf.textures[baseColorTextureIndex].source;
 			albedoTexture = std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				tinygltf.images[baseColorImageIndex].width, tinygltf.images[baseColorImageIndex].height), &tinygltf.images[baseColorImageIndex].image[0]);
+				tinygltf.images[baseColorImageIndex].width, tinygltf.images[baseColorImageIndex].height, CalculateTotalMipCount(tinygltf.images[baseColorImageIndex].width,
+					tinygltf.images[baseColorImageIndex].height)), &tinygltf.images[baseColorImageIndex].image[0]);
 		}
 		else
 		{
@@ -67,7 +68,8 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		{
 			uint32_t normalImageIndex = tinygltf.textures[normalTextureIndex].source;
 			normalTexture = std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				tinygltf.images[normalImageIndex].width, tinygltf.images[normalImageIndex].height), &tinygltf.images[normalImageIndex].image[0]);
+				tinygltf.images[normalImageIndex].width, tinygltf.images[normalImageIndex].height, CalculateTotalMipCount(tinygltf.images[normalImageIndex].width,
+					tinygltf.images[normalImageIndex].height)), &tinygltf.images[normalImageIndex].image[0]);
 		}
 		else
 		{

@@ -5,6 +5,7 @@
 #include "Graphics/Backend/CommandQueue.h"
 #include "Graphics/Backend/CommandList.h"
 #include "Graphics/Backend/UploadBuffer.h"
+#include "Graphics/Shader.h"
 
 #include <imgui/imgui.h>
 
@@ -27,6 +28,10 @@ struct InternalRenderBackendData
 
 	std::unique_ptr<UploadBuffer> UploadBuffer;
 
+	ComPtr<ID3D12PipelineState> MipMapGenPSO;
+	ComPtr<ID3D12RootSignature> MipMapGenRootSig;
+	std::unique_ptr<Shader> MipMapGenShader;
+
 	std::thread ProcessInFlightCommandListsThread;
 	std::atomic_bool ProcessInFlightCommandLists;
 
@@ -44,15 +49,15 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 	CreateAdapter();
 	CreateDevice();
 
+	uint32_t numDescriptorsPerHeap[4] = { 4096, 1, 512, 512 };
 	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-		s_Data.DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+		s_Data.DescriptorHeaps[i] = std::make_unique<DescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i), numDescriptorsPerHeap[i]);
 
 	s_Data.CommandQueueDirect = std::make_shared<CommandQueue>(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	s_Data.CommandQueueCompute = std::make_unique<CommandQueue>(D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	s_Data.CommandQueueCopy = std::make_unique<CommandQueue>(D3D12_COMMAND_LIST_TYPE_COPY);
 
 	s_Data.UploadBuffer = std::make_unique<UploadBuffer>(100);
-
 	s_Data.SwapChain = std::make_unique<SwapChain>(hWnd, s_Data.CommandQueueDirect, width, height);
 
 	D3D12_QUERY_HEAP_DESC queryHeapDesc = {};
@@ -66,6 +71,8 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 		s_Data.QueryReadbackBuffers[i] = std::make_unique<Buffer>("Query result buffer", BufferDesc(BufferUsage::BUFFER_USAGE_READBACK,
 			s_Data.MaxQueriesPerFrame, 8));
 	}
+
+	CreateMipMapComputeState();
 
 	s_Data.ProcessInFlightCommandLists = true;
 	s_Data.ProcessInFlightCommandListsThread = std::thread([]() {
@@ -160,10 +167,18 @@ void RenderBackend::UploadTexture(Texture& destTexture, const void* textureData)
 {
 	UploadBufferAllocation upload = s_Data.UploadBuffer->Allocate(destTexture.GetByteSize(), 512);
 
-	auto commandList = s_Data.CommandQueueCopy->GetCommandList();
-	commandList->CopyTexture(upload, destTexture, textureData);
-	uint64_t fenceValue = s_Data.CommandQueueCopy->ExecuteCommandList(commandList);
-	s_Data.CommandQueueCopy->WaitForFenceValue(fenceValue);
+	auto copyCommandList = s_Data.CommandQueueCopy->GetCommandList();
+	copyCommandList->CopyTexture(upload, destTexture, textureData);
+	uint64_t copyFenceValue = s_Data.CommandQueueCopy->ExecuteCommandList(copyCommandList);
+	s_Data.CommandQueueCopy->WaitForFenceValue(copyFenceValue);
+
+	if (destTexture.GetTextureDesc().NumMips > 1)
+	{
+		auto computeCommandList = s_Data.CommandQueueCompute->GetCommandList();
+		computeCommandList->GenerateMips(destTexture);
+		uint64_t computeFenceValue = s_Data.CommandQueueCompute->ExecuteCommandList(computeCommandList);
+		s_Data.CommandQueueCompute->WaitForFenceValue(computeFenceValue);
+	}
 }
 
 ID3D12QueryHeap* RenderBackend::GetD3D12TimestampQueryHeap()
@@ -227,6 +242,16 @@ ID3D12Device2* RenderBackend::GetD3D12Device()
 SwapChain& RenderBackend::GetSwapChain()
 {
 	return *s_Data.SwapChain.get();
+}
+
+ID3D12PipelineState* RenderBackend::GetMipGenPSO()
+{
+	return s_Data.MipMapGenPSO.Get();
+}
+
+ID3D12RootSignature* RenderBackend::GetMipGenRootSig()
+{
+	return s_Data.MipMapGenRootSig.Get();
 }
 
 DescriptorAllocation RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
@@ -294,22 +319,6 @@ void RenderBackend::ExecuteCommandListAndWait(std::shared_ptr<CommandList> comma
 	}
 
 	ASSERT(false, "Tried to execute command list on a command queue type that is not supported.");
-}
-
-void RenderBackend::ProcessTimestampQueries()
-{
-	uint32_t nextFrameBufferIndex = (s_Data.CurrentBackBufferIndex + 1) % s_Data.SwapChain->GetBackBufferCount();
-
-	for (auto& [name, timestampQuery] : s_Data.TimestampQueries[nextFrameBufferIndex])
-	{
-		timestampQuery.ReadFromBuffer(*s_Data.QueryReadbackBuffers[nextFrameBufferIndex]);
-
-		TimerResult timer = {};
-		timer.Name = name.c_str();
-		timer.Duration = (timestampQuery.EndQueryTimestamp - timestampQuery.BeginQueryTimestamp) / (double)s_Data.CommandQueueDirect->GetTimestampFrequency() * 1000.0f;
-
-		Profiler::AddGPUTimer(timer);
-	}
 }
 
 void RenderBackend::EnableDebugLayer()
@@ -416,4 +425,80 @@ void RenderBackend::CreateDevice()
 		DX_CALL(pInfoQueue->PushStorageFilter(&newFilter));
 	}
 #endif
+}
+
+void RenderBackend::CreateMipMapComputeState()
+{
+	// Root signature
+	CD3DX12_DESCRIPTOR_RANGE1 ranges[2] = {};
+	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+
+	CD3DX12_ROOT_PARAMETER1 rootParameters[3] = {};
+	rootParameters[0].InitAsConstants(8, 0);
+	rootParameters[1].InitAsDescriptorTable(1, &ranges[0]);
+	rootParameters[2].InitAsDescriptorTable(1, &ranges[1]);
+
+	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+	// Default texture sampler (antisotropic)
+	CD3DX12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
+	staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+	staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	staticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	staticSamplers[0].MaxAnisotropy = 0;
+	staticSamplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+	staticSamplers[0].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+	staticSamplers[0].MinLOD = 0.0f;
+	staticSamplers[0].MaxLOD = D3D12_FLOAT32_MAX;
+	staticSamplers[0].MipLODBias = 0;
+	staticSamplers[0].ShaderRegister = 0;
+	staticSamplers[0].RegisterSpace = 0;
+	staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC versionedRootSignatureDesc = {};
+	versionedRootSignatureDesc.Init_1_1(_countof(rootParameters), &rootParameters[0], _countof(staticSamplers), &staticSamplers[0], rootSignatureFlags);
+
+	ComPtr<ID3DBlob> serializedRootSig;
+	ComPtr<ID3DBlob> errorBlob;
+
+	HRESULT hr = D3D12SerializeVersionedRootSignature(&versionedRootSignatureDesc, &serializedRootSig, &errorBlob);
+	if (!SUCCEEDED(hr) || errorBlob)
+	{
+		LOG_ERR(static_cast<const char*>(errorBlob->GetBufferPointer()));
+		errorBlob->Release();
+	}
+
+	DX_CALL(s_Data.D3D12Device2->CreateRootSignature(0, serializedRootSig->GetBufferPointer(),
+		serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&s_Data.MipMapGenRootSig)));
+	s_Data.MipMapGenRootSig->SetName(StringHelper::StringToWString("Mip map root signature").c_str());
+
+	// Shader
+	s_Data.MipMapGenShader = std::make_unique<Shader>(L"Resources/Shaders/MipMapGen_CS.hlsl", "main", "cs_6_0");
+
+	// Pipeline state
+	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
+	psoDesc.pRootSignature = s_Data.MipMapGenRootSig.Get();
+	psoDesc.CS = s_Data.MipMapGenShader->GetShaderByteCode();
+	psoDesc.NodeMask = 0;
+	psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+
+	DX_CALL(s_Data.D3D12Device2->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&s_Data.MipMapGenPSO)));
+}
+
+void RenderBackend::ProcessTimestampQueries()
+{
+	uint32_t nextFrameBufferIndex = (s_Data.CurrentBackBufferIndex + 1) % s_Data.SwapChain->GetBackBufferCount();
+
+	for (auto& [name, timestampQuery] : s_Data.TimestampQueries[nextFrameBufferIndex])
+	{
+		timestampQuery.ReadFromBuffer(*s_Data.QueryReadbackBuffers[nextFrameBufferIndex]);
+
+		TimerResult timer = {};
+		timer.Name = name.c_str();
+		timer.Duration = (timestampQuery.EndQueryTimestamp - timestampQuery.BeginQueryTimestamp) / (double)s_Data.CommandQueueDirect->GetTimestampFrequency() * 1000.0f;
+
+		Profiler::AddGPUTimer(timer);
+	}
 }

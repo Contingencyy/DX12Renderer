@@ -39,4 +39,10 @@ public:
         return (-b + std::sqrt((b * b) - 4 * a * c)) / (2 * a);
     }
 
+    template <typename T>
+    static inline T DivideUp(T x, T div)
+    {
+        return (x + div - 1) / div;
+    }
+
 };

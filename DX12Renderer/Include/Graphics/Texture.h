@@ -37,10 +37,10 @@ enum class TextureDimension : uint32_t
 struct TextureDesc
 {
 	TextureDesc() = default;
-	TextureDesc(TextureUsage usage, TextureFormat format, uint32_t width, uint32_t height)
-		: Usage(usage), Format(format), Width(width), Height(height) {}
-	TextureDesc(TextureUsage usage, TextureFormat format, TextureDimension dimension, uint32_t width, uint32_t height)
-		: Usage(usage), Format(format), Dimension(dimension), Width(width), Height(height) {}
+	TextureDesc(TextureUsage usage, TextureFormat format, uint32_t width, uint32_t height, uint32_t numMips = 1)
+		: Usage(usage), Format(format), Width(width), Height(height), NumMips(numMips) {}
+	TextureDesc(TextureUsage usage, TextureFormat format, TextureDimension dimension, uint32_t width, uint32_t height, uint32_t numMips = 1)
+		: Usage(usage), Format(format), Dimension(dimension), Width(width), Height(height), NumMips(numMips) {}
 
 	TextureUsage Usage = TextureUsage::TEXTURE_USAGE_NONE;
 	TextureFormat Format = TextureFormat::TEXTURE_FORMAT_UNSPECIFIED;
@@ -48,6 +48,7 @@ struct TextureDesc
 
 	uint32_t Width = 1;
 	uint32_t Height = 1;
+	uint32_t NumMips = 1;
 
 	glm::vec4 ClearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
 	glm::vec2 ClearDepthStencil = glm::vec2(1.0f, 0.0f);
@@ -56,6 +57,7 @@ struct TextureDesc
 DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format);
 D3D12_RESOURCE_DIMENSION TextureDimensionToD3DDimension(TextureDimension dimension);
 D3D12_SRV_DIMENSION TextureDimensionToD3DSRVDimension(TextureDimension dimension);
+uint16_t CalculateTotalMipCount(uint32_t width, uint32_t height);
 
 class Texture : public Resource
 {

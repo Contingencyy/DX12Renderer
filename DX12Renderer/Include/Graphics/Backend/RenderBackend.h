@@ -57,6 +57,8 @@ public:
 	static IDXGIAdapter4* GetDXGIAdapter();
 	static ID3D12Device2* GetD3D12Device();
 	static SwapChain& GetSwapChain();
+	static ID3D12PipelineState* GetMipGenPSO();
+	static ID3D12RootSignature* GetMipGenRootSig();
 
 	static DescriptorAllocation AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors = 1);
 	static DescriptorHeap& GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type);
@@ -69,6 +71,7 @@ private:
 	static void EnableDebugLayer();
 	static void CreateAdapter();
 	static void CreateDevice();
+	static void CreateMipMapComputeState();
 
 	static void ProcessTimestampQueries();
 

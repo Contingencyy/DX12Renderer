@@ -324,5 +324,6 @@
     <FxCompile Include="Resources\Shaders\DataStructs.hlsl" />
     <FxCompile Include="Resources\Shaders\DepthPrepass_VS.hlsl" />
     <FxCompile Include="Resources\Shaders\DepthPrepass_PS.hlsl" />
+    <FxCompile Include="Resources\Shaders\MipMapGen_CS.hlsl" />
   </ItemGroup>
 </Project>

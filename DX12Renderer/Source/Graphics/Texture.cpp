@@ -45,6 +45,20 @@ D3D12_SRV_DIMENSION TextureDimensionToD3DSRVDimension(TextureDimension dimension
 	return D3D12_SRV_DIMENSION_TEXTURE2D;
 }
 
+uint16_t CalculateTotalMipCount(uint32_t width, uint32_t height)
+{
+	uint16_t numMips = 1;
+	while (width > 1 || height > 1)
+	{
+		width = width >> 1;
+		height = height >> 1;
+
+		numMips++;
+	}
+
+	return numMips;
+}
+
 Texture::Texture(const std::string& name, const TextureDesc& textureDesc)
 	: Resource(name), m_TextureDesc(textureDesc)
 {
@@ -67,7 +81,6 @@ Texture::Texture(const std::string& name, const TextureDesc& textureDesc, const 
 		CreateViews();
 		SetName(name);
 
-		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, 1, m_ByteSize));
 		RenderBackend::UploadTexture(*this, data);
 	}
 }
@@ -114,7 +127,7 @@ void Texture::Resize(uint32_t width, uint32_t height)
 void Texture::CreateD3D12Resource()
 {
 	D3D12_RESOURCE_DESC d3d12ResourceDesc = {};
-	d3d12ResourceDesc.MipLevels = 1;
+	d3d12ResourceDesc.MipLevels = m_TextureDesc.NumMips;
 	d3d12ResourceDesc.Width = m_TextureDesc.Width;
 	d3d12ResourceDesc.Height = m_TextureDesc.Height;
 	d3d12ResourceDesc.DepthOrArraySize = 1;
@@ -169,7 +182,7 @@ void Texture::AllocateDescriptors()
 
 	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_READ)
 	{
-		m_DescriptorAllocations[DescriptorType::SRV] = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_DescriptorAllocations[DescriptorType::SRV] = RenderBackend::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, numDescriptors);
 	}
 	if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_WRITE)
 	{

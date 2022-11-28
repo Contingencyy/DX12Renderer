@@ -44,6 +44,7 @@ public:
 	void CopyBuffer(const UploadBufferAllocation& uploadBuffer, Buffer& destBuffer, const void* bufferData);
 	void CopyBufferRegion(const UploadBufferAllocation& uploadBuffer, Buffer& destBuffer, std::size_t destOffset, std::size_t numBytes);
 	void CopyTexture(const UploadBufferAllocation& uploadBuffer, Texture& destTexture, const void* textureData);
+	void GenerateMips(Texture& texture);
 	void ResolveTexture(Texture& srcTexture, Texture& destTexture);
 
 	void Transition(Resource& resource, D3D12_RESOURCE_STATES stateAfter);
