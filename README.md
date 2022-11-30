@@ -40,15 +40,15 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Toggle GUI: F3
 
 ## Images
-##### Sponza
+#### Sponza
 ![Sponza_Dirlights_Spotlights](https://user-images.githubusercontent.com/34250026/204929516-e82bc7eb-7846-4d31-b155-ed8126a7214f.png)
 ![Sponza_Dirlights_Spotlights_Pointlights](https://user-images.githubusercontent.com/34250026/204929518-925c8b83-4dc4-4613-9422-71674364be73.png)
 
-##### Shadow mapping
+#### Shadow mapping
 ![Sponza_Pointlight_Shadows](https://user-images.githubusercontent.com/34250026/204929501-04e5c15a-c799-472d-b818-32d274a221c4.png)
 ![Sponza_Spotlight_Shadow](https://user-images.githubusercontent.com/34250026/204929504-9820795c-d5c1-4ae3-b8de-22d14b7cd09c.png)
 
-##### GUI
+#### GUI
 ![Sponza_GUI_Showcase](https://user-images.githubusercontent.com/34250026/204929523-4dac0a28-d761-4472-a37e-a500647324f3.png)
 
 ## Building
