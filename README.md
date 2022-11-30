@@ -15,10 +15,10 @@ The project builds and runs on both Windows 10 and Windows 11.
 - GPU validation
 - Directional light/spotlights/pointlights (ambient and diffuse lighting)
 - Shadow mapping (Multisampled PCF, slope-scaled bias)
+- Mipmap generation
 
 ## Planned features
 - Multithreaded rendering/command list recording
-- Mipmap generation
 - Material system
 - Full PBR
 - G-Buffering/Deferred rendering
