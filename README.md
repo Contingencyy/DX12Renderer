@@ -40,17 +40,16 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Toggle GUI: F3
 
 ## Images
-##### Directional light shadow mapping
-![sponza_shadow_mapping_01](https://user-images.githubusercontent.com/34250026/194719281-e756dc51-b51b-430f-9ef6-9c5c2bb027f0.png)
+##### Sponza
+![Sponza_Dirlights_Spotlights](https://user-images.githubusercontent.com/34250026/204929516-e82bc7eb-7846-4d31-b155-ed8126a7214f.png)
+![Sponza_Dirlights_Spotlights_Pointlights](https://user-images.githubusercontent.com/34250026/204929518-925c8b83-4dc4-4613-9422-71674364be73.png)
 
-##### Spotlight shadow mapping
-![sponza_shadow_mapping_spotlights_01](https://user-images.githubusercontent.com/34250026/194946833-0f7060ee-cc2e-47cb-bba4-c654f76597b9.png)
+##### Shadow mapping
+![Sponza_Pointlight_Shadows](https://user-images.githubusercontent.com/34250026/204929501-04e5c15a-c799-472d-b818-32d274a221c4.png)
+![Sponza_Spotlight_Shadow](https://user-images.githubusercontent.com/34250026/204929504-9820795c-d5c1-4ae3-b8de-22d14b7cd09c.png)
 
-##### Sponza (Reinhard tonemapping, directional light from above, white spotlights and colored pointlights)
-![Sponza_Lights](https://user-images.githubusercontent.com/34250026/189538342-a83f89a1-bb30-4c4b-980a-2993196fe2c5.png)
-
-##### Sponza (Directional lighting)
-![Sponza_Directional_Lighting](https://user-images.githubusercontent.com/34250026/189538344-3ebbda4f-6d95-412d-868a-bd101b8096a0.png)
+##### GUI
+![Sponza_GUI_Showcase](https://user-images.githubusercontent.com/34250026/204929523-4dac0a28-d761-4472-a37e-a500647324f3.png)
 
 ## Building
 The project currently provides the Visual Studio 2022 solution file. CMake is currently not supported. You will need to have installed the latest Windows 10 SDK in the Visual Studio workloads.
