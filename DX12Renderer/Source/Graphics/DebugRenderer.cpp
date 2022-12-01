@@ -155,9 +155,9 @@ void DebugRenderer::MakeRenderPasses()
         desc.VertexShaderPath = "Resources/Shaders/DebugLine_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/DebugLine_PS.hlsl";
         desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-            renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
+            TextureDimension::TEXTURE_DIMENSION_2D, renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
+            TextureDimension::TEXTURE_DIMENSION_2D, renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
         desc.DepthEnabled = true;
         desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
         desc.Topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
@@ -184,8 +184,8 @@ void DebugRenderer::MakeFrameBuffers()
 
     FrameBufferDesc debugDesc = {};
     debugDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_UNSPECIFIED,
-        renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
+        TextureDimension::TEXTURE_DIMENSION_2D, renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
     debugDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_UNSPECIFIED,
-        renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
+        TextureDimension::TEXTURE_DIMENSION_2D, renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
     s_Data.FrameBuffer = std::make_shared<FrameBuffer>("Debug line frame buffer", debugDesc);
 }

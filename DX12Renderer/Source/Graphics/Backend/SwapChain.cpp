@@ -91,8 +91,8 @@ void SwapChain::CreateBackBufferTextures()
 
         D3D12_RESOURCE_DESC backBufferDesc = backBuffer->GetDesc();
 
-        m_BackBuffers[i] = std::make_unique<Texture>("Back buffer", TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET,
-            TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM, static_cast<uint32_t>(backBufferDesc.Width), static_cast<uint32_t>(backBufferDesc.Height)));
+        m_BackBuffers[i] = std::make_unique<Texture>("Back buffer", TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+            TextureDimension::TEXTURE_DIMENSION_2D, static_cast<uint32_t>(backBufferDesc.Width), static_cast<uint32_t>(backBufferDesc.Height)));
         m_BackBuffers[i]->SetD3D12Resource(backBuffer);
         m_BackBuffers[i]->SetD3D12Resourcestate(D3D12_RESOURCE_STATE_PRESENT);
     }

@@ -160,10 +160,6 @@ void Texture::CreateD3D12Resource()
 		clearValue.Format = d3d12ResourceDesc.Format;
 		clearValue.DepthStencil = { m_TextureDesc.ClearDepthStencil.x, static_cast<UINT8>(m_TextureDesc.ClearDepthStencil.y) };
 
-		// TEMP to get D3D to shut up about different clear values during creation for shadow maps
-		if (m_TextureDesc.Usage & TextureUsage::TEXTURE_USAGE_READ)
-			clearValue.DepthStencil = { 0.0f, 0 };
-
 		d3d12ResourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 		m_d3d12ResourceState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 		hasClearValue = true;

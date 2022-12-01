@@ -18,7 +18,7 @@ SpotLightComponent::SpotLightComponent(const SpotLightData& spotLightData, const
 
 	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
 	m_ShadowMap = std::make_shared<Texture>("Spotlight shadow map", TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-		renderSettings.ShadowMapResolution.x, renderSettings.ShadowMapResolution.y));
+		TextureDimension::TEXTURE_DIMENSION_2D, renderSettings.ShadowMapResolution.x, renderSettings.ShadowMapResolution.y));
 
 	m_SpotLightData.ViewProjection = m_Camera.GetViewProjection();
 	m_SpotLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorHeapIndex(DescriptorType::SRV);

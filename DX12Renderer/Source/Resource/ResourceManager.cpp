@@ -11,7 +11,7 @@ ResourceManager::ResourceManager()
 {
 	uint32_t whiteTextureData = 0xFFFFFFFF;
 	m_Textures.insert(std::pair<std::string, std::shared_ptr<Texture>>("WhiteTexture", std::make_shared<Texture>("WhiteTexture", TextureDesc(
-		TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM, 1, 1), &whiteTextureData)));
+		TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM, TextureDimension::TEXTURE_DIMENSION_2D, 1, 1), &whiteTextureData)));
 }
 
 ResourceManager::~ResourceManager()
@@ -56,7 +56,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		{
 			uint32_t baseColorImageIndex = tinygltf.textures[baseColorTextureIndex].source;
 			albedoTexture = std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				tinygltf.images[baseColorImageIndex].width, tinygltf.images[baseColorImageIndex].height, CalculateTotalMipCount(tinygltf.images[baseColorImageIndex].width,
+				TextureDimension::TEXTURE_DIMENSION_2D, tinygltf.images[baseColorImageIndex].width, tinygltf.images[baseColorImageIndex].height, CalculateTotalMipCount(tinygltf.images[baseColorImageIndex].width,
 					tinygltf.images[baseColorImageIndex].height)), &tinygltf.images[baseColorImageIndex].image[0]);
 		}
 		else
@@ -68,8 +68,8 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		{
 			uint32_t normalImageIndex = tinygltf.textures[normalTextureIndex].source;
 			normalTexture = std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				tinygltf.images[normalImageIndex].width, tinygltf.images[normalImageIndex].height, CalculateTotalMipCount(tinygltf.images[normalImageIndex].width,
-					tinygltf.images[normalImageIndex].height)), &tinygltf.images[normalImageIndex].image[0]);
+				TextureDimension::TEXTURE_DIMENSION_2D, tinygltf.images[normalImageIndex].width, tinygltf.images[normalImageIndex].height,
+				CalculateTotalMipCount(tinygltf.images[normalImageIndex].width, tinygltf.images[normalImageIndex].height)), &tinygltf.images[normalImageIndex].image[0]);
 		}
 		else
 		{

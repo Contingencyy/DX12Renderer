@@ -370,8 +370,7 @@ void Renderer::Render()
         commandList->SetScissorRects(1, &scissorRect);
 
         D3D12_CPU_DESCRIPTOR_HANDLE rtv = s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetColorAttachment().GetDescriptor(DescriptorType::RTV);
-        D3D12_CPU_DESCRIPTOR_HANDLE dsv = s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetDepthAttachment().GetDescriptor(DescriptorType::DSV);
-        commandList->SetRenderTargets(1, &rtv, &dsv);
+        commandList->SetRenderTargets(1, &rtv, nullptr);
 
         uint32_t pbrColorTargetIndex = hdrColorTarget.GetDescriptorHeapIndex(DescriptorType::SRV);
         s_Data.TonemapSettings.HDRTargetIndex = pbrColorTargetIndex;
@@ -551,7 +550,7 @@ void Renderer::MakeRenderPasses()
         desc.VertexShaderPath = "Resources/Shaders/ShadowMapping_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/ShadowMapping_PS.hlsl";
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            s_Data.RenderSettings.ShadowMapResolution.x, s_Data.RenderSettings.ShadowMapResolution.y);
+            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.ShadowMapResolution.x, s_Data.RenderSettings.ShadowMapResolution.y);
         desc.DepthBias = -50;
         desc.SlopeScaledDepthBias = -5.0f;
         desc.DepthBiasClamp = 1.0f;
@@ -578,7 +577,7 @@ void Renderer::MakeRenderPasses()
         desc.VertexShaderPath = "Resources/Shaders/DepthPrepass_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/DepthPrepass_PS.hlsl";
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
         desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
 
         desc.RootParameters.resize(1);
@@ -603,9 +602,9 @@ void Renderer::MakeRenderPasses()
         desc.VertexShaderPath = "Resources/Shaders/Lighting_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/Lighting_PS.hlsl";
         desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
-            s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            0, 0);
+            TextureDimension::TEXTURE_DIMENSION_2D, 0, 0);
         desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_EQUAL;
 
         // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
@@ -639,9 +638,9 @@ void Renderer::MakeRenderPasses()
         desc.VertexShaderPath = "Resources/Shaders/ToneMapping_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/ToneMapping_PS.hlsl";
         desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-            s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
         desc.DepthEnabled = false;
         desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
 
@@ -694,24 +693,22 @@ void Renderer::MakeFrameBuffers()
 {
     FrameBufferDesc shadowMappingDesc = {};
     shadowMappingDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-        s_Data.RenderSettings.ShadowMapResolution.x, s_Data.RenderSettings.ShadowMapResolution.y);
+        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.ShadowMapResolution.x, s_Data.RenderSettings.ShadowMapResolution.y, glm::vec2(0.0f, 0.0f));
     s_Data.FrameBuffers[RenderPassType::SHADOW_MAPPING] = std::make_shared<FrameBuffer>("Shadow mapping frame buffer", shadowMappingDesc);
 
     FrameBufferDesc depthPrepassDesc = {};
     depthPrepassDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-        s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y, glm::vec2(1.0f, 0.0f));
     s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS] = std::make_shared<FrameBuffer>("Depth pre-pass frame buffer", depthPrepassDesc);
 
     FrameBufferDesc hdrDesc = {};
     hdrDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
-        s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
     s_Data.FrameBuffers[RenderPassType::LIGHTING] = std::make_shared<FrameBuffer>("HDR frame buffer", hdrDesc);
 
     FrameBufferDesc tonemapDesc = {};
     tonemapDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-        s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
-    tonemapDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-        s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
     s_Data.FrameBuffers[RenderPassType::TONE_MAPPING] = std::make_shared<FrameBuffer>("Tonemap color target", tonemapDesc);
 }
 
