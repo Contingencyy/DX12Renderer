@@ -30,7 +30,8 @@ enum class TextureFormat : uint32_t
 
 enum class TextureDimension : uint32_t
 {
-	TEXTURE_DIMENSION_2D = 0,
+	TEXTURE_DIMENSION_UNSPECIFIED = 0,
+	TEXTURE_DIMENSION_2D,
 	TEXTURE_DIMENSION_CUBE
 };
 
@@ -46,7 +47,7 @@ struct TextureDesc
 
 	TextureUsage Usage = TextureUsage::TEXTURE_USAGE_NONE;
 	TextureFormat Format = TextureFormat::TEXTURE_FORMAT_UNSPECIFIED;
-	TextureDimension Dimension = TextureDimension::TEXTURE_DIMENSION_2D;
+	TextureDimension Dimension = TextureDimension::TEXTURE_DIMENSION_UNSPECIFIED;
 
 	uint32_t Width = 1;
 	uint32_t Height = 1;

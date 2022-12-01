@@ -95,7 +95,9 @@ Texture::~Texture()
 
 bool Texture::IsValid() const
 {
-	return m_TextureDesc.Usage != TextureUsage::TEXTURE_USAGE_NONE && m_TextureDesc.Format != TextureFormat::TEXTURE_FORMAT_UNSPECIFIED;
+	return m_TextureDesc.Usage != TextureUsage::TEXTURE_USAGE_NONE &&
+		m_TextureDesc.Format != TextureFormat::TEXTURE_FORMAT_UNSPECIFIED &&
+		m_TextureDesc.Dimension != TextureDimension::TEXTURE_DIMENSION_UNSPECIFIED;
 }
 
 bool Texture::IsCPUAccessible() const

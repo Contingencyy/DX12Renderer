@@ -70,27 +70,17 @@ void Buffer::SetBufferData(const void* data, std::size_t byteSize)
 {
 	std::size_t dataByteSize = byteSize == 0 ? m_ByteSize : byteSize;
 	if (IsCPUAccessible())
-	{
 		memcpy(m_CPUPtr, data, dataByteSize);
-	}
 	else
-	{
-		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, dataByteSize));
 		RenderBackend::UploadBufferData(*this, data);
-	}
 }
 
 void Buffer::SetBufferDataAtOffset(const void* data, std::size_t byteSize, std::size_t byteOffset)
 {
 	if (IsCPUAccessible())
-	{
 		memcpy(static_cast<unsigned char*>(m_CPUPtr) + byteOffset, data, byteSize);
-	}
 	else
-	{
-		Buffer uploadBuffer(m_Name + " - Upload buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD, byteSize));
 		RenderBackend::UploadBufferDataRegion(*this, byteOffset, byteSize);
-	}
 }
 
 void Buffer::CreateD3D12Resource()
