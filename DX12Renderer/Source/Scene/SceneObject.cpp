@@ -1,15 +1,13 @@
 #include "Pch.h"
 #include "Scene/SceneObject.h"
 #include "Resource/Model.h"
+#include "Components/TransformComponent.h"
 
 #include <imgui/imgui.h>
 
-SceneObject::SceneObject(const std::string& name, const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale)
-	: m_Name(name)
+SceneObject::SceneObject(std::size_t id, const std::string& name)
+	: m_ID(id), m_Name(name)
 {
-	m_Transform.Translate(translation);
-	m_Transform.Rotate(rotation);
-	m_Transform.Scale(scale);
 }
 
 SceneObject::~SceneObject()
@@ -38,7 +36,7 @@ void SceneObject::Render()
 		{
 			for (auto& component : m_Components[i])
 			{
-				component->Render(m_Transform);
+				component->Render();
 			}
 		}
 	}

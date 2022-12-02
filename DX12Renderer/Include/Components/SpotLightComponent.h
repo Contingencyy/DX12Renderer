@@ -7,8 +7,8 @@ class Texture;
 struct SpotLightData
 {
 	SpotLightData() = default;
-	SpotLightData(const glm::vec3& direction, const glm::vec3& attenuation, float innerConeAngle, float outerConeAngle, const glm::vec3& ambient, const glm::vec3& diffuse)
-		: Direction(direction), Attenuation(attenuation), InnerConeAngle(glm::cos(glm::radians(innerConeAngle))), OuterConeAngle(glm::cos(glm::radians(outerConeAngle))), Ambient(ambient), Diffuse(diffuse) {}
+	SpotLightData(const glm::vec3& attenuation, float innerConeAngle, float outerConeAngle, const glm::vec3& ambient, const glm::vec3& diffuse)
+		: Attenuation(attenuation), InnerConeAngle(glm::cos(glm::radians(innerConeAngle))), OuterConeAngle(glm::cos(glm::radians(outerConeAngle))), Ambient(ambient), Diffuse(diffuse) {}
 
 	glm::vec3 Position = glm::vec3(0.0f);
 	BYTE_PADDING(4);
@@ -29,17 +29,16 @@ struct SpotLightData
 class SpotLightComponent : public Component
 {
 public:
-	SpotLightComponent(const SpotLightData& spotLightData, const glm::vec3& position);
+	SpotLightComponent(const SpotLightData& spotLightData);
 	~SpotLightComponent();
 
 	virtual void Update(float deltaTime);
-	virtual void Render(const Transform& transform);
+	virtual void Render();
 	virtual void OnImGuiRender();
 
 private:
 	struct GUIDataRepresentation
 	{
-		glm::vec3 Direction = glm::vec3(0.0f);
 		float InnerConeAngle = 0.0f;
 		float OuterConeAngle = 0.0f;
 	};

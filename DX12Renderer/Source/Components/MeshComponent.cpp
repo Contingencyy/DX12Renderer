@@ -1,9 +1,12 @@
 #include "Pch.h"
 #include "Components/MeshComponent.h"
+#include "Scene/Scene.h"
+#include "Scene/SceneObject.h"
 #include "Scene/Camera/Camera.h"
 #include "Graphics/Mesh.h"
 #include "Graphics/Renderer.h"
 #include "Graphics/DebugRenderer.h"
+#include "Components/TransformComponent.h"
 
 #include <imgui/imgui.h>
 
@@ -20,13 +23,14 @@ void MeshComponent::Update(float deltaTime)
 {
 }
 
-void MeshComponent::Render(const Transform& transform)
+void MeshComponent::Render()
 {
-	Renderer::Submit(m_Mesh, transform.GetTransformMatrix());
+	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>(0).GetTransform();
+	Renderer::Submit(m_Mesh, objectTransform.GetTransformMatrix());
 
 	BoundingBox boundingBox = m_Mesh->GetBoundingBox();
-	boundingBox.Min = glm::vec4(boundingBox.Min, 1.0f) * transform.GetTransformMatrix();
-	boundingBox.Max = glm::vec4(boundingBox.Max, 1.0f) * transform.GetTransformMatrix();
+	boundingBox.Min = glm::vec4(boundingBox.Min, 1.0f) * objectTransform.GetTransformMatrix();
+	boundingBox.Max = glm::vec4(boundingBox.Max, 1.0f) * objectTransform.GetTransformMatrix();
 
 	// Draw bounding box
 	DebugRenderer::Submit(boundingBox.Min, glm::vec3(boundingBox.Max.x, boundingBox.Min.y, boundingBox.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));

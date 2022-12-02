@@ -34,7 +34,7 @@ void DirLightComponent::Update(float deltaTime)
 {
 }
 
-void DirLightComponent::Render(const Transform& transform)
+void DirLightComponent::Render()
 {
 	Renderer::Submit(m_DirectionalLightData, m_Camera, m_ShadowMap);
 }

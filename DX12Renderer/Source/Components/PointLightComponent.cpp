@@ -2,6 +2,9 @@
 #include "Components/PointLightComponent.h"
 #include "Graphics/Renderer.h"
 #include "Graphics/Texture.h"
+#include "Scene/Scene.h"
+#include "Scene/SceneObject.h"
+#include "Components/TransformComponent.h"
 
 #include <imgui/imgui.h>
 
@@ -17,10 +20,9 @@ const glm::vec3 LightUpVectors[6] = {
 	{ 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }
 };
 
-PointLightComponent::PointLightComponent(const PointLightData& pointLightData, const glm::vec3& position)
+PointLightComponent::PointLightComponent(const PointLightData& pointLightData)
 	: m_PointLightData(pointLightData)
 {
-	m_PointLightData.Position = position;
 	m_PointLightData.Range = MathHelper::SolveQuadraticFunc(m_PointLightData.Attenuation.z, m_PointLightData.Attenuation.y, m_PointLightData.Attenuation.x - LIGHT_RANGE_EPSILON);
 
 	for (uint32_t i = 0; i < 6; ++i)
@@ -43,9 +45,18 @@ PointLightComponent::~PointLightComponent()
 
 void PointLightComponent::Update(float deltaTime)
 {
+	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>(0).GetTransform();
+	m_PointLightData.Position = objectTransform.GetPosition();
+
+	// Update view matrices with new position
+	for (uint32_t i = 0; i < 6; ++i)
+	{
+		glm::mat4 lightViewFace = glm::lookAtLH(m_PointLightData.Position, m_PointLightData.Position + LightViewDirections[i], LightUpVectors[i]);
+		m_Cameras[i].SetViewMatrix(lightViewFace);
+	}
 }
 
-void PointLightComponent::Render(const Transform& transform)
+void PointLightComponent::Render()
 {
 	Renderer::Submit(m_PointLightData, m_Cameras, m_ShadowMap);
 }
@@ -54,14 +65,6 @@ void PointLightComponent::OnImGuiRender()
 {
 	if (ImGui::CollapsingHeader("Point Light"))
 	{
-		if (ImGui::DragFloat3("Position", glm::value_ptr(m_PointLightData.Position), 0.1f))
-		{
-			for (uint32_t i = 0; i < 6; ++i)
-			{
-				glm::mat4 lightViewFace = glm::lookAtLH(m_PointLightData.Position, m_PointLightData.Position + LightViewDirections[i], LightUpVectors[i]);
-				m_Cameras[i].SetViewMatrix(lightViewFace);
-			}
-		}
 		ImGui::Text("Range (from attenuation): %.3f", m_PointLightData.Range);
 		if (ImGui::DragFloat3("Attenuation", glm::value_ptr(m_PointLightData.Attenuation), 0.00001f, 0.0f, 100.0f, "%.7f"))
 			m_PointLightData.Range = MathHelper::SolveQuadraticFunc(m_PointLightData.Attenuation.z, m_PointLightData.Attenuation.y, m_PointLightData.Attenuation.x - LIGHT_RANGE_EPSILON);

@@ -3,13 +3,15 @@
 #include "Graphics/Renderer.h"
 #include "Graphics/DebugRenderer.h"
 #include "Graphics/Texture.h"
+#include "Scene/Scene.h"
+#include "Scene/SceneObject.h"
+#include "Components/TransformComponent.h"
 
 #include <imgui/imgui.h>
 
-SpotLightComponent::SpotLightComponent(const SpotLightData& spotLightData, const glm::vec3& position)
+SpotLightComponent::SpotLightComponent(const SpotLightData& spotLightData)
 	: m_SpotLightData(spotLightData)
 {
-	m_SpotLightData.Position = position;
 	m_SpotLightData.Range = MathHelper::SolveQuadraticFunc(m_SpotLightData.Attenuation.z, m_SpotLightData.Attenuation.y, m_SpotLightData.Attenuation.x - LIGHT_RANGE_EPSILON);
 
 	glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -23,7 +25,6 @@ SpotLightComponent::SpotLightComponent(const SpotLightData& spotLightData, const
 	m_SpotLightData.ViewProjection = m_Camera.GetViewProjection();
 	m_SpotLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorHeapIndex(DescriptorType::SRV);
 
-	m_GUIData.Direction = m_SpotLightData.Direction;
 	m_GUIData.InnerConeAngle = glm::degrees(m_SpotLightData.InnerConeAngle);
 	m_GUIData.OuterConeAngle = glm::degrees(m_SpotLightData.OuterConeAngle);
 }
@@ -34,9 +35,17 @@ SpotLightComponent::~SpotLightComponent()
 
 void SpotLightComponent::Update(float deltaTime)
 {
+	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>(0).GetTransform();
+	m_SpotLightData.Position = objectTransform.GetPosition();
+	m_SpotLightData.Direction = objectTransform.Forward();
+
+	// Update view matrix with new position and rotation
+	glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
+	m_Camera.SetViewMatrix(lightView);
+	m_SpotLightData.ViewProjection = m_Camera.GetViewProjection();
 }
 
-void SpotLightComponent::Render(const Transform& transform)
+void SpotLightComponent::Render()
 {
 	Renderer::Submit(m_SpotLightData, m_Camera, m_ShadowMap);
 }
@@ -45,19 +54,6 @@ void SpotLightComponent::OnImGuiRender()
 {
 	if (ImGui::CollapsingHeader("Spot Light"))
 	{
-		if (ImGui::DragFloat3("Position", glm::value_ptr(m_SpotLightData.Position), 0.1f))
-		{
-			glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
-			m_Camera.SetViewMatrix(lightView);
-			m_SpotLightData.ViewProjection = m_Camera.GetViewProjection();
-		}
-		if (ImGui::DragFloat3("Direction", glm::value_ptr(m_GUIData.Direction), 0.001f, -1000.0f, 1000.0f))
-		{
-			m_SpotLightData.Direction = glm::normalize(m_GUIData.Direction);
-			glm::mat4 lightView = glm::lookAtLH(m_SpotLightData.Position, m_SpotLightData.Position + m_SpotLightData.Direction, glm::vec3(0.0f, 0.0f, 1.0f));
-			m_Camera.SetViewMatrix(lightView);
-			m_SpotLightData.ViewProjection = m_Camera.GetViewProjection();
-		}
 		ImGui::Text("Range (from attenuation): %.3f", m_SpotLightData.Range);
 		if (ImGui::DragFloat3("Attenuation", glm::value_ptr(m_SpotLightData.Attenuation), 0.00001f, 0.0f, 100.0f, "%.7f"))
 			m_SpotLightData.Range = MathHelper::SolveQuadraticFunc(m_SpotLightData.Attenuation.z, m_SpotLightData.Attenuation.y, m_SpotLightData.Attenuation.x - LIGHT_RANGE_EPSILON);

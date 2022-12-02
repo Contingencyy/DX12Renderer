@@ -23,11 +23,11 @@ struct PointLightData
 class PointLightComponent : public Component
 {
 public:
-	PointLightComponent(const PointLightData& pointLightData, const glm::vec3& position);
+	PointLightComponent(const PointLightData& pointLightData);
 	~PointLightComponent();
 
 	virtual void Update(float deltaTime);
-	virtual void Render(const Transform& transform);
+	virtual void Render();
 	virtual void OnImGuiRender();
 	
 private:

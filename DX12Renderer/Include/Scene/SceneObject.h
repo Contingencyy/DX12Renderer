@@ -9,8 +9,7 @@ class Component;
 class SceneObject
 {
 public:
-	SceneObject(const std::string& name, const glm::vec3& translation = glm::vec3(0.0f),
-		const glm::vec3& rotation = glm::vec3(0.0f), const glm::vec3& scale = glm::vec3(1.0f));
+	SceneObject(std::size_t id, const std::string& name);
 	~SceneObject();
 
 	void Update(float deltaTime);
@@ -21,7 +20,8 @@ public:
 	void AddComponent(TArgs&&... args)
 	{
 		uint32_t componentID = GetComponentID<T>();
-		m_Components[componentID].emplace_back(std::make_unique<T>(std::forward<TArgs>(args)...));
+		auto& component = m_Components[componentID].emplace_back(std::make_unique<T>(std::forward<TArgs>(args)...));
+		component->SetObjectID(m_ID);
 	}
 
 	template<typename T>
@@ -32,19 +32,27 @@ public:
 	}
 
 	template<typename T>
-	const T& GetComponent(uint32_t index)
+	T& GetComponent(uint32_t index)
 	{
 		uint32_t componentID = GetComponentID<T>();
-		return *m_Components[componentID][index];
+		return *static_cast<T*>(m_Components[componentID][index].get());
 	}
 
-	const Transform& GetTransform() const { return m_Transform; }
+	template<typename T>
+	const T& GetComponent(uint32_t index) const
+	{
+		uint32_t componentID = GetComponentID<T>();
+		return *static_cast<const T*>(m_Components[componentID][index].get());
+	}
+
+	std::size_t GetID() const { return m_ID; }
 	const std::string& GetName() const { return m_Name; }
 
 private:
-	Transform m_Transform;
-	std::string m_Name;
+	std::size_t m_ID = 0;
+	std::string m_Name = "Unnamed";
 
+	// TODO: This shouldnt be a vector of components anymore.
 	std::array<std::vector<std::unique_ptr<Component>>, 8> m_Components;
 
 };

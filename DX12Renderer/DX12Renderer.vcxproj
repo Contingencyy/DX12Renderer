@@ -229,6 +229,7 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClCompile Include="Source\Components\MeshComponent.cpp" />
     <ClCompile Include="Source\Components\PointLightComponent.cpp" />
     <ClCompile Include="Source\Components\SpotLightComponent.cpp" />
+    <ClCompile Include="Source\Components\TransformComponent.cpp" />
     <ClCompile Include="Source\Graphics\Backend\UploadBuffer.cpp" />
     <ClCompile Include="Source\Graphics\DebugRenderer.cpp" />
     <ClCompile Include="Source\Graphics\Backend\RenderBackend.cpp" />
@@ -281,6 +282,7 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\Components\MeshComponent.h" />
     <ClInclude Include="Include\Components\PointLightComponent.h" />
     <ClInclude Include="Include\Components\SpotLightComponent.h" />
+    <ClInclude Include="Include\Components\TransformComponent.h" />
     <ClInclude Include="Include\Graphics\Backend\UploadBuffer.h" />
     <ClInclude Include="Include\Graphics\DebugRenderer.h" />
     <ClInclude Include="Include\Graphics\Backend\RenderBackend.h" />
