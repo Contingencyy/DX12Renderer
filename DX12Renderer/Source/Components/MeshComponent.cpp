@@ -21,14 +21,14 @@ MeshComponent::~MeshComponent()
 
 void MeshComponent::Update(float deltaTime)
 {
-	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>(0).GetTransform();
+	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>().GetTransform();
 	m_BoundingBox.Min = glm::vec4(m_Mesh->GetBoundingBox().Min, 1.0f) * glm::transpose(objectTransform.GetTransformMatrix());
 	m_BoundingBox.Max = glm::vec4(m_Mesh->GetBoundingBox().Max, 1.0f) * glm::transpose(objectTransform.GetTransformMatrix());
 }
 
 void MeshComponent::Render()
 {
-	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>(0).GetTransform();
+	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>().GetTransform();
 	Renderer::Submit(m_Mesh, m_BoundingBox, objectTransform.GetTransformMatrix());
 
 	// Draw bounding box

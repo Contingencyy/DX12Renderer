@@ -45,7 +45,7 @@ PointLightComponent::~PointLightComponent()
 
 void PointLightComponent::Update(float deltaTime)
 {
-	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>(0).GetTransform();
+	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>().GetTransform();
 	m_PointLightData.Position = objectTransform.GetPosition();
 
 	// Update view matrices with new position

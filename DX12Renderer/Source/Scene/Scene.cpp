@@ -73,13 +73,12 @@ Scene::Scene()
 	GetSceneObject(spotLight6).AddComponent<SpotLightComponent>(spotLightData);
 
 	// Mesh objects
-	std::size_t sponza1 = AddSceneObject("Sponza");
-	GetSceneObject(sponza1).AddComponent<TransformComponent>();
-
 	auto& meshes1 = Application::Get().GetResourceManager()->GetModel("SponzaOld")->GetMeshes();
 	for (auto& mesh : meshes1)
 	{
-		GetSceneObject(sponza1).AddComponent<MeshComponent>(mesh);
+		std::size_t sponzaMesh = AddSceneObject(mesh->GetName());
+		GetSceneObject(sponzaMesh).AddComponent<TransformComponent>();
+		GetSceneObject(sponzaMesh).AddComponent<MeshComponent>(mesh);
 	}
 }
 

@@ -18,12 +18,9 @@ void SceneObject::Update(float deltaTime)
 {
 	for (uint32_t i = 0; i < 8; ++i)
 	{
-		if (m_Components[i].size() > 0)
+		if (m_ComponentBitFlag & (1 << i))
 		{
-			for (auto& component : m_Components[i])
-			{
-				component->Update(deltaTime);
-			}
+			m_Components[i]->Update(deltaTime);
 		}
 	}
 }
@@ -32,12 +29,9 @@ void SceneObject::Render()
 {
 	for (uint32_t i = 0; i < 8; ++i)
 	{
-		if (m_Components[i].size() > 0)
+		if (m_ComponentBitFlag & (1 << i))
 		{
-			for (auto& component : m_Components[i])
-			{
-				component->Render();
-			}
+			m_Components[i]->Render();
 		}
 	}
 }
@@ -51,24 +45,12 @@ void SceneObject::OnImGuiRender()
 	{
 		for (uint32_t i = 0; i < 8; ++i)
 		{
-			if (m_Components[i].size() > 0)
+			if (m_ComponentBitFlag & (1 << i))
 			{
-				// Push ID for the current component ID
 				ImGui::PushID(i);
+				// Push ID for the current component ID
 				ImGui::Indent(20.0f);
-
-				uint32_t compIndex = 0;
-				for (auto& component : m_Components[i])
-				{
-					// Push ID for the current component index in the component vector
-					ImGui::PushID(compIndex);
-
-					component->OnImGuiRender();
-
-					ImGui::PopID();
-					compIndex++;
-				}
-
+				m_Components[i]->OnImGuiRender();
 				ImGui::Unindent(20.0f);
 				ImGui::PopID();
 			}
