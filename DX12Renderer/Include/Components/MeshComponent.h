@@ -1,5 +1,6 @@
 #pragma once
 #include "Component.h"
+#include "Scene/BoundingVolume.h"
 
 class Mesh;
 
@@ -15,5 +16,6 @@ public:
 
 private:
 	std::shared_ptr<Mesh> m_Mesh;
+	BoundingBox m_BoundingBox;
 
 };

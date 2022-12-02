@@ -1,5 +1,6 @@
 #pragma once
 #include "Scene/Camera/Camera.h"
+#include "Scene/BoundingVolume.h"
 #include "Components/DirLightComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/SpotLightComponent.h"
@@ -35,7 +36,7 @@ public:
 	static void OnImGuiRender();
 	static void EndScene();
 
-	static void Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform);
+	static void Submit(const std::shared_ptr<Mesh>& mesh, const BoundingBox& instanceBB, const glm::mat4& transform);
 	static void Submit(const DirectionalLightData& dirLightData, const Camera& lightCamera, const std::shared_ptr<Texture>& shadowMap);
 	static void Submit(const PointLightData& pointLightData, const std::array<Camera, 6>& lightCameras, const std::shared_ptr<Texture>& shadowMap);
 	static void Submit(const SpotLightData& spotLightData, const Camera& lightCamera, const std::shared_ptr<Texture>& shadowMap);

@@ -75,6 +75,7 @@ struct MeshInstanceData
 struct MeshDrawData
 {
     std::shared_ptr<Mesh> Mesh;
+    BoundingBox InstanceBB;
     MeshInstanceData InstanceData;
 };
 
@@ -443,7 +444,7 @@ void Renderer::EndScene()
     s_Data.RenderStatistics.Reset();
 }
 
-void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transform)
+void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const BoundingBox& instanceBB, const glm::mat4& transform)
 {
     uint32_t baseColorTexIndex = mesh->GetMaterial().GetAlbedoTexture()->GetDescriptorHeapIndex(DescriptorType::SRV);
     uint32_t normalTexIndex = mesh->GetMaterial().GetNormalTexture()->GetDescriptorHeapIndex(DescriptorType::SRV);
@@ -452,6 +453,7 @@ void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const glm::mat4& transf
     std::size_t& numMeshes = s_Data.NumMeshes[mesh->GetMaterial().GetAlphaMode()];
 
     meshDrawData[numMeshes].Mesh = mesh;
+    meshDrawData[numMeshes].InstanceBB = instanceBB;
     meshDrawData[numMeshes].InstanceData.Transform = transform;
     meshDrawData[numMeshes].InstanceData.BaseColorTexIndex = baseColorTexIndex;
     meshDrawData[numMeshes].InstanceData.NormalTexIndex = normalTexIndex;
@@ -721,7 +723,7 @@ void Renderer::PrepareInstanceBuffer()
         std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * MAX_MESHES) * sizeof(MeshInstanceData);
         Buffer& instanceBuffer = *s_Data.MeshInstanceBuffer[i];
 
-        for (auto& [mesh, instanceData] : s_Data.MeshDrawData[i])
+        for (auto& [mesh, instanceBB, instanceData] : s_Data.MeshDrawData[i])
         {
             std::size_t numBytes = sizeof(MeshInstanceData);
             instanceBuffer.SetBufferDataAtOffset(&instanceData, numBytes, currentByteOffset);
@@ -774,17 +776,13 @@ void Renderer::RenderGeometry(CommandList& commandList, const Camera& camera, ui
     for (uint32_t j = 0; j < s_Data.NumMeshes[alphaMode]; ++j)
     {
         auto& mesh = s_Data.MeshDrawData[alphaMode][j].Mesh;
+        auto& instanceBB = s_Data.MeshDrawData[alphaMode][j].InstanceBB;
         auto& instanceData = s_Data.MeshDrawData[alphaMode][j].InstanceData;
 
         // Cull mesh from light camera frustum
         if (camera.IsFrustumCullingEnabled())
         {
-            BoundingBox boundingBox = mesh->GetBoundingBox();
-
-            boundingBox.Min = glm::vec4(boundingBox.Min, 1.0f) * instanceData.Transform;
-            boundingBox.Max = glm::vec4(boundingBox.Max, 1.0f) * instanceData.Transform;
-
-            if (!camera.GetViewFrustum().IsBoxInViewFrustum(boundingBox.Min, boundingBox.Max))
+            if (!camera.GetViewFrustum().IsBoxInViewFrustum(instanceBB.Min, instanceBB.Max))
             {
                 startInstance++;
                 continue;
