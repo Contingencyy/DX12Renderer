@@ -139,9 +139,7 @@ struct InternalRendererData
     std::size_t NumMeshes[AlphaMode::NUM_ALPHA_MODES];
 
     // Directional/point/spotlight constant buffers
-    std::unique_ptr<Buffer> DirectionalLightConstantBuffer;
-    std::unique_ptr<Buffer> PointLightConstantBuffer;
-    std::unique_ptr<Buffer> SpotLightConstantBuffer;
+    std::unique_ptr<Buffer> LightConstantBuffer;
 
     // Directional/point/spotlight draw data
     std::array<DirectionalLightData, MAX_DIR_LIGHTS> DirectionalLightDrawData;
@@ -332,14 +330,10 @@ void Renderer::Render()
 
             // Set root CBVs for scene data
             commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
-
             // Set root CBVs for lights
-            commandList->SetRootConstantBufferView(1, *s_Data.DirectionalLightConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
-            commandList->SetRootConstantBufferView(2, *s_Data.PointLightConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
-            commandList->SetRootConstantBufferView(3, *s_Data.SpotLightConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
-
+            commandList->SetRootConstantBufferView(1, *s_Data.LightConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
             // Set root descriptor table for bindless CBV_SRV_UAV descriptor array
-            commandList->SetRootDescriptorTable(4, descriptorHeap.GetGPUBaseDescriptor());
+            commandList->SetRootDescriptorTable(2, descriptorHeap.GetGPUBaseDescriptor());
 
             RenderGeometry(*commandList, s_Data.SceneCamera, i);
 
@@ -614,12 +608,10 @@ void Renderer::MakeRenderPasses()
         ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
         ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
 
-        desc.RootParameters.resize(5);
+        desc.RootParameters.resize(3);
         desc.RootParameters[0].InitAsConstantBufferView(0); // Scene data
-        desc.RootParameters[1].InitAsConstantBufferView(1); // Directional lights
-        desc.RootParameters[2].InitAsConstantBufferView(2); // Pointlights
-        desc.RootParameters[3].InitAsConstantBufferView(3); // Spotlights
-        desc.RootParameters[4].InitAsDescriptorTable(_countof(ranges), &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL); // Bindless SRV table
+        desc.RootParameters[1].InitAsConstantBufferView(1); // Light constant buffer
+        desc.RootParameters[2].InitAsDescriptorTable(_countof(ranges), &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL); // Bindless SRV table
 
         desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
@@ -669,9 +661,8 @@ void Renderer::MakeBuffers()
             MAX_MESHES * RenderBackend::GetSwapChain().GetBackBufferCount(), sizeof(MeshInstanceData)));
     }
 
-    s_Data.DirectionalLightConstantBuffer = std::make_unique<Buffer>("Directional lights constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, MAX_DIR_LIGHTS, sizeof(DirectionalLightData)));
-    s_Data.PointLightConstantBuffer = std::make_unique<Buffer>("Pointlights constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, MAX_POINT_LIGHTS, sizeof(PointLightData)));
-    s_Data.SpotLightConstantBuffer = std::make_unique<Buffer>("Spotlights constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, MAX_POINT_LIGHTS, sizeof(SpotLightData)));
+    std::size_t totalLightBufferByteSize = MAX_DIR_LIGHTS * sizeof(DirectionalLightData) + MAX_SPOT_LIGHTS * sizeof(SpotLightData) + MAX_POINT_LIGHTS * sizeof(PointLightData);
+    s_Data.LightConstantBuffer = std::make_unique<Buffer>("Light constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, totalLightBufferByteSize));
 
     // Tone mapping vertices, positions are in normalized device coordinates
     std::vector<float> toneMappingVertices = {
@@ -735,14 +726,18 @@ void Renderer::PrepareInstanceBuffer()
 void Renderer::PrepareLightBuffers()
 {
     // Set constant buffer data for directional lights/pointlights/spotlights
-    if (s_Data.SceneData.NumDirLights > 0)
-        s_Data.DirectionalLightConstantBuffer->SetBufferData(&s_Data.DirectionalLightDrawData[0], s_Data.DirectionalLightDrawData.size() * sizeof(DirectionalLightData));
+    std::size_t dirLightsByteStart = 0;
+    std::size_t spotLightsByteStart = MAX_DIR_LIGHTS * sizeof(DirectionalLightData);
+    std::size_t pointLightsByteStart = spotLightsByteStart + MAX_SPOT_LIGHTS * sizeof(SpotLightData);
 
-    if (s_Data.SceneData.NumPointLights > 0)
-        s_Data.PointLightConstantBuffer->SetBufferData(&s_Data.PointLightDrawData[0], s_Data.PointLightDrawData.size() * sizeof(PointLightData));
+    if (s_Data.SceneData.NumDirLights > 0)
+        s_Data.LightConstantBuffer->SetBufferDataAtOffset(&s_Data.DirectionalLightDrawData[0], s_Data.SceneData.NumDirLights * sizeof(DirectionalLightData), dirLightsByteStart);
 
     if (s_Data.SceneData.NumSpotLights > 0)
-        s_Data.SpotLightConstantBuffer->SetBufferData(&s_Data.SpotLightDrawData[0], s_Data.SpotLightDrawData.size() * sizeof(SpotLightData));
+        s_Data.LightConstantBuffer->SetBufferDataAtOffset(&s_Data.SpotLightDrawData[0], s_Data.SceneData.NumSpotLights * sizeof(SpotLightData), spotLightsByteStart);
+
+    if (s_Data.SceneData.NumPointLights > 0)
+        s_Data.LightConstantBuffer->SetBufferDataAtOffset(&s_Data.PointLightDrawData[0], s_Data.SceneData.NumPointLights * sizeof(PointLightData), pointLightsByteStart);
 }
 
 void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCamera, const Texture& shadowMap, uint32_t descriptorOffset)

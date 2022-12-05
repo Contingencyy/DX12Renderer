@@ -43,6 +43,13 @@ struct SpotLight
 	uint ShadowMapIndex;
 };
 
+struct LightCBData
+{
+	DirectionalLight DirLight;
+	SpotLight SpotLights[50];
+	PointLight PointLights[50];
+};
+
 struct TonemapSettings
 {
 	uint HDRTargetIndex;

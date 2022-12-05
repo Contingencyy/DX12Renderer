@@ -10,25 +10,8 @@ struct PixelShaderInput
 	uint2 TexIndices : TEX_INDICES;
 };
 
-struct DirectionalLightBuffer
-{
-	DirectionalLight DirLight;
-};
-
-struct PointLightBuffer
-{
-	PointLight PointLights[50];
-};
-
-struct SpotLightBuffer
-{
-	SpotLight SpotLights[50];
-};
-
 ConstantBuffer<SceneData> SceneDataCB : register(b0);
-ConstantBuffer<DirectionalLightBuffer> DirLightCB : register(b1);
-ConstantBuffer<PointLightBuffer> PointLightCB : register(b2);
-ConstantBuffer<SpotLightBuffer> SpotLightCB : register(b3);
+ConstantBuffer<LightCBData> LightCB : register(b1);
 
 Texture2D Texture2DTable[] : register(t0, space0);
 TextureCube TextureCubeTable[] : register(t0, space1);
@@ -36,8 +19,8 @@ SamplerState Samp2DWrap : register(s0, space0);
 SamplerComparisonState SampPCF : register(s0, space1);
 
 float3 CalculateDirectionalLight(float4 fragPosWS, float3 fragNormalWS, float3 diffuseColor, DirectionalLight dirLight);
-float3 CalculatePointLight(float4 fragPosWS, float3 fragNormalWS, float3 diffuseColor, PointLight pointLight);
 float3 CalculateSpotLight(float4 fragPosWS, float3 fragNormalWS, float3 diffuseColor, SpotLight spotLight);
+float3 CalculatePointLight(float4 fragPosWS, float3 fragNormalWS, float3 diffuseColor, PointLight pointLight);
 
 float4 main(PixelShaderInput IN) : SV_TARGET
 {
@@ -51,16 +34,16 @@ float4 main(PixelShaderInput IN) : SV_TARGET
 	float3 fragNormalWS = normalize(IN.Normal * textureNormal.xyz);
 
 	if (SceneDataCB.NumDirectionalLights == 1)
-		finalColor += CalculateDirectionalLight(fragPosWS, fragNormalWS, diffuseColor.xyz, DirLightCB.DirLight);
-
-	for (uint p = 0; p < SceneDataCB.NumPointLights; ++p)
-	{
-		finalColor += CalculatePointLight(fragPosWS, fragNormalWS, diffuseColor.xyz, PointLightCB.PointLights[p]);
-	}
+		finalColor += CalculateDirectionalLight(fragPosWS, fragNormalWS, diffuseColor.xyz, LightCB.DirLight);
 
 	for (uint s = 0; s < SceneDataCB.NumSpotLights; ++s)
 	{
-		finalColor += CalculateSpotLight(fragPosWS, fragNormalWS, diffuseColor.xyz, SpotLightCB.SpotLights[s]);
+		finalColor += CalculateSpotLight(fragPosWS, fragNormalWS, diffuseColor.xyz, LightCB.SpotLights[s]);
+	}
+
+	for (uint p = 0; p < SceneDataCB.NumPointLights; ++p)
+	{
+		finalColor += CalculatePointLight(fragPosWS, fragNormalWS, diffuseColor.xyz, LightCB.PointLights[p]);
 	}
 
 	return float4(finalColor, diffuseColor.w);
@@ -166,47 +149,6 @@ float3 CalculateDirectionalLight(float4 fragPosWS, float3 fragNormalWS, float3 d
 	return (ambient + (1.0f - shadow) * (diffuse /*+ specular*/));
 }
 
-float3 CalculatePointLight(float4 fragPosWS, float3 fragNormalWS, float3 diffuseColor, PointLight pointLight)
-{
-	float3 ldirection = pointLight.Position - fragPosWS.xyz;
-	float distance = length(ldirection);
-
-	float3 ambient = float3(0.0f, 0.0f, 0.0f);
-	float3 diffuse = float3(0.0f, 0.0f, 0.0f);
-	//float3 specular = float3(0.0f, 0.0f, 0.0f);
-
-	float shadow = 0.0f;
-
-	if (distance <= pointLight.Range)
-	{
-		ldirection /= distance;
-
-		// After calculating the distance attenuation, we need to rescale the value to account for the LIGHT_RANGE_EPSILON at which the light is cutoff/ignored
-		float attenuation = clamp(1.0f / (pointLight.Attenuation.x + (pointLight.Attenuation.y * distance) + (pointLight.Attenuation.z * (distance * distance))), 0.0f, 1.0f);
-		attenuation = (attenuation - 0.01f) / (1.0f - 0.01f);
-		attenuation = max(attenuation, 0.0f);
-
-		ambient = pointLight.Ambient * diffuseColor;
-		ambient *= attenuation;
-
-		float3 lightToFrag = (fragPosWS.xyz - pointLight.Position);
-		float angle = dot(fragNormalWS, ldirection);
-		shadow = CalculateOmnidirectionalShadow(lightToFrag, angle, pointLight.Range, pointLight.ShadowMapIndex);
-
-		float diff = max(angle, 0.0f);
-		diffuse = pointLight.Diffuse * diff * diffuseColor;
-
-		//float3 reflectDirection = reflect(-ldirection, fragNormal);
-		//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0f), material.shininess);
-		//float3 specular = pointlight.Specular.xyz * spec * specularColor;
-
-		diffuse *= attenuation;
-		//specular *= attenuation;
-	}
-
-	return (ambient + (1.0f - shadow) * diffuse /*+ specular*/);
-}
-
 float3 CalculateSpotLight(float4 fragPosWS, float3 fragNormalWS, float3 diffuseColor, SpotLight spotLight)
 {
 	float3 ldirection = spotLight.Position - fragPosWS.xyz;
@@ -252,6 +194,47 @@ float3 CalculateSpotLight(float4 fragPosWS, float3 fragNormalWS, float3 diffuseC
 			diffuse *= coneAttenuation * attenuation;
 			//specular *= coneAttenuation * attenuation;
 		}
+	}
+
+	return (ambient + (1.0f - shadow) * diffuse /*+ specular*/);
+}
+
+float3 CalculatePointLight(float4 fragPosWS, float3 fragNormalWS, float3 diffuseColor, PointLight pointLight)
+{
+	float3 ldirection = pointLight.Position - fragPosWS.xyz;
+	float distance = length(ldirection);
+
+	float3 ambient = float3(0.0f, 0.0f, 0.0f);
+	float3 diffuse = float3(0.0f, 0.0f, 0.0f);
+	//float3 specular = float3(0.0f, 0.0f, 0.0f);
+
+	float shadow = 0.0f;
+
+	if (distance <= pointLight.Range)
+	{
+		ldirection /= distance;
+
+		// After calculating the distance attenuation, we need to rescale the value to account for the LIGHT_RANGE_EPSILON at which the light is cutoff/ignored
+		float attenuation = clamp(1.0f / (pointLight.Attenuation.x + (pointLight.Attenuation.y * distance) + (pointLight.Attenuation.z * (distance * distance))), 0.0f, 1.0f);
+		attenuation = (attenuation - 0.01f) / (1.0f - 0.01f);
+		attenuation = max(attenuation, 0.0f);
+
+		ambient = pointLight.Ambient * diffuseColor;
+		ambient *= attenuation;
+
+		float3 lightToFrag = (fragPosWS.xyz - pointLight.Position);
+		float angle = dot(fragNormalWS, ldirection);
+		shadow = CalculateOmnidirectionalShadow(lightToFrag, angle, pointLight.Range, pointLight.ShadowMapIndex);
+
+		float diff = max(angle, 0.0f);
+		diffuse = pointLight.Diffuse * diff * diffuseColor;
+
+		//float3 reflectDirection = reflect(-ldirection, fragNormal);
+		//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0f), material.shininess);
+		//float3 specular = pointlight.Specular.xyz * spec * specularColor;
+
+		diffuse *= attenuation;
+		//specular *= attenuation;
 	}
 
 	return (ambient + (1.0f - shadow) * diffuse /*+ specular*/);
