@@ -22,10 +22,10 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Material system
 - Full PBR
 - G-Buffering/Deferred rendering
-- MSAA
+- MSAA/TAA
 - Ambient occlusion
 - Particle system
-- Post-process: Bloom, Vignette
+- PostFX (Bloom, Vignette, Chromatic abberation)
 
 ## Camera controls
 - Forward/backward: W/S
