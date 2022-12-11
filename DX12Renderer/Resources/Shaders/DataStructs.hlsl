@@ -1,7 +1,7 @@
 struct SceneData
 {
 	matrix ViewProjection;
-	float3 Ambient;
+	float3 ViewPosition;
 	uint NumDirectionalLights;
 	uint NumPointLights;
 	uint NumSpotLights;

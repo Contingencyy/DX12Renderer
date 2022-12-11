@@ -30,7 +30,7 @@ struct SceneData
     }
 
     glm::mat4 SceneCameraViewProjection = glm::identity<glm::mat4>();
-    glm::vec3 Ambient = glm::vec3(0.0f);
+    glm::vec3 SceneCameraPosition = glm::vec3(0.0f);
 
     uint32_t NumDirLights = 0;
     uint32_t NumPointLights = 0;
@@ -70,6 +70,7 @@ struct MeshInstanceData
     glm::vec4 Color = glm::vec4(1.0f);
     uint32_t BaseColorTexIndex = 0;
     uint32_t NormalTexIndex = 0;
+    uint32_t MetallicRoughnessTexIndex = 0;
 };
 
 struct MeshDrawData
@@ -172,7 +173,7 @@ void Renderer::Finalize()
     RenderBackend::Finalize();
 }
 
-void Renderer::BeginScene(const Camera& sceneCamera, const glm::vec3& ambient)
+void Renderer::BeginScene(const Camera& sceneCamera)
 {
     SCOPED_TIMER("Renderer::BeginScene");
 
@@ -180,7 +181,7 @@ void Renderer::BeginScene(const Camera& sceneCamera, const glm::vec3& ambient)
     
     s_Data.SceneCamera = sceneCamera;
     s_Data.SceneData.SceneCameraViewProjection = sceneCamera.GetViewProjection();
-    s_Data.SceneData.Ambient = ambient;
+    s_Data.SceneData.SceneCameraPosition = sceneCamera.GetTransform().GetPosition();
 
     s_Data.TonemapSettings.Exposure = sceneCamera.GetExposure();
     s_Data.TonemapSettings.Gamma = sceneCamera.GetGamma();
@@ -440,8 +441,9 @@ void Renderer::EndScene()
 
 void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const BoundingBox& instanceBB, const glm::mat4& transform)
 {
-    uint32_t baseColorTexIndex = mesh->GetMaterial().GetAlbedoTexture()->GetDescriptorHeapIndex(DescriptorType::SRV);
+    uint32_t baseColorTexIndex = mesh->GetMaterial().GetBaseColorTexture()->GetDescriptorHeapIndex(DescriptorType::SRV);
     uint32_t normalTexIndex = mesh->GetMaterial().GetNormalTexture()->GetDescriptorHeapIndex(DescriptorType::SRV);
+    uint32_t metallicRoughnessTexIndex = mesh->GetMaterial().GetMetallicRoughnessTexture()->GetDescriptorHeapIndex(DescriptorType::SRV);
 
     auto& meshDrawData = s_Data.MeshDrawData[mesh->GetMaterial().GetAlphaMode()];
     std::size_t& numMeshes = s_Data.NumMeshes[mesh->GetMaterial().GetAlphaMode()];
@@ -451,6 +453,7 @@ void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const BoundingBox& inst
     meshDrawData[numMeshes].InstanceData.Transform = transform;
     meshDrawData[numMeshes].InstanceData.BaseColorTexIndex = baseColorTexIndex;
     meshDrawData[numMeshes].InstanceData.NormalTexIndex = normalTexIndex;
+    meshDrawData[numMeshes].InstanceData.MetallicRoughnessTexIndex = metallicRoughnessTexIndex;
 
     numMeshes++;
     ASSERT(numMeshes <= MAX_MESHES, "Exceeded the maximum amount of meshes");
@@ -562,7 +565,9 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "TEX_INDICES", 0, DXGI_FORMAT_R32G32_UINT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "BASE_COLOR_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "NORMAL_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 84, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "METALLIC_ROUGHNESS_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 88, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
         s_Data.RenderPasses[RenderPassType::SHADOW_MAPPING] = std::make_unique<RenderPass>("Shadow mapping", desc);
     }
@@ -587,7 +592,9 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "TEX_INDICES", 0, DXGI_FORMAT_R32G32_UINT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "BASE_COLOR_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "NORMAL_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 84, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "METALLIC_ROUGHNESS_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 88, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
         s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS] = std::make_unique<RenderPass>("Depth pre-pass", desc);
     }
@@ -621,7 +628,9 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "TEX_INDICES", 0, DXGI_FORMAT_R32G32_UINT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "BASE_COLOR_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "NORMAL_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 84, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "METALLIC_ROUGHNESS_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 88, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
         s_Data.RenderPasses[RenderPassType::LIGHTING] = std::make_unique<RenderPass>("Lighting", desc);
     }

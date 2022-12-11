@@ -7,7 +7,9 @@ struct VertexShaderInput
 	float3 Normal : NORMAL;
 	matrix Model : MODEL;
 	float4 Color : COLOR;
-	uint2 TexIndices : TEX_INDICES;
+	uint BaseColorTexture : BASE_COLOR_TEXTURE;
+	uint NormalTexture : NORMAL_TEXTURE;
+	uint MetallicRoughnessTexture : METALLIC_ROUGHNESS_TEXTURE;
 };
 
 ConstantBuffer<SceneData> SceneDataCB : register(b0);

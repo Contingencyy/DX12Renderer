@@ -45,11 +45,14 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 	for (uint32_t matIndex = 0; matIndex < tinygltf.materials.size(); ++matIndex)
 	{
 		auto& material = tinygltf.materials[matIndex];
+
 		int baseColorTextureIndex = material.pbrMetallicRoughness.baseColorTexture.index;
 		int normalTextureIndex = material.normalTexture.index;
+		int metallicRoughnessTextureIndex = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
 
 		std::shared_ptr<Texture> albedoTexture;
 		std::shared_ptr<Texture> normalTexture;
+		std::shared_ptr<Texture> metallicRoughnessTexture;
 		AlphaMode alphaMode = material.alphaMode.compare("OPAQUE") == 0 ? AlphaMode::OPAQUE : AlphaMode::TRANSPARENT;
 
 		if (baseColorTextureIndex >= 0)
@@ -76,7 +79,19 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			normalTexture = m_Textures.at("WhiteTexture");
 		}
 
-		materials.emplace_back(albedoTexture, normalTexture, alphaMode);
+		if (metallicRoughnessTextureIndex >= 0)
+		{
+			uint32_t metallicRoughnessImageIndex = tinygltf.textures[metallicRoughnessTextureIndex].source;
+			metallicRoughnessTexture = std::make_shared<Texture>("Metallic roughness texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+				TextureDimension::TEXTURE_DIMENSION_2D, tinygltf.images[metallicRoughnessImageIndex].width, tinygltf.images[metallicRoughnessImageIndex].height,
+				CalculateTotalMipCount(tinygltf.images[metallicRoughnessImageIndex].width, tinygltf.images[metallicRoughnessImageIndex].height)), &tinygltf.images[metallicRoughnessImageIndex].image[0]);
+		}
+		else
+		{
+			metallicRoughnessTexture = m_Textures.at("WhiteTexture");
+		}
+
+		materials.emplace_back(albedoTexture, normalTexture, metallicRoughnessTexture, alphaMode);
 	}
 
 	std::size_t totalVertexCount = 0;

@@ -7,7 +7,9 @@ struct VertexShaderInput
 	float3 Normal : NORMAL;
 	matrix Model : MODEL;
 	float4 Color : COLOR;
-	uint2 TexIndices : TEX_INDICES;
+	uint BaseColorTexture : BASE_COLOR_TEXTURE;
+	uint NormalTexture : NORMAL_TEXTURE;
+	uint MetallicRoughnessTexture : METALLIC_ROUGHNESS_TEXTURE;
 };
 
 ConstantBuffer<SceneData> SceneDataCB : register(b0);
@@ -19,7 +21,9 @@ struct VertexShaderOutput
 	float3 Normal : NORMAL;
 	float4 Color : COLOR;
 	float4 WorldPosition : WORLD_POSITION;
-	uint2 TexIndices : TEX_INDICES;
+	uint BaseColorTexture : BASE_COLOR_TEXTURE;
+	uint NormalTexture : NORMAL_TEXTURE;
+	uint MetallicRoughnessTexture : METALLIC_ROUGHNESS_TEXTURE;
 };
 
 VertexShaderOutput main(VertexShaderInput IN)
@@ -33,7 +37,9 @@ VertexShaderOutput main(VertexShaderInput IN)
 	OUT.TexCoord = IN.TexCoord;
 	OUT.Normal = IN.Normal;
 	OUT.Color = IN.Color;
-	OUT.TexIndices = IN.TexIndices;
+	OUT.BaseColorTexture = IN.BaseColorTexture;
+	OUT.NormalTexture = IN.NormalTexture;
+	OUT.MetallicRoughnessTexture = IN.MetallicRoughnessTexture;
 
 	return OUT;
 }

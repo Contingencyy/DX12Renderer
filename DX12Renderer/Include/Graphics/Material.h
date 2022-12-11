@@ -11,15 +11,18 @@ enum AlphaMode : uint32_t
 class Material
 {
 public:
-	Material(const std::shared_ptr<Texture>& albedo, const std::shared_ptr<Texture>& normal, AlphaMode alphaMode);
+	Material(const std::shared_ptr<Texture>& baseColorTexture, const std::shared_ptr<Texture>& normalTexture,
+		const std::shared_ptr<Texture>& metallicRougnessTexture, AlphaMode alphaMode);
 
-	const std::shared_ptr<Texture>& GetAlbedoTexture() const { return m_Albedo; }
-	const std::shared_ptr<Texture>& GetNormalTexture() const { return m_Normal; }
+	const std::shared_ptr<Texture>& GetBaseColorTexture() const { return m_BaseColorTexture; }
+	const std::shared_ptr<Texture>& GetNormalTexture() const { return m_NormalTexture; }
+	const std::shared_ptr<Texture>& GetMetallicRoughnessTexture() const { return m_MetallicRoughnessTexture; }
 	AlphaMode GetAlphaMode() const { return m_AlphaMode; }
 
 private:
-	std::shared_ptr<Texture> m_Albedo;
-	std::shared_ptr<Texture> m_Normal;
+	std::shared_ptr<Texture> m_BaseColorTexture;
+	std::shared_ptr<Texture> m_NormalTexture;
+	std::shared_ptr<Texture> m_MetallicRoughnessTexture;
 
 	AlphaMode m_AlphaMode;
 

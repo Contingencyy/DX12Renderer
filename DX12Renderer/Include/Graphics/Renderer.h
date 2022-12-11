@@ -31,7 +31,7 @@ public:
 	static void Initialize(HWND hWnd, uint32_t width, uint32_t height);
 	static void Finalize();
 
-	static void BeginScene(const Camera& sceneCamera, const glm::vec3& ambient);
+	static void BeginScene(const Camera& sceneCamera);
 	static void Render();
 	static void OnImGuiRender();
 	static void EndScene();
