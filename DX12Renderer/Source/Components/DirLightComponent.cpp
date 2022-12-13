@@ -54,6 +54,6 @@ void DirLightComponent::OnImGuiRender()
 			m_DirectionalLightData.ViewProjection = m_Camera.GetViewProjection();
 		}
 		ImGui::DragFloat3("Ambient", glm::value_ptr(m_DirectionalLightData.Ambient), 0.01f, 0.0f, 1000.0f);
-		ImGui::DragFloat3("Diffuse", glm::value_ptr(m_DirectionalLightData.Diffuse), 0.01f, 0.0f, 1000.0f);
+		ImGui::DragFloat3("Color", glm::value_ptr(m_DirectionalLightData.Color), 0.01f, 0.0f, 1000.0f);
 	}
 }

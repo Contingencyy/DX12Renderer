@@ -61,7 +61,6 @@ void SpotLightComponent::OnImGuiRender()
 			m_SpotLightData.InnerConeAngle = glm::radians(m_GUIData.InnerConeAngle);
 		if (ImGui::DragFloat("Outer cone angle", &m_GUIData.OuterConeAngle, 0.1f, 180.0f))
 			m_SpotLightData.OuterConeAngle = glm::radians(m_GUIData.OuterConeAngle);
-		ImGui::DragFloat3("Ambient", glm::value_ptr(m_SpotLightData.Ambient), 0.01f, 1000.0f);
-		ImGui::DragFloat3("Diffuse", glm::value_ptr(m_SpotLightData.Diffuse), 0.01f, 1000.0f);
+		ImGui::DragFloat3("Color", glm::value_ptr(m_SpotLightData.Color), 0.01f, 1000.0f);
 	}
 }

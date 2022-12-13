@@ -8,6 +8,15 @@ enum AlphaMode : uint32_t
 	NUM_ALPHA_MODES = 2
 };
 
+struct MaterialData
+{
+	uint32_t BaseColorTextureIndex = 0;
+	uint32_t NormalTextureIndex = 0;
+	uint32_t MetallicRoughnessTextureIndex = 0;
+	float Metalness = 0.0f;
+	float Roughness = 0.0f;
+};
+
 class Material
 {
 public:

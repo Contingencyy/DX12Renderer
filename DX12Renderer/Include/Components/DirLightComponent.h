@@ -7,14 +7,14 @@ class Texture;
 struct DirectionalLightData
 {
 	DirectionalLightData() = default;
-	DirectionalLightData(const glm::vec3& direction, const glm::vec3& ambient, const glm::vec3& diffuse)
-		: Direction(direction), Ambient(ambient), Diffuse(diffuse) {}
+	DirectionalLightData(const glm::vec3& direction, const glm::vec3& ambient, const glm::vec3& color)
+		: Direction(direction), Ambient(ambient), Color(color) {}
 
 	glm::vec3 Direction = glm::vec3(0.0f);
 	BYTE_PADDING(4);
 	glm::vec3 Ambient = glm::vec3(0.0f);
 	BYTE_PADDING(4);
-	glm::vec3 Diffuse = glm::vec3(1.0f);
+	glm::vec3 Color = glm::vec3(1.0f);
 	BYTE_PADDING(4);
 
 	glm::mat4 ViewProjection = glm::identity<glm::mat4>();

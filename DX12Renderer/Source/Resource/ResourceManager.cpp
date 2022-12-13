@@ -123,7 +123,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 	};
 
 	std::vector<Vertex> vertices;
-	std::vector<WORD> indices;
+	std::vector<uint32_t> indices;
 	
 	vertices.reserve(totalVertexCount);
 	indices.reserve(totalIndexCount);
@@ -210,17 +210,30 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			const tinygltf::BufferView& indexBufferView = tinygltf.bufferViews[indexAccessor.bufferView];
 			const tinygltf::Buffer& indexBuffer = tinygltf.buffers[indexBufferView.buffer];
 
-			const WORD* pIndexData = reinterpret_cast<const WORD*>(&indexBuffer.data[0] + indexBufferView.byteOffset + indexAccessor.byteOffset);
+			const unsigned char* pIndexData = &indexBuffer.data[0] + indexBufferView.byteOffset + indexAccessor.byteOffset;
+			std::size_t indicesByteSize = indexAccessor.componentType == 5123 ? 2 : 4;
+
 			ASSERT(indexAccessor.count * indexAccessor.ByteStride(indexBufferView) + indexBufferView.byteOffset + indexAccessor.byteOffset,
 				"Byte offset for indices exceeded total buffer size");
 
 			// Get indices for current primitive/mesh and add it to all indices
 			std::size_t numIndices = 0;
 
-			for (uint32_t i = 0; i < indexAccessor.count; ++i)
+			if (indicesByteSize == 2)
 			{
-				indices.push_back(pIndexData[i]);
-				numIndices++;
+				for (uint32_t i = 0; i < indexAccessor.count; ++i)
+				{
+					indices.push_back(static_cast<uint32_t>(reinterpret_cast<const uint16_t*>(pIndexData)[i]));
+					numIndices++;
+				}
+			}
+			else if (indicesByteSize == 4)
+			{
+				for (uint32_t i = 0; i < indexAccessor.count; ++i)
+				{
+					indices.push_back(reinterpret_cast<const uint32_t*>(pIndexData)[i]);
+					numIndices++;
+				}
 			}
 
 			// Meshes need to know their byte offset in both the vertex and index buffer
@@ -231,7 +244,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 	}
 
 	std::shared_ptr<Buffer> modelVertexBuffer = std::make_shared<Buffer>(name + " vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, vertices.size(), sizeof(Vertex)), &vertices[0]);
-	std::shared_ptr<Buffer> modelIndexBuffer = std::make_shared<Buffer>(name + " index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, indices.size(), sizeof(WORD)), &indices[0]);
+	std::shared_ptr<Buffer> modelIndexBuffer = std::make_shared<Buffer>(name + " index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, indices.size(), sizeof(uint32_t)), &indices[0]);
 
 	for (auto& mesh : meshes)
 	{

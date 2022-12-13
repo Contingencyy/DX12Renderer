@@ -55,7 +55,7 @@ void RenderPass::CreateRootSignature()
 	staticSamplers[1].RegisterSpace = 1;
 	staticSamplers[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-	staticSamplers[2].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+	staticSamplers[2].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
 	staticSamplers[2].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	staticSamplers[2].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	staticSamplers[2].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;

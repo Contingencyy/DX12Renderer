@@ -3,9 +3,8 @@
 #include "Graphics/Backend/RenderBackend.h"
 
 UploadBuffer::UploadBuffer(std::size_t totalByteSize)
+	: m_TotalByteSize(totalByteSize)
 {
-	m_TotalByteSize = MEGABYTE(totalByteSize);
-
 	CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(m_TotalByteSize);
 	RenderBackend::CreateBuffer(m_d3d12Resource, D3D12_HEAP_TYPE_UPLOAD, desc, D3D12_RESOURCE_STATE_GENERIC_READ);
 

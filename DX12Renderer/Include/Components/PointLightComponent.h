@@ -7,16 +7,14 @@ class Texture;
 struct PointLightData
 {
 	PointLightData() = default;
-	PointLightData(const glm::vec3& attenuation, const glm::vec3& ambient, const glm::vec3& diffuse)
-		: Attenuation(attenuation), Ambient(ambient), Diffuse(diffuse) {}
+	PointLightData(const glm::vec3& attenuation, const glm::vec3& color)
+		: Attenuation(attenuation), Color(color) {}
 
 	glm::vec3 Position = glm::vec3(0.0f);
 	float Range = 0.0f;
 	glm::vec3 Attenuation = glm::vec3(0.0f);
 	BYTE_PADDING(4);
-	glm::vec3 Ambient = glm::vec3(0.0f);
-	BYTE_PADDING(4);
-	glm::vec3 Diffuse = glm::vec3(1.0f);
+	glm::vec3 Color = glm::vec3(1.0f);
 	uint32_t ShadowMapIndex = 0;
 };
 

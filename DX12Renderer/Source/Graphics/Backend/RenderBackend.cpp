@@ -57,7 +57,7 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 	s_Data.CommandQueueCompute = std::make_unique<CommandQueue>(D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	s_Data.CommandQueueCopy = std::make_unique<CommandQueue>(D3D12_COMMAND_LIST_TYPE_COPY);
 
-	s_Data.UploadBuffer = std::make_unique<UploadBuffer>(100);
+	s_Data.UploadBuffer = std::make_unique<UploadBuffer>(MEGABYTE(100));
 	s_Data.SwapChain = std::make_unique<SwapChain>(hWnd, s_Data.CommandQueueDirect, width, height);
 
 	D3D12_QUERY_HEAP_DESC queryHeapDesc = {};

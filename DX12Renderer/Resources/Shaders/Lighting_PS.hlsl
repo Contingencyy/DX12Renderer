@@ -19,29 +19,29 @@ Texture2D Texture2DTable[] : register(t0, space0);
 TextureCube TextureCubeTable[] : register(t0, space1);
 SamplerState Sampler_Antisotropic_Wrap : register(s0, space0);
 SamplerComparisonState Sampler_PCF : register(s0, space1);
-SamplerState Sampler_Linear_Wrap : register(s0, space2);
+SamplerState Sampler_Point_Wrap : register(s0, space2);
 
-float3 CalculateDirectionalLight(float4 fragPosWS, float3 viewDir);
-float3 CalculateSpotLight(float4 fragPosWS, float3 viewDir);
+float3 CalculateDirectionalLight(float4 fragPosWS, float3 fragNormal, float3 diffuseColor, float metalness, float roughness, float3 viewDir, DirectionalLight dirLight);
+float3 CalculateSpotLight(float4 fragPosWS, float3 fragNormal, float3 diffuseColor, float metalness, float roughness, float3 viewDir, SpotLight spotLight);
 float3 CalculatePointLight(float4 fragPosWS, float3 fragNormal, float3 diffuseColor, float metalness, float roughness, float3 viewDir, PointLight pointLight);
 
 float4 main(PixelShaderInput IN) : SV_TARGET
 {
 	float4 diffuseColor = IN.Color * Texture2DTable[IN.BaseColorTexture].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
-	float4 textureNormal = Texture2DTable[IN.NormalTexture].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
+	float4 textureNormal = Texture2DTable[IN.NormalTexture].Sample(Sampler_Point_Wrap, IN.TexCoord);
 	float3 finalColor = float3(0.0f, 0.0f, 0.0f);
 
 	float4 fragPosWS = IN.WorldPosition;
 	float3 fragNormalWS = normalize(IN.Normal * textureNormal.xyz);
 	float3 viewDir = normalize(SceneDataCB.ViewPosition - fragPosWS);
-	float4 fragMetalnessRoughness = Texture2DTable[IN.MetallicRoughnessTexture].Sample(Sampler_Linear_Wrap, IN.TexCoord);
+	float4 fragMetalnessRoughness = Texture2DTable[IN.MetallicRoughnessTexture].Sample(Sampler_Point_Wrap, IN.TexCoord);
 
 	if (SceneDataCB.NumDirectionalLights == 1)
-		finalColor += CalculateDirectionalLight(fragPosWS, viewDir);
+		finalColor += CalculateDirectionalLight(fragPosWS, fragNormalWS, diffuseColor, fragMetalnessRoughness.b, fragMetalnessRoughness.g, viewDir, LightCB.DirLight);
 
 	for (uint s = 0; s < SceneDataCB.NumSpotLights; ++s)
 	{
-		finalColor += CalculateSpotLight(fragPosWS, viewDir);
+		finalColor += CalculateSpotLight(fragPosWS, fragNormalWS, diffuseColor, fragMetalnessRoughness.b, fragMetalnessRoughness.g, viewDir, LightCB.SpotLights[s]);
 	}
 
 	for (uint p = 0; p < SceneDataCB.NumPointLights; ++p)
@@ -100,7 +100,7 @@ float DiffuseLambert()
 //}
 //
 
-float3 CalculateBRDF(float3 viewDir, float3 lightDir, float3 diffuseColor, float3 normal, float metalness, float roughness)
+float3 CalculateBRDF(float3 viewDir, float3 lightDir, float NoL, float3 diffuseColor, float3 normal, float metalness, float roughness)
 {
 	float3 f0 = float3(0.04f, 0.04f, 0.04f);
 	f0 = lerp(f0, diffuseColor.rgb, metalness);
@@ -108,7 +108,6 @@ float3 CalculateBRDF(float3 viewDir, float3 lightDir, float3 diffuseColor, float
 	float3 halfVec = normalize(viewDir + lightDir);
 
 	float NoV = abs(dot(normal, viewDir)) + 1e-5;
-	float NoL = clamp(dot(normal, lightDir), 0.0f, 1.0f);
 	float NoH = clamp(dot(normal, halfVec), 0.0f, 1.0f);
 	float LoH = clamp(dot(lightDir, halfVec), 0.0f, 1.0f);
 
@@ -211,78 +210,56 @@ float CalculateOmnidirectionalShadow(float3 lightToFrag, float angle, float farP
 	return shadow;
 }
 
-float3 CalculateDirectionalLight(float4 fragPosWS, float3 viewDir)
+float3 CalculateDirectionalLight(float4 fragPosWS, float3 fragNormal, float3 diffuseColor, float metalness, float roughness, float3 viewDir, DirectionalLight dirLight)
 {
-	return float3(0.0f, 0.0f, 0.0f);
+	float3 Lo = float3(0.0f, 0.0f, 0.0f);
 
-	//float3 ldirection = normalize(-dirLight.Direction);
-	//float angle = dot(fragNormalWS, ldirection);
+	float3 fragToLight = normalize(-dirLight.Direction);
+	float3 halfVec = normalize(viewDir + fragToLight);
 
-	//float4 fragPosLS = mul(dirLight.ViewProjection, fragPosWS);
-	//float shadow = CalculateDirectionalShadow(fragPosLS, angle, dirLight.ShadowMapIndex);
+	float3 radiance = dirLight.Color;
+	float NoL = clamp(dot(fragNormal, fragToLight), 0.0f, 1.0f);
+	float3 BRDF = CalculateBRDF(viewDir, fragToLight, NoL, diffuseColor, fragNormal, metalness, roughness);
 
-	////float3 reflectDirection = reflect(-ldirection, fragNormal);
-	////float spec = pow(max(dot(viewDirection, reflectDirection), 0.0f), material.shininess);
+	float4 fragPosLS = mul(dirLight.ViewProjection, fragPosWS);
+	float shadow = CalculateDirectionalShadow(fragPosLS, NoL, dirLight.ShadowMapIndex);
 
-	//float3 ambient = dirLight.Ambient * diffuseColor;
-
-	//float diff = max(angle, 0.0f);
-	//float3 diffuse = dirLight.Diffuse * diff * diffuseColor;
-	////float3 specular = pointlight.Specular.xyz * spec * specularColor;
-
-	//return (ambient + (1.0f - shadow) * (diffuse /*+ specular*/));
+	float3 ambient = dirLight.Ambient * diffuseColor;
+	Lo = (1.0f - shadow) * BRDF * radiance * NoL;
+	return ambient + Lo;
 }
 
-float3 CalculateSpotLight(float4 fragPosWS, float3 viewDir)
+float3 CalculateSpotLight(float4 fragPosWS, float3 fragNormal, float3 diffuseColor, float metalness, float roughness, float3 viewDir, SpotLight spotLight)
 {
-	return float3(0.0f, 0.0f, 0.0f);
+	float distance = length(spotLight.Position - fragPosWS);
+	float3 Lo = float3(0.0f, 0.0f, 0.0f);
 
-	//float3 ldirection = spotLight.Position - fragPosWS.xyz;
-	//float distance = length(ldirection);
+	if (distance <= spotLight.Range)
+	{
+		float3 fragToLight = normalize(spotLight.Position - fragPosWS.xyz);
+		float angleToLight = dot(fragToLight, -spotLight.Direction);
 
-	//float3 ambient = float3(0.0f, 0.0f, 0.0f);
-	//float3 diffuse = float3(0.0f, 0.0f, 0.0f);
-	////float3 specular = float3(0.0f, 0.0f, 0.0f);
+		if (angleToLight > spotLight.OuterConeAngle)
+		{
+			float3 halfVec = normalize(viewDir + fragToLight);
 
-	//float shadow = 0.0f;
+			float attenuation = DistanceAttenuation(spotLight.Attenuation, distance);
+			float3 radiance = spotLight.Color * attenuation;
+			float NoL = clamp(dot(fragNormal, fragToLight), 0.0f, 1.0f);
+			float3 BRDF = CalculateBRDF(viewDir, fragToLight, NoL, diffuseColor, fragNormal, metalness, roughness);
 
-	//if (distance <= spotLight.Range)
-	//{
-	//	ldirection /= distance;
+			float4 fragPosLS = mul(spotLight.ViewProjection, fragPosWS);
+			float shadow = CalculateDirectionalShadow(fragPosLS, NoL, spotLight.ShadowMapIndex);
 
-	//	// After calculating the distance attenuation, we need to rescale the value to account for the LIGHT_RANGE_EPSILON at which the light is cutoff/ignored
-	//	float attenuation = clamp(1.0f / (spotLight.Attenuation.x + (spotLight.Attenuation.y * distance) + (spotLight.Attenuation.z * (distance * distance))), 0.0f, 1.0f);
-	//	attenuation = (attenuation - 0.01f) / (1.0f - 0.01f);
-	//	attenuation = max(attenuation, 0.0f);
+			float epsilon = abs(spotLight.InnerConeAngle - spotLight.OuterConeAngle);
+			float coneAttenuation = clamp((angleToLight - spotLight.OuterConeAngle) / epsilon, 0.0f, 1.0f);
 
-	//	ambient = spotLight.Ambient * diffuseColor;
-	//	ambient *= attenuation;
+			Lo = (1.0f - shadow) * BRDF * radiance * NoL;
+			Lo *= coneAttenuation;
+		}
+	}
 
-	//	float angleToLight = dot(ldirection, -spotLight.Direction);
-
-	//	if (angleToLight > spotLight.OuterConeAngle)
-	//	{
-
-	//		float4 fragPosLS = mul(spotLight.ViewProjection, fragPosWS);
-	//		float angle = dot(fragNormalWS, ldirection);
-	//		shadow = CalculateDirectionalShadow(fragPosLS, angle, spotLight.ShadowMapIndex);
-
-	//		float diff = max(angle, 0.0f);
-	//		diffuse = spotLight.Diffuse * diff * diffuseColor;
-
-	//		//float3 reflectDirection = reflect(-ldirection, fragNormal);
-	//		//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0f), material.shininess);
-	//		//float3 specular = pointlight.Specular.xyz * spec * specularColor;
-
-	//		float epsilon = abs(spotLight.InnerConeAngle - spotLight.OuterConeAngle);
-	//		float coneAttenuation = clamp((angleToLight - spotLight.OuterConeAngle) / epsilon, 0.0f, 1.0f);
-
-	//		diffuse *= coneAttenuation * attenuation;
-	//		//specular *= coneAttenuation * attenuation;
-	//	}
-	//}
-
-	//return (ambient + (1.0f - shadow) * diffuse /*+ specular*/);
+	return Lo;
 }
 
 float3 CalculatePointLight(float4 fragPosWS, float3 fragNormal, float3 diffuseColor, float metalness, float roughness, float3 viewDir, PointLight pointLight)
@@ -292,74 +269,19 @@ float3 CalculatePointLight(float4 fragPosWS, float3 fragNormal, float3 diffuseCo
 
 	if (distance <= pointLight.Range)
 	{
-		float3 lightDir = normalize(pointLight.Position - fragPosWS.xyz);
-		float3 halfVec = normalize(viewDir + lightDir);
+		float3 fragToLight = normalize(pointLight.Position - fragPosWS.xyz);
+		float3 halfVec = normalize(viewDir + fragToLight);
 
 		float attenuation = DistanceAttenuation(pointLight.Attenuation, distance);
-		float3 radiance = pointLight.Diffuse * attenuation;
-		float NoL = clamp(dot(fragNormal, lightDir), 0.0f, 1.0f);
-		float3 BRDF = CalculateBRDF(viewDir, lightDir, diffuseColor, fragNormal, metalness, roughness);
+		float3 radiance = pointLight.Color * attenuation;
+		float NoL = clamp(dot(fragNormal, fragToLight), 0.0f, 1.0f);
+		float3 BRDF = CalculateBRDF(viewDir, fragToLight, NoL, diffuseColor, fragNormal, metalness, roughness);
 
-		Lo = BRDF * radiance * NoL;
-		/*float NoV = abs(dot(fragNormal, viewDir)) + 1e-5;
-		float NoL = clamp(dot(fragNormal, lightDir), 0.0f, 1.0f);
-		float NoH = clamp(dot(fragNormal, halfVec), 0.0f, 1.0f);
-		float LoH = clamp(dot(lightDir, halfVec), 0.0f, 1.0f);
+		float3 lightToFrag = fragPosWS.xyz - pointLight.Position;
+		float shadow = CalculateOmnidirectionalShadow(lightToFrag, NoL, pointLight.Range, pointLight.ShadowMapIndex);
 
-		float3 f0 = float3(0.04f, 0.04f, 0.04f);
-		f0 = lerp(f0, diffuseColor, metalness);
-		float3 F = SchlickFresnel(LoH, f0);
-		float D = NormalDist_GGX(NoH, roughness);
-		float G = SmithHeightCorrelated_GGX(NoV, NoL, roughness);
-
-		float3 kS = F;
-		float3 kD = float3(1.0f, 1.0f, 1.0f) - kS;
-		kD *= 1.0f - metalness;
-
-		float3 numerator = D * G * F;
-		float denom = 4.0f * NoV * NoL + 0.0001f;
-		float3 specular = numerator / denom;
-
-		Lo = (kD * diffuseColor / PI + specular) * radiance * NoL;*/
+		Lo = (1.0f - shadow) * BRDF * radiance * NoL;
 	}
 
 	return Lo;
-
-	//float3 ldirection = pointLight.Position - fragPosWS.xyz;
-	//float distance = length(ldirection);
-
-	//float3 ambient = float3(0.0f, 0.0f, 0.0f);
-	//float3 diffuse = float3(0.0f, 0.0f, 0.0f);
-	////float3 specular = float3(0.0f, 0.0f, 0.0f);
-
-	//float shadow = 0.0f;
-
-	//if (distance <= pointLight.Range)
-	//{
-	//	ldirection /= distance;
-
-	//	// After calculating the distance attenuation, we need to rescale the value to account for the LIGHT_RANGE_EPSILON at which the light is cutoff/ignored
-	//	float attenuation = clamp(1.0f / (pointLight.Attenuation.x + (pointLight.Attenuation.y * distance) + (pointLight.Attenuation.z * (distance * distance))), 0.0f, 1.0f);
-	//	attenuation = (attenuation - 0.01f) / (1.0f - 0.01f);
-	//	attenuation = max(attenuation, 0.0f);
-
-	//	ambient = pointLight.Ambient * diffuseColor;
-	//	ambient *= attenuation;
-
-	//	float3 lightToFrag = (fragPosWS.xyz - pointLight.Position);
-	//	float angle = dot(fragNormalWS, ldirection);
-	//	shadow = CalculateOmnidirectionalShadow(lightToFrag, angle, pointLight.Range, pointLight.ShadowMapIndex);
-
-	//	float diff = max(angle, 0.0f);
-	//	diffuse = pointLight.Diffuse * diff * diffuseColor;
-
-	//	//float3 reflectDirection = reflect(-ldirection, fragNormal);
-	//	//float spec = pow(max(dot(viewDirection, reflectDirection), 0.0f), material.shininess);
-	//	//float3 specular = pointlight.Specular.xyz * spec * specularColor;
-
-	//	diffuse *= attenuation;
-	//	//specular *= attenuation;
-	//}
-
-	//return (ambient + (1.0f - shadow) * diffuse /*+ specular*/);
 }

@@ -68,7 +68,6 @@ void PointLightComponent::OnImGuiRender()
 		ImGui::Text("Range (from attenuation): %.3f", m_PointLightData.Range);
 		if (ImGui::DragFloat3("Attenuation", glm::value_ptr(m_PointLightData.Attenuation), 0.00001f, 0.0f, 100.0f, "%.7f"))
 			m_PointLightData.Range = MathHelper::SolveQuadraticFunc(m_PointLightData.Attenuation.z, m_PointLightData.Attenuation.y, m_PointLightData.Attenuation.x - LIGHT_RANGE_EPSILON);
-		ImGui::DragFloat3("Ambient", glm::value_ptr(m_PointLightData.Ambient), 0.01f, 0.0f, 1000.0f);
-		ImGui::DragFloat3("Diffuse", glm::value_ptr(m_PointLightData.Diffuse), 0.01f, 0.0f, 1000.0f);
+		ImGui::DragFloat3("Color", glm::value_ptr(m_PointLightData.Color), 0.01f, 0.0f, 1000.0f);
 	}
 }
