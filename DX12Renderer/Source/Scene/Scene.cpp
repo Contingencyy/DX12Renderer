@@ -28,17 +28,18 @@ Scene::Scene()
 	GetSceneObject(dirLight1).AddComponent<DirLightComponent>(dirLightData); 
 
 	// Pointlights
-	/*PointLightData pointLightData(glm::vec3(1.0f, 0.007f, 0.0002f), glm::vec3(10.0f, 0.0f, 0.0f));
-	std::size_t pointLight1 = AddSceneObject("PointLight1");
+	PointLightData pointLightData(glm::vec3(1.0f, 0.007f, 0.0002f), glm::vec3(10.0f, 0.0f, 0.0f));
+	/*std::size_t pointLight1 = AddSceneObject("PointLight1");
 	GetSceneObject(pointLight1).AddComponent<TransformComponent>(glm::vec3(-500.0f, 100.0f, 0.0f));
-	GetSceneObject(pointLight1).AddComponent<PointLightComponent>(pointLightData);
+	GetSceneObject(pointLight1).AddComponent<PointLightComponent>(pointLightData);*/
 
-	pointLightData.Color = glm::vec3(0.0f, 10.0f, 0.0f);
+	//pointLightData.Color = glm::vec3(0.0f, 10.0f, 0.0f);
+	pointLightData.Color = glm::vec3(10.0f, 10.0f, 10.0f);
 	std::size_t pointLight2 = AddSceneObject("PointLight2");
 	GetSceneObject(pointLight2).AddComponent<TransformComponent>(glm::vec3(0.0f, 100.0f, 0.0f));
 	GetSceneObject(pointLight2).AddComponent<PointLightComponent>(pointLightData);
 
-	pointLightData.Color = glm::vec3(0.0f, 0.0f, 10.0f);
+	/*pointLightData.Color = glm::vec3(0.0f, 0.0f, 10.0f);
 	std::size_t pointLight3 = AddSceneObject("PointLight3");
 	GetSceneObject(pointLight3).AddComponent<TransformComponent>(glm::vec3(500.0f, 100.0f, 0.0f));
 	GetSceneObject(pointLight3).AddComponent<PointLightComponent>(pointLightData);*/
@@ -76,6 +77,14 @@ Scene::Scene()
 		std::size_t sponzaMesh = AddSceneObject(mesh->GetName());
 		GetSceneObject(sponzaMesh).AddComponent<TransformComponent>();
 		GetSceneObject(sponzaMesh).AddComponent<MeshComponent>(mesh);
+	}
+
+	auto& meshes2 = Application::Get().GetResourceManager()->GetModel("DamagedHelmet")->GetMeshes();
+	for (auto& mesh : meshes2)
+	{
+		std::size_t helmetMesh = AddSceneObject(mesh->GetName());
+		GetSceneObject(helmetMesh).AddComponent<TransformComponent>(glm::vec3(0.0f, 500.0f, 0.0f), glm::vec3(), glm::vec3(100.0f));
+		GetSceneObject(helmetMesh).AddComponent<MeshComponent>(mesh);
 	}
 }
 

@@ -7,6 +7,15 @@
 #include "Graphics/Mesh.h"
 #include "Graphics/Material.h"
 
+struct Vertex
+{
+	glm::vec3 Position;
+	glm::vec2 TexCoord;
+	glm::vec3 Normal;
+	glm::vec3 Tangent;
+	glm::vec3 Bitangent;
+};
+
 ResourceManager::ResourceManager()
 {
 	uint32_t whiteTextureData = 0xFFFFFFFF;
@@ -115,18 +124,11 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		}
 	}
 
-	struct Vertex
-	{
-		glm::vec3 Position;
-		glm::vec2 TexCoord;
-		glm::vec3 Normal;
-	};
-
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 	
-	vertices.reserve(totalVertexCount);
-	indices.reserve(totalIndexCount);
+	vertices.resize(totalVertexCount);
+	indices.resize(totalIndexCount);
 
 	std::vector<std::shared_ptr<Mesh>> meshes;
 	meshes.reserve(totalMeshCount);
@@ -138,9 +140,6 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 	{
 		for (auto& prim : mesh.primitives)
 		{
-			currentStartVertex = vertices.size();
-			currentStartIndex = indices.size();
-
 			// Get vertex position data
 			auto vertexPosAttrib = prim.attributes.find("POSITION");
 			ASSERT(vertexPosAttrib != prim.attributes.end(), "GLTF primitive does not contain vertex attribute POSITION");
@@ -150,7 +149,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			const tinygltf::BufferView& vertexPosBufferView = tinygltf.bufferViews[vertexPosAccessor.bufferView];
 			const tinygltf::Buffer& vertexPosBuffer = tinygltf.buffers[vertexPosBufferView.buffer];
 
-			const float* pVertexPosData = reinterpret_cast<const float*>(&vertexPosBuffer.data[0] + vertexPosBufferView.byteOffset + vertexPosAccessor.byteOffset);
+			const glm::vec3* pVertexPosData = reinterpret_cast<const glm::vec3*>(&vertexPosBuffer.data[0] + vertexPosBufferView.byteOffset + vertexPosAccessor.byteOffset);
 			ASSERT(vertexPosAccessor.count * vertexPosAccessor.ByteStride(vertexPosBufferView) + vertexPosBufferView.byteOffset + vertexPosAccessor.byteOffset <= vertexPosBuffer.data.size(),
 				"Byte offset for vertex attribute POSITION exceeded total buffer size");
 
@@ -163,7 +162,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			const tinygltf::BufferView& vertexTexCoordBufferView = tinygltf.bufferViews[vertexTexCoordAccessor.bufferView];
 			const tinygltf::Buffer& vertexTexCoordBuffer = tinygltf.buffers[vertexTexCoordBufferView.buffer];
 
-			const float* pVertexTexCoordData = reinterpret_cast<const float*>(&vertexTexCoordBuffer.data[0] + vertexTexCoordBufferView.byteOffset + vertexTexCoordAccessor.byteOffset);
+			const glm::vec2* pVertexTexCoordData = reinterpret_cast<const glm::vec2*>(&vertexTexCoordBuffer.data[0] + vertexTexCoordBufferView.byteOffset + vertexTexCoordAccessor.byteOffset);
 			ASSERT(vertexTexCoordAccessor.count * vertexTexCoordAccessor.ByteStride(vertexTexCoordBufferView) + vertexTexCoordBufferView.byteOffset + vertexTexCoordAccessor.byteOffset <= vertexTexCoordBuffer.data.size(),
 				"Byte offset for vertex attribute TEXCOORD_0 exceeded total buffer size");
 
@@ -176,28 +175,52 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			const tinygltf::BufferView& vertexNormalBufferView = tinygltf.bufferViews[vertexNormalAccessor.bufferView];
 			const tinygltf::Buffer& vertexNormalBuffer = tinygltf.buffers[vertexNormalBufferView.buffer];
 
-			const float* pVertexNormalData = reinterpret_cast<const float*>(&vertexNormalBuffer.data[0] + vertexNormalBufferView.byteOffset + vertexNormalAccessor.byteOffset);
-			ASSERT(vertexNormalAccessor.count * vertexNormalAccessor.ByteStride(vertexNormalBufferView) + vertexNormalBufferView.byteOffset + vertexNormalAccessor.byteOffset <= vertexNormalBuffer.data.size(),
+			const glm::vec3* pVertexNormalData = reinterpret_cast<const glm::vec3*>(&vertexNormalBuffer.data[0] + vertexNormalBufferView.byteOffset + vertexNormalAccessor.byteOffset);
+			ASSERT(vertexNormalAccessor.count* vertexNormalAccessor.ByteStride(vertexNormalBufferView) + vertexNormalBufferView.byteOffset + vertexNormalAccessor.byteOffset <= vertexNormalBuffer.data.size(),
 				"Byte offset for vertex attribute NORMAL exceeded total buffer size");
 
-			// Set attribute indices
-			uint32_t posIndex = 0;
-			uint32_t texCoordIndex = 0;
-			uint32_t normalIndex = 0;
-
 			// Construct a vertex from the primitive attributes data and add it to all vertices
-			for (uint32_t i = 0; i < vertexPosAccessor.count; ++i)
+			for (std::size_t i = currentStartVertex; i < currentStartVertex + vertexPosAccessor.count; ++i)
 			{
-				Vertex v = {};
-				v.Position = glm::vec3(pVertexPosData[posIndex], pVertexPosData[posIndex + 1], pVertexPosData[posIndex + 2]);
-				v.TexCoord = glm::vec2(pVertexTexCoordData[texCoordIndex], pVertexTexCoordData[texCoordIndex + 1]);
-				v.Normal = glm::vec3(pVertexNormalData[normalIndex], pVertexNormalData[normalIndex + 1], pVertexNormalData[normalIndex + 2]);
+				Vertex& v = vertices[i];
+				v.Position = *pVertexPosData++;
+				v.TexCoord = *pVertexTexCoordData++;
+				v.Normal = *pVertexNormalData++;
+			}
 
-				vertices.push_back(v);
+			// Get the vertex tangents/bitangents
+			auto vertexTangentAttrib = prim.attributes.find("TANGENT");
+			if (vertexTangentAttrib != prim.attributes.end())
+			{
+				uint32_t vertexTangentIndex = vertexTangentAttrib->second;
+				const tinygltf::Accessor& vertexTangentAccessor = tinygltf.accessors[vertexTangentIndex];
+				const tinygltf::BufferView& vertexTangentBufferView = tinygltf.bufferViews[vertexTangentAccessor.bufferView];
+				const tinygltf::Buffer& vertexTangentBuffer = tinygltf.buffers[vertexTangentBufferView.buffer];
 
-				posIndex += 3;
-				texCoordIndex += 2;
-				normalIndex += 3;
+				const glm::vec4* pVertexTangentData = reinterpret_cast<const glm::vec4*>(&vertexTangentBuffer.data[0] + vertexTangentBufferView.byteOffset + vertexTangentAccessor.byteOffset);
+				ASSERT(vertexTangentAccessor.count * vertexTangentAccessor.ByteStride(vertexTangentBufferView) + vertexTangentBufferView.byteOffset + vertexTangentAccessor.byteOffset <= vertexTangentBuffer.data.size(),
+					"Byte offset for vertex attribute TANGENT exceeded total buffer size");
+
+				for (std::size_t i = currentStartVertex; i < currentStartVertex + vertexTangentAccessor.count; ++i)
+				{
+					Vertex& vert0 = vertices[i];
+
+					vert0.Tangent = glm::normalize(*pVertexTangentData);
+					vert0.Bitangent = glm::normalize(glm::cross(vert0.Normal, vert0.Tangent) * pVertexTangentData->w);
+
+					pVertexTangentData++;
+				}
+			}
+			else
+			{
+				for (std::size_t i = currentStartVertex; i < currentStartVertex + vertexPosAccessor.count; i += 3)
+				{
+					Vertex& vert0 = vertices[i];
+					Vertex& vert1 = vertices[i + 1];
+					Vertex& vert2 = vertices[i + 2];
+
+					CalculateVertexTangents(vert0, vert1, vert2);
+				}
 			}
 
 			// Set the min and max bounds for the current primitive/mesh
@@ -209,37 +232,38 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			const tinygltf::Accessor& indexAccessor = tinygltf.accessors[indicesIndex];
 			const tinygltf::BufferView& indexBufferView = tinygltf.bufferViews[indexAccessor.bufferView];
 			const tinygltf::Buffer& indexBuffer = tinygltf.buffers[indexBufferView.buffer];
-
-			const unsigned char* pIndexData = &indexBuffer.data[0] + indexBufferView.byteOffset + indexAccessor.byteOffset;
 			std::size_t indicesByteSize = indexAccessor.componentType == 5123 ? 2 : 4;
 
 			ASSERT(indexAccessor.count * indexAccessor.ByteStride(indexBufferView) + indexBufferView.byteOffset + indexAccessor.byteOffset,
 				"Byte offset for indices exceeded total buffer size");
 
 			// Get indices for current primitive/mesh and add it to all indices
-			std::size_t numIndices = 0;
-
 			if (indicesByteSize == 2)
 			{
-				for (uint32_t i = 0; i < indexAccessor.count; ++i)
+				const uint16_t* pIndexData = reinterpret_cast<const uint16_t*>(&indexBuffer.data[0] + indexBufferView.byteOffset + indexAccessor.byteOffset);
+
+				for (std::size_t i = currentStartIndex; i < currentStartIndex + indexAccessor.count; ++i)
 				{
-					indices.push_back(static_cast<uint32_t>(reinterpret_cast<const uint16_t*>(pIndexData)[i]));
-					numIndices++;
+					indices[i] = static_cast<uint32_t>(*pIndexData++);
 				}
 			}
 			else if (indicesByteSize == 4)
 			{
-				for (uint32_t i = 0; i < indexAccessor.count; ++i)
+				const uint32_t* pIndexData = reinterpret_cast<const uint32_t*>(&indexBuffer.data[0] + indexBufferView.byteOffset + indexAccessor.byteOffset);
+
+				for (std::size_t i = currentStartIndex; i < currentStartIndex + indexAccessor.count; ++i)
 				{
-					indices.push_back(reinterpret_cast<const uint32_t*>(pIndexData)[i]);
-					numIndices++;
+					indices[i] = *pIndexData++;
 				}
 			}
 
 			// Meshes need to know their byte offset in both the vertex and index buffer
 			std::string meshName = mesh.name.empty() ? name + std::to_string(meshes.size()) : mesh.name + std::to_string(meshes.size());
 			std::size_t meshHash = std::hash<std::string>{}(filepath + std::to_string(meshes.size()));
-			meshes.push_back(std::make_shared<Mesh>(materials[prim.material], currentStartVertex, currentStartIndex, numIndices, minBounds, maxBounds, meshName, meshHash));
+			meshes.push_back(std::make_shared<Mesh>(materials[prim.material], currentStartVertex, currentStartIndex, indexAccessor.count, minBounds, maxBounds, meshName, meshHash));
+
+			currentStartVertex += vertexPosAccessor.count;
+			currentStartIndex += indexAccessor.count;
 		}
 	}
 
@@ -267,4 +291,28 @@ std::shared_ptr<Model> ResourceManager::GetModel(const std::string& name)
 {
 	ASSERT(m_Models.find(name) != m_Models.end(), "Model does not exist");
 	return m_Models.at(name);
+}
+
+void ResourceManager::CalculateVertexTangents(Vertex& vert0, Vertex& vert1, Vertex& vert2)
+{
+	if (glm::abs(vert0.Normal).x > glm::abs(vert0.Normal.y))
+		vert0.Tangent = glm::vec3(vert0.Normal.z, 0.0f, -vert0.Normal.x) / glm::sqrt(vert0.Normal.x * vert0.Normal.x + vert0.Normal.z * vert0.Normal.z);
+	else
+		vert0.Tangent = glm::vec3(0.0f, -vert0.Normal.z, vert0.Normal.y) / glm::sqrt(vert0.Normal.y * vert0.Normal.y + vert0.Normal.z * vert0.Normal.z);
+
+	vert0.Bitangent = glm::cross(vert0.Normal, vert0.Tangent);
+
+	if (glm::abs(vert1.Normal).x > glm::abs(vert1.Normal.y))
+		vert1.Tangent = glm::vec3(vert1.Normal.z, 0.0f, -vert1.Normal.x) / glm::sqrt(vert1.Normal.x * vert1.Normal.x + vert1.Normal.z * vert1.Normal.z);
+	else
+		vert1.Tangent = glm::vec3(0.0f, -vert1.Normal.z, vert1.Normal.y) / glm::sqrt(vert1.Normal.y * vert1.Normal.y + vert1.Normal.z * vert1.Normal.z);
+
+	vert1.Bitangent = glm::cross(vert1.Normal, vert1.Tangent);
+
+	if (glm::abs(vert2.Normal).x > glm::abs(vert2.Normal.y))
+		vert2.Tangent = glm::vec3(vert2.Normal.z, 0.0f, -vert2.Normal.x) / glm::sqrt(vert2.Normal.x * vert2.Normal.x + vert2.Normal.z * vert2.Normal.z);
+	else
+		vert2.Tangent = glm::vec3(0.0f, -vert2.Normal.z, vert2.Normal.y) / glm::sqrt(vert2.Normal.y * vert2.Normal.y + vert2.Normal.z * vert2.Normal.z);
+
+	vert2.Bitangent = glm::cross(vert2.Normal, vert2.Tangent);
 }

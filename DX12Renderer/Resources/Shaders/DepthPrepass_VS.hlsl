@@ -5,6 +5,8 @@ struct VertexShaderInput
 	float3 Position : POSITION;
 	float2 TexCoord : TEXCOORD;
 	float3 Normal : NORMAL;
+	float3 Tangent : TANGENT;
+	float3 Bitangent : BITANGENT;
 	matrix Model : MODEL;
 	float4 Color : COLOR;
 	uint BaseColorTexture : BASE_COLOR_TEXTURE;
