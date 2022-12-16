@@ -8,12 +8,10 @@ The project builds and runs on both Windows 10 and Windows 11.
 - GLTF model loading
 - Bindless/bindful rendering
 - Forward rendering
-- Instancing
 - Geometric view frustum culling with points, spheres, and AABBs
 - Tone mapping (Uncharted2, Linear, Reinhard, Filmic, ACES filmic)
-- Render backend with platform agnostic renderers (debug and 3D renderer)
 - GPU validation
-- Directional light/spotlights/pointlights (ambient and diffuse lighting)
+- Directional light/spotlights/pointlights
 - Shadow mapping (Multisampled PCF, slope-scaled bias)
 - Mipmap generation
 - Normal mapping
