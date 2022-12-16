@@ -16,16 +16,17 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Directional light/spotlights/pointlights (ambient and diffuse lighting)
 - Shadow mapping (Multisampled PCF, slope-scaled bias)
 - Mipmap generation
+- Normal mapping
+- Physically-based rendering
+- Materials
 
 ## Planned features
 - Multithreaded rendering/command list recording
-- Material system
-- Full PBR
 - G-Buffering/Deferred rendering
-- MSAA/TAA
+- Temporal anti-aliasing
 - Ambient occlusion
 - Particle system
-- PostFX (Bloom, Vignette, Chromatic abberation)
+- PostFX (e.g. Bloom, Vignette, Chromatic abberation)
 
 ## Camera controls
 - Forward/backward: W/S
