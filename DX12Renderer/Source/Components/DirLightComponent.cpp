@@ -41,8 +41,10 @@ void DirLightComponent::Render()
 
 void DirLightComponent::OnImGuiRender()
 {
-	if (ImGui::CollapsingHeader("Directional Light"))
+	if (ImGui::CollapsingHeader("Directional Light Component"))
 	{
+		ImGui::Indent(20.0f);
+
 		if (ImGui::DragFloat3("Direction", glm::value_ptr(m_GUIData.Direction), 0.001f, -1000.0f, 1000.0f))
 		{
 			m_DirectionalLightData.Direction = glm::normalize(m_GUIData.Direction);
@@ -55,5 +57,7 @@ void DirLightComponent::OnImGuiRender()
 		}
 		ImGui::DragFloat3("Ambient", glm::value_ptr(m_DirectionalLightData.Ambient), 0.01f, 0.0f, 1000.0f);
 		ImGui::DragFloat3("Color", glm::value_ptr(m_DirectionalLightData.Color), 0.01f, 0.0f, 1000.0f);
+
+		ImGui::Unindent(20.0f);
 	}
 }

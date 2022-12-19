@@ -25,8 +25,10 @@ void TransformComponent::Render()
 
 void TransformComponent::OnImGuiRender()
 {
-	if (ImGui::CollapsingHeader("Transform"))
+	if (ImGui::CollapsingHeader("Transform Component"))
 	{
+		ImGui::Indent(20.0f);
+
 		glm::vec3 translation = m_Transform.GetPosition();
 		if (ImGui::DragFloat3("Translation", &translation.x, 0.1f))
 			m_Transform.SetTranslation(translation);
@@ -38,5 +40,7 @@ void TransformComponent::OnImGuiRender()
 		glm::vec3 scale = m_Transform.GetScale();
 		if (ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.001f, 1000000.0f))
 			m_Transform.SetScale(scale);
+
+		ImGui::Unindent(20.0f);
 	}
 }

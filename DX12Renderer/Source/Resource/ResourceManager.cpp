@@ -268,6 +268,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			meshPrimitive.VerticesStart = currentStartVertex;
 			meshPrimitive.IndicesStart = currentStartIndex;
 			meshPrimitive.NumIndices = indexAccessor.count;
+			meshPrimitive.Name = gltfMesh.name + std::to_string(meshPrimitives.size());
 
 			meshPrimitives.push_back(meshPrimitive);
 

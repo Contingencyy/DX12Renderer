@@ -57,15 +57,29 @@ void MeshComponent::Render()
 
 void MeshComponent::OnImGuiRender()
 {
-	for (std::size_t primitiveIndex = 0; primitiveIndex < m_Mesh->Primitives.size(); ++primitiveIndex)
+	if (ImGui::CollapsingHeader(("Mesh Component | " + m_Mesh->Name).c_str()))
 	{
-		ImGui::PushID(primitiveIndex);
+		ImGui::Indent(20.0f);
 
-		if (ImGui::CollapsingHeader(m_Mesh->Primitives[primitiveIndex].Name.c_str()))
+		for (std::size_t primitiveIndex = 0; primitiveIndex < m_Mesh->Primitives.size(); ++primitiveIndex)
 		{
-			ImGui::Text("Mesh component");
+			MeshPrimitive& primitive = m_Mesh->Primitives[primitiveIndex];
+			ImGui::PushID(primitiveIndex);
+
+			if (ImGui::CollapsingHeader(("Mesh Primitive | " + primitive.Name).c_str()))
+			{
+				ImGui::Indent(20.0f);
+
+				ImGui::Text("Material");
+				ImGui::DragFloat("Metalness", &primitive.Material.MetalnessFactor, 0.001f, 0.0f, 1.0f, "%.3f");
+				ImGui::DragFloat("Roughness", &primitive.Material.RoughnessFactor, 0.001f, 0.0f, 1.0f, "%.3f");
+
+				ImGui::Unindent(20.0f);
+			}
+
+			ImGui::PopID();
 		}
 
-		ImGui::PopID();
+		ImGui::Unindent(20.0f);
 	}
 }
