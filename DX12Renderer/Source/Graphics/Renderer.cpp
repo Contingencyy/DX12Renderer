@@ -60,23 +60,28 @@ enum RenderPassType : uint32_t
     NUM_RENDER_PASSES = (TONE_MAPPING + 1)
 };
 
+struct MaterialData
+{
+    MaterialData() = default;
+
+    uint32_t BaseColorTextureIndex = 0;
+    uint32_t NormalTextureIndex = 0;
+    uint32_t MetallicRoughnessTextureIndex = 0;
+    float Metalness = 0.0f;
+    float Roughness = 0.3f;
+};;
+
 struct MeshInstanceData
 {
     MeshInstanceData() = default;
-    MeshInstanceData(const glm::mat4& transform, const glm::vec4& color, uint32_t baseColorTexIndex, uint32_t normalTexIndex)
-        : Transform(transform), Color(color), BaseColorTexIndex(baseColorTexIndex), NormalTexIndex(normalTexIndex) {}
 
     glm::mat4 Transform = glm::identity<glm::mat4>();
-    glm::vec4 Color = glm::vec4(1.0f);
-    uint32_t BaseColorTexIndex = 0;
-    uint32_t NormalTexIndex = 0;
-    uint32_t MetallicRoughnessTexIndex = 0;
+    MaterialData MaterialData;
 };
 
 struct MeshDrawData
 {
-    std::shared_ptr<Mesh> Mesh;
-    BoundingBox InstanceBB;
+    MeshPrimitive Primitive;
     MeshInstanceData InstanceData;
 };
 
@@ -135,9 +140,9 @@ struct InternalRendererData
     std::unique_ptr<Buffer> SceneDataConstantBuffer;
 
     // Mesh draw data and buffer
-    std::array<std::unique_ptr<Buffer>, AlphaMode::NUM_ALPHA_MODES> MeshInstanceBuffer;
-    std::array<std::array<MeshDrawData, 1000>, AlphaMode::NUM_ALPHA_MODES> MeshDrawData;
-    std::size_t NumMeshes[AlphaMode::NUM_ALPHA_MODES];
+    std::array<std::unique_ptr<Buffer>, TransparencyMode::NUM_ALPHA_MODES> MeshInstanceBuffer;
+    std::array<std::array<MeshDrawData, 1000>, TransparencyMode::NUM_ALPHA_MODES> MeshDrawData;
+    std::size_t NumMeshes[TransparencyMode::NUM_ALPHA_MODES];
 
     // Directional/point/spotlight constant buffers
     std::unique_ptr<Buffer> LightConstantBuffer;
@@ -152,6 +157,9 @@ struct InternalRendererData
     std::array<std::shared_ptr<Texture>, MAX_DIR_LIGHTS + MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS> LightShadowMaps;
     
     uint32_t CurrentBackBufferIndex = 0;
+
+    std::unique_ptr<Texture> WhiteTexture;
+    std::unique_ptr<Texture> DefaultNormalTexture;
 };
 
 static InternalRendererData s_Data;
@@ -166,6 +174,16 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
     MakeRenderPasses();
     MakeBuffers();
     MakeFrameBuffers();
+
+    // Make default white and normal textures
+    uint32_t whiteTextureData = 0xFFFFFFFF;
+    s_Data.WhiteTexture = std::make_unique<Texture>("Default white texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+        TextureDimension::TEXTURE_DIMENSION_2D, 1, 1), &whiteTextureData);
+
+    // Texture data is in ABGR layout, the default normal will point forward in tangent space (blue)
+    uint32_t defaultNormalTextureData = (255 << 24) + (255 << 16) + (0 << 8) + 0;
+    s_Data.DefaultNormalTexture = std::make_unique<Texture>("Default normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+        TextureDimension::TEXTURE_DIMENSION_2D, 1, 1), &defaultNormalTextureData);
 }
 
 void Renderer::Finalize()
@@ -196,12 +214,12 @@ void Renderer::Render()
 {
     SCOPED_TIMER("Renderer::Render");
 
-    for (uint32_t i = 0; i < AlphaMode::NUM_ALPHA_MODES; ++i)
+    for (uint32_t i = 0; i < TransparencyMode::NUM_ALPHA_MODES; ++i)
     {
         s_Data.RenderStatistics.MeshCount = s_Data.NumMeshes[i];
 
         for (uint32_t j = 0; j < s_Data.NumMeshes[i]; ++j)
-            s_Data.RenderStatistics.TriangleCount += s_Data.MeshDrawData[i][j].Mesh->GetNumIndices() / 3;
+            s_Data.RenderStatistics.TriangleCount += s_Data.MeshDrawData[i][j].Primitive.NumIndices / 3;
     }
 
     PrepareInstanceBuffer();
@@ -269,7 +287,7 @@ void Renderer::Render()
 
     const std::string timestampNames[4] = { "Depth pre-pass (opaque)", "Depth pre-pass (transparent)", "Lighting (opaque)", "Lighting (transparent)" };
 
-    for (uint32_t i = 0; i < AlphaMode::NUM_ALPHA_MODES; ++i)
+    for (uint32_t i = 0; i < TransparencyMode::NUM_ALPHA_MODES; ++i)
     {
         {
             /* Depth pre-pass render pass */
@@ -432,28 +450,38 @@ void Renderer::EndScene()
 
     RenderBackend::GetSwapChain().ResolveToBackBuffer(s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetColorAttachment());
 
-    s_Data.NumMeshes[AlphaMode::OPAQUE] = 0;
-    s_Data.NumMeshes[AlphaMode::TRANSPARENT] = 0;
+    s_Data.NumMeshes[TransparencyMode::OPAQUE] = 0;
+    s_Data.NumMeshes[TransparencyMode::TRANSPARENT] = 0;
 
     s_Data.SceneData.Reset();
     s_Data.RenderStatistics.Reset();
 }
 
-void Renderer::Submit(const std::shared_ptr<Mesh>& mesh, const BoundingBox& instanceBB, const glm::mat4& transform)
+void Renderer::Submit(const MeshPrimitive& meshPrimitive, const BoundingBox& bb, const glm::mat4& transform)
 {
-    uint32_t baseColorTexIndex = mesh->GetMaterial().GetBaseColorTexture()->GetDescriptorHeapIndex(DescriptorType::SRV);
-    uint32_t normalTexIndex = mesh->GetMaterial().GetNormalTexture()->GetDescriptorHeapIndex(DescriptorType::SRV);
-    uint32_t metallicRoughnessTexIndex = mesh->GetMaterial().GetMetallicRoughnessTexture()->GetDescriptorHeapIndex(DescriptorType::SRV);
+    uint32_t albedoTextureIndex = s_Data.WhiteTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
+    if (meshPrimitive.Material.AlbedoTexture->IsValid())
+        albedoTextureIndex = meshPrimitive.Material.AlbedoTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
 
-    auto& meshDrawData = s_Data.MeshDrawData[mesh->GetMaterial().GetAlphaMode()];
-    std::size_t& numMeshes = s_Data.NumMeshes[mesh->GetMaterial().GetAlphaMode()];
+    uint32_t normalTextureIndex = s_Data.DefaultNormalTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
+    if (meshPrimitive.Material.NormalTexture->IsValid())
+        normalTextureIndex = meshPrimitive.Material.NormalTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
 
-    meshDrawData[numMeshes].Mesh = mesh;
-    meshDrawData[numMeshes].InstanceBB = instanceBB;
+    uint32_t metallicRoughnessTextureIndex = s_Data.WhiteTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
+    if (meshPrimitive.Material.MetallicRoughnessTexture->IsValid())
+        metallicRoughnessTextureIndex = meshPrimitive.Material.MetallicRoughnessTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
+
+    auto& meshDrawData = s_Data.MeshDrawData[meshPrimitive.Material.Transparency];
+    std::size_t& numMeshes = s_Data.NumMeshes[meshPrimitive.Material.Transparency];
+
+    meshDrawData[numMeshes].Primitive = meshPrimitive;
+    meshDrawData[numMeshes].Primitive.BB = bb;
     meshDrawData[numMeshes].InstanceData.Transform = transform;
-    meshDrawData[numMeshes].InstanceData.BaseColorTexIndex = baseColorTexIndex;
-    meshDrawData[numMeshes].InstanceData.NormalTexIndex = normalTexIndex;
-    meshDrawData[numMeshes].InstanceData.MetallicRoughnessTexIndex = metallicRoughnessTexIndex;
+    meshDrawData[numMeshes].InstanceData.MaterialData.BaseColorTextureIndex = albedoTextureIndex;
+    meshDrawData[numMeshes].InstanceData.MaterialData.NormalTextureIndex = normalTextureIndex;
+    meshDrawData[numMeshes].InstanceData.MaterialData.MetallicRoughnessTextureIndex = metallicRoughnessTextureIndex;
+    meshDrawData[numMeshes].InstanceData.MaterialData.Metalness = meshPrimitive.Material.MetalnessFactor;
+    meshDrawData[numMeshes].InstanceData.MaterialData.Roughness = meshPrimitive.Material.RoughnessFactor;
 
     numMeshes++;
     ASSERT(numMeshes <= MAX_MESHES, "Exceeded the maximum amount of meshes");
@@ -566,10 +594,11 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "BASE_COLOR_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "NORMAL_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 84, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "METALLIC_ROUGHNESS_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 88, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "BASE_COLOR_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "NORMAL_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 68, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "METALLIC_ROUGHNESS_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 72, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "METALNESS_FACTOR", 0, DXGI_FORMAT_R32_FLOAT, 1, 76, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "ROUGHNESS_FACTOR", 0, DXGI_FORMAT_R32_FLOAT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
         s_Data.RenderPasses[RenderPassType::SHADOW_MAPPING] = std::make_unique<RenderPass>("Shadow mapping", desc);
     }
@@ -595,10 +624,11 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "BASE_COLOR_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "NORMAL_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 84, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "METALLIC_ROUGHNESS_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 88, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "BASE_COLOR_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "NORMAL_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 68, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "METALLIC_ROUGHNESS_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 72, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "METALNESS_FACTOR", 0, DXGI_FORMAT_R32_FLOAT, 1, 76, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "ROUGHNESS_FACTOR", 0, DXGI_FORMAT_R32_FLOAT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
         s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS] = std::make_unique<RenderPass>("Depth pre-pass", desc);
     }
@@ -633,10 +663,11 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "BASE_COLOR_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "NORMAL_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 84, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "METALLIC_ROUGHNESS_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 88, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "BASE_COLOR_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "NORMAL_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 68, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "METALLIC_ROUGHNESS_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 72, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "METALNESS_FACTOR", 0, DXGI_FORMAT_R32_FLOAT, 1, 76, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "ROUGHNESS_FACTOR", 0, DXGI_FORMAT_R32_FLOAT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
         s_Data.RenderPasses[RenderPassType::LIGHTING] = std::make_unique<RenderPass>("Lighting", desc);
     }
@@ -670,7 +701,7 @@ void Renderer::MakeRenderPasses()
 
 void Renderer::MakeBuffers()
 {
-    for (uint32_t i = 0; i < AlphaMode::NUM_ALPHA_MODES; ++i)
+    for (uint32_t i = 0; i < TransparencyMode::NUM_ALPHA_MODES; ++i)
     {
         s_Data.MeshInstanceBuffer[i] = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD,
             MAX_MESHES * RenderBackend::GetSwapChain().GetBackBufferCount(), sizeof(MeshInstanceData)));
@@ -724,12 +755,12 @@ void Renderer::PrepareInstanceBuffer()
 {
     uint32_t currentBackBufferIndex = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex();
 
-    for (uint32_t i = 0; i < AlphaMode::NUM_ALPHA_MODES; ++i)
+    for (uint32_t i = 0; i < TransparencyMode::NUM_ALPHA_MODES; ++i)
     {
         std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * MAX_MESHES) * sizeof(MeshInstanceData);
         Buffer& instanceBuffer = *s_Data.MeshInstanceBuffer[i];
 
-        for (auto& [mesh, instanceBB, instanceData] : s_Data.MeshDrawData[i])
+        for (auto& [primitive, instanceData] : s_Data.MeshDrawData[i])
         {
             std::size_t numBytes = sizeof(MeshInstanceData);
             instanceBuffer.SetBufferDataAtOffset(&instanceData, numBytes, currentByteOffset);
@@ -771,8 +802,8 @@ void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCame
     const glm::mat4& lightViewProjection = lightCamera.GetViewProjection();
     commandList.SetRootConstants(0, 16, &lightViewProjection[0][0], 0);
 
-    RenderGeometry(commandList, lightCamera, AlphaMode::OPAQUE);
-    RenderGeometry(commandList, lightCamera, AlphaMode::TRANSPARENT);
+    RenderGeometry(commandList, lightCamera, TransparencyMode::OPAQUE);
+    RenderGeometry(commandList, lightCamera, TransparencyMode::TRANSPARENT);
 }
 
 void Renderer::RenderGeometry(CommandList& commandList, const Camera& camera, uint32_t alphaMode)
@@ -785,22 +816,21 @@ void Renderer::RenderGeometry(CommandList& commandList, const Camera& camera, ui
 
     for (uint32_t j = 0; j < s_Data.NumMeshes[alphaMode]; ++j)
     {
-        auto& mesh = s_Data.MeshDrawData[alphaMode][j].Mesh;
-        auto& instanceBB = s_Data.MeshDrawData[alphaMode][j].InstanceBB;
+        auto& primitive = s_Data.MeshDrawData[alphaMode][j].Primitive;
         auto& instanceData = s_Data.MeshDrawData[alphaMode][j].InstanceData;
 
         // Cull mesh from light camera frustum
         if (camera.IsFrustumCullingEnabled())
         {
-            if (!camera.GetViewFrustum().IsBoxInViewFrustum(instanceBB.Min, instanceBB.Max))
+            if (!camera.GetViewFrustum().IsBoxInViewFrustum(primitive.BB.Min, primitive.BB.Max))
             {
                 startInstance++;
                 continue;
             }
         }
 
-        auto vb = mesh->GetVertexBuffer();
-        auto ib = mesh->GetIndexBuffer();
+        auto& vb = primitive.VertexBuffer;
+        auto& ib = primitive.IndexBuffer;
 
         if (vb != currentVertexBuffer)
         {
@@ -813,11 +843,8 @@ void Renderer::RenderGeometry(CommandList& commandList, const Camera& camera, ui
             currentIndexBuffer = ib;
         }
 
-        /*commandList.DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), static_cast<uint32_t>(instanceData.size()),
-            static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
-        startInstance += static_cast<uint32_t>(meshInstanceData.size());*/
-        commandList.DrawIndexed(static_cast<uint32_t>(mesh->GetNumIndices()), 1,
-            static_cast<uint32_t>(mesh->GetStartIndex()), static_cast<int32_t>(mesh->GetStartVertex()), startInstance);
+        commandList.DrawIndexed(static_cast<uint32_t>(primitive.NumIndices), 1,
+            static_cast<uint32_t>(primitive.IndicesStart), static_cast<int32_t>(primitive.VerticesStart), startInstance);
 
         startInstance++;
         s_Data.RenderStatistics.DrawCallCount++;

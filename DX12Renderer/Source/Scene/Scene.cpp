@@ -74,7 +74,7 @@ Scene::Scene()
 	auto& meshes1 = Application::Get().GetResourceManager()->GetModel("SponzaOld")->GetMeshes();
 	for (auto& mesh : meshes1)
 	{
-		std::size_t sponzaMesh = AddSceneObject(mesh->GetName());
+		std::size_t sponzaMesh = AddSceneObject(mesh->Name);
 		GetSceneObject(sponzaMesh).AddComponent<TransformComponent>();
 		GetSceneObject(sponzaMesh).AddComponent<MeshComponent>(mesh);
 	}
@@ -82,7 +82,7 @@ Scene::Scene()
 	auto& meshes2 = Application::Get().GetResourceManager()->GetModel("DamagedHelmet")->GetMeshes();
 	for (auto& mesh : meshes2)
 	{
-		std::size_t helmetMesh = AddSceneObject(mesh->GetName());
+		std::size_t helmetMesh = AddSceneObject(mesh->Name);
 		GetSceneObject(helmetMesh).AddComponent<TransformComponent>(glm::vec3(0.0f, 500.0f, 0.0f), glm::vec3(), glm::vec3(100.0f));
 		GetSceneObject(helmetMesh).AddComponent<MeshComponent>(mesh);
 	}

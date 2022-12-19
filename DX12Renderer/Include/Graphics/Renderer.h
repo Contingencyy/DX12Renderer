@@ -5,7 +5,7 @@
 #include "Components/PointLightComponent.h"
 #include "Components/SpotLightComponent.h"
 
-class Mesh;
+struct MeshPrimitive;
 class RenderPass;
 class Buffer;
 class Texture;
@@ -36,7 +36,7 @@ public:
 	static void OnImGuiRender();
 	static void EndScene();
 
-	static void Submit(const std::shared_ptr<Mesh>& mesh, const BoundingBox& instanceBB, const glm::mat4& transform);
+	static void Submit(const MeshPrimitive& meshPrimitive, const BoundingBox& bb, const glm::mat4& transform);
 	static void Submit(const DirectionalLightData& dirLightData, const Camera& lightCamera, const std::shared_ptr<Texture>& shadowMap);
 	static void Submit(const PointLightData& pointLightData, const std::array<Camera, 6>& lightCameras, const std::shared_ptr<Texture>& shadowMap);
 	static void Submit(const SpotLightData& spotLightData, const Camera& lightCamera, const std::shared_ptr<Texture>& shadowMap);

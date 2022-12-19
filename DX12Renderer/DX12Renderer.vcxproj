@@ -234,7 +234,6 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClCompile Include="Source\Graphics\DebugRenderer.cpp" />
     <ClCompile Include="Source\Graphics\Backend\RenderBackend.cpp" />
     <ClCompile Include="Source\Graphics\FrameBuffer.cpp" />
-    <ClCompile Include="Source\Graphics\Material.cpp" />
     <ClCompile Include="Source\Graphics\RenderPass.cpp" />
     <ClCompile Include="Source\Graphics\Resource.cpp" />
     <ClCompile Include="Source\Scene\BoundingVolume.cpp" />
@@ -244,7 +243,6 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClCompile Include="Source\Graphics\Backend\CommandQueue.cpp" />
     <ClCompile Include="Source\Graphics\Backend\DescriptorAllocation.cpp" />
     <ClCompile Include="Source\Graphics\Backend\DescriptorHeap.cpp" />
-    <ClCompile Include="Source\Graphics\Mesh.cpp" />
     <ClCompile Include="Source\Resource\Model.cpp" />
     <ClCompile Include="Source\Graphics\ParticleSystem.cpp" />
     <ClCompile Include="Source\Graphics\Shader.cpp" />

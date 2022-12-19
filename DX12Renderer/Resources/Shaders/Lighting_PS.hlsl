@@ -5,11 +5,12 @@ struct PixelShaderInput
 	float4 Position : SV_POSITION;
 	float2 TexCoord : TEXCOORD;
 	float3x3 TBN : TBN;
-	float4 Color : COLOR;
 	float4 WorldPosition : WORLD_POSITION;
 	uint BaseColorTexture : BASE_COLOR_TEXTURE;
 	uint NormalTexture : NORMAL_TEXTURE;
 	uint MetallicRoughnessTexture : METALLIC_ROUGHNESS_TEXTURE;
+	float Metalness : METALNESS_FACTOR;
+	float Roughness : ROUGHNESS_FACTOR;
 };
 
 ConstantBuffer<SceneData> SceneDataCB : register(b0);
@@ -27,10 +28,13 @@ float3 CalculatePointLight(float4 fragPosWS, float3 fragNormal, float3 albedo, f
 
 float4 main(PixelShaderInput IN) : SV_TARGET
 {
-	float4 albedo = IN.Color * Texture2DTable[IN.BaseColorTexture].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
+	float4 albedo = Texture2DTable[IN.BaseColorTexture].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
 	float3 textureNormal = Texture2DTable[IN.NormalTexture].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord).xyz;
 	textureNormal = (textureNormal * 2.0f) - 1.0f;
-	float4 metalRoughness = Texture2DTable[IN.MetallicRoughnessTexture].Sample(Sampler_Point_Wrap, IN.TexCoord);
+
+	float4 metallicRoughness = Texture2DTable[IN.MetallicRoughnessTexture].Sample(Sampler_Point_Wrap, IN.TexCoord);
+	float metalness = metallicRoughness.b * IN.Metalness;
+	float roughness = metallicRoughness.g * IN.Roughness;
 
 	float4 fragPosWS = IN.WorldPosition;
 	float3 fragNormalWS = normalize(mul(IN.TBN, textureNormal));
@@ -39,16 +43,16 @@ float4 main(PixelShaderInput IN) : SV_TARGET
 	float3 finalColor = float3(0.0f, 0.0f, 0.0f);
 
 	if (SceneDataCB.NumDirectionalLights == 1)
-		finalColor += CalculateDirectionalLight(fragPosWS, fragNormalWS, albedo, metalRoughness.b, metalRoughness.g, viewDir, LightCB.DirLight);
+		finalColor += CalculateDirectionalLight(fragPosWS, fragNormalWS, albedo, metalness, roughness, viewDir, LightCB.DirLight);
 
 	for (uint s = 0; s < SceneDataCB.NumSpotLights; ++s)
 	{
-		finalColor += CalculateSpotLight(fragPosWS, fragNormalWS, albedo, metalRoughness.b, metalRoughness.g, viewDir, LightCB.SpotLights[s]);
+		finalColor += CalculateSpotLight(fragPosWS, fragNormalWS, albedo, metalness, roughness, viewDir, LightCB.SpotLights[s]);
 	}
 
 	for (uint p = 0; p < SceneDataCB.NumPointLights; ++p)
 	{
-		finalColor += CalculatePointLight(fragPosWS, fragNormalWS, albedo, metalRoughness.b, metalRoughness.g, viewDir, LightCB.PointLights[p]);
+		finalColor += CalculatePointLight(fragPosWS, fragNormalWS, albedo, metalness, roughness, viewDir, LightCB.PointLights[p]);
 	}
 
 	return float4(finalColor, albedo.w);

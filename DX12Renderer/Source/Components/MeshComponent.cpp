@@ -21,37 +21,51 @@ MeshComponent::~MeshComponent()
 
 void MeshComponent::Update(float deltaTime)
 {
-	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>().GetTransform();
-	m_BoundingBox.Min = glm::vec4(m_Mesh->GetBoundingBox().Min, 1.0f) * glm::transpose(objectTransform.GetTransformMatrix());
-	m_BoundingBox.Max = glm::vec4(m_Mesh->GetBoundingBox().Max, 1.0f) * glm::transpose(objectTransform.GetTransformMatrix());
 }
 
 void MeshComponent::Render()
 {
 	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>().GetTransform();
-	Renderer::Submit(m_Mesh, m_BoundingBox, objectTransform.GetTransformMatrix());
 
-	// Draw bounding box
-	DebugRenderer::Submit(m_BoundingBox.Min, glm::vec3(m_BoundingBox.Max.x, m_BoundingBox.Min.y, m_BoundingBox.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(m_BoundingBox.Max.x, m_BoundingBox.Min.y, m_BoundingBox.Min.z), glm::vec3(m_BoundingBox.Max.x, m_BoundingBox.Max.y, m_BoundingBox.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(m_BoundingBox.Max.x, m_BoundingBox.Max.y, m_BoundingBox.Min.z), glm::vec3(m_BoundingBox.Min.x, m_BoundingBox.Max.y, m_BoundingBox.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(m_BoundingBox.Min.x, m_BoundingBox.Max.y, m_BoundingBox.Min.z), m_BoundingBox.Min, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+	for (auto& meshPrimitive : m_Mesh->Primitives)
+	{
+		// Take bounding box of mesh primitive, and transform it from object space to world space
+		BoundingBox bb = meshPrimitive.BB;
+		bb.Max = objectTransform.GetTransformMatrix() * glm::vec4(meshPrimitive.BB.Max, 1.0f);
+		bb.Min = objectTransform.GetTransformMatrix() * glm::vec4(meshPrimitive.BB.Min, 1.0f);
 
-	DebugRenderer::Submit(glm::vec3(m_BoundingBox.Min.x, m_BoundingBox.Min.y, m_BoundingBox.Max.z), glm::vec3(m_BoundingBox.Max.x, m_BoundingBox.Min.y, m_BoundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(m_BoundingBox.Max.x, m_BoundingBox.Min.y, m_BoundingBox.Max.z), glm::vec3(m_BoundingBox.Max.x, m_BoundingBox.Max.y, m_BoundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(m_BoundingBox.Max.x, m_BoundingBox.Max.y, m_BoundingBox.Max.z), glm::vec3(m_BoundingBox.Min.x, m_BoundingBox.Max.y, m_BoundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(m_BoundingBox.Min.x, m_BoundingBox.Max.y, m_BoundingBox.Max.z), glm::vec3(m_BoundingBox.Min.x, m_BoundingBox.Min.y, m_BoundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+		// Submit primitive to the renderer for drawing
+		Renderer::Submit(meshPrimitive, bb, objectTransform.GetTransformMatrix());
 
-	DebugRenderer::Submit(m_BoundingBox.Min, glm::vec3(m_BoundingBox.Min.x, m_BoundingBox.Min.y, m_BoundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(m_BoundingBox.Min.x, m_BoundingBox.Max.y, m_BoundingBox.Min.z), glm::vec3(m_BoundingBox.Min.x, m_BoundingBox.Max.y, m_BoundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(m_BoundingBox.Max.x, m_BoundingBox.Min.y, m_BoundingBox.Min.z), glm::vec3(m_BoundingBox.Max.x, m_BoundingBox.Min.y, m_BoundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(m_BoundingBox.Max.x, m_BoundingBox.Max.y, m_BoundingBox.Min.z), glm::vec3(m_BoundingBox.Max.x, m_BoundingBox.Max.y, m_BoundingBox.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+		// Draw bounding box
+		DebugRenderer::Submit(bb.Min, glm::vec3(bb.Max.x, bb.Min.y, bb.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+		DebugRenderer::Submit(glm::vec3(bb.Max.x, bb.Min.y, bb.Min.z), glm::vec3(bb.Max.x, bb.Max.y, bb.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+		DebugRenderer::Submit(glm::vec3(bb.Max.x, bb.Max.y, bb.Min.z), glm::vec3(bb.Min.x, bb.Max.y, bb.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+		DebugRenderer::Submit(glm::vec3(bb.Min.x, bb.Max.y, bb.Min.z), bb.Min, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+
+		DebugRenderer::Submit(glm::vec3(bb.Min.x, bb.Min.y, bb.Max.z), glm::vec3(bb.Max.x, bb.Min.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+		DebugRenderer::Submit(glm::vec3(bb.Max.x, bb.Min.y, bb.Max.z), glm::vec3(bb.Max.x, bb.Max.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+		DebugRenderer::Submit(glm::vec3(bb.Max.x, bb.Max.y, bb.Max.z), glm::vec3(bb.Min.x, bb.Max.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+		DebugRenderer::Submit(glm::vec3(bb.Min.x, bb.Max.y, bb.Max.z), glm::vec3(bb.Min.x, bb.Min.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+
+		DebugRenderer::Submit(bb.Min, glm::vec3(bb.Min.x, bb.Min.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+		DebugRenderer::Submit(glm::vec3(bb.Min.x, bb.Max.y, bb.Min.z), glm::vec3(bb.Min.x, bb.Max.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+		DebugRenderer::Submit(glm::vec3(bb.Max.x, bb.Min.y, bb.Min.z), glm::vec3(bb.Max.x, bb.Min.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+		DebugRenderer::Submit(glm::vec3(bb.Max.x, bb.Max.y, bb.Min.z), glm::vec3(bb.Max.x, bb.Max.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
+	}
 }
 
 void MeshComponent::OnImGuiRender()
 {
-	if (ImGui::CollapsingHeader(m_Mesh->GetName().c_str()))
+	for (std::size_t primitiveIndex = 0; primitiveIndex < m_Mesh->Primitives.size(); ++primitiveIndex)
 	{
-		ImGui::Text("Mesh component");
+		ImGui::PushID(primitiveIndex);
+
+		if (ImGui::CollapsingHeader(m_Mesh->Primitives[primitiveIndex].Name.c_str()))
+		{
+			ImGui::Text("Mesh component");
+		}
+
+		ImGui::PopID();
 	}
 }

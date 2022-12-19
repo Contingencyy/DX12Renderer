@@ -16,6 +16,5 @@ public:
 
 private:
 	std::shared_ptr<Mesh> m_Mesh;
-	BoundingBox m_BoundingBox;
 
 };

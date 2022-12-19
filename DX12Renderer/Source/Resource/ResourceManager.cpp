@@ -18,13 +18,6 @@ struct Vertex
 
 ResourceManager::ResourceManager()
 {
-	uint32_t whiteTextureData = 0xFFFFFFFF;
-	m_Textures.insert(std::pair<std::string, std::shared_ptr<Texture>>("WhiteTexture", std::make_shared<Texture>("WhiteTexture", TextureDesc(
-		TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM, TextureDimension::TEXTURE_DIMENSION_2D, 1, 1), &whiteTextureData)));
-}
-
-ResourceManager::~ResourceManager()
-{
 }
 
 void ResourceManager::LoadTexture(const std::string& filepath, const std::string& name)
@@ -53,27 +46,28 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 
 	for (uint32_t matIndex = 0; matIndex < tinygltf.materials.size(); ++matIndex)
 	{
-		auto& material = tinygltf.materials[matIndex];
+		auto& gltfMaterial = tinygltf.materials[matIndex];
 
-		int baseColorTextureIndex = material.pbrMetallicRoughness.baseColorTexture.index;
-		int normalTextureIndex = material.normalTexture.index;
-		int metallicRoughnessTextureIndex = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
+		int albedoTextureIndex = gltfMaterial.pbrMetallicRoughness.baseColorTexture.index;
+		int normalTextureIndex = gltfMaterial.normalTexture.index;
+		int metallicRoughnessTextureIndex = gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture.index;
 
 		std::shared_ptr<Texture> albedoTexture;
 		std::shared_ptr<Texture> normalTexture;
 		std::shared_ptr<Texture> metallicRoughnessTexture;
-		AlphaMode alphaMode = material.alphaMode.compare("OPAQUE") == 0 ? AlphaMode::OPAQUE : AlphaMode::TRANSPARENT;
+		TransparencyMode transparency = gltfMaterial.alphaMode.compare("OPAQUE") == 0 ? TransparencyMode::OPAQUE : TransparencyMode::TRANSPARENT;
 
-		if (baseColorTextureIndex >= 0)
+		if (albedoTextureIndex >= 0)
 		{
-			uint32_t baseColorImageIndex = tinygltf.textures[baseColorTextureIndex].source;
+			uint32_t albedoImageIndex = tinygltf.textures[albedoTextureIndex].source;
 			albedoTexture = std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				TextureDimension::TEXTURE_DIMENSION_2D, tinygltf.images[baseColorImageIndex].width, tinygltf.images[baseColorImageIndex].height, CalculateTotalMipCount(tinygltf.images[baseColorImageIndex].width,
-					tinygltf.images[baseColorImageIndex].height)), &tinygltf.images[baseColorImageIndex].image[0]);
+				TextureDimension::TEXTURE_DIMENSION_2D, tinygltf.images[albedoImageIndex].width, tinygltf.images[albedoImageIndex].height,
+				CalculateTotalMipCount(tinygltf.images[albedoImageIndex].width,	tinygltf.images[albedoImageIndex].height)), &tinygltf.images[albedoImageIndex].image[0]);
 		}
 		else
 		{
-			albedoTexture = m_Textures.at("WhiteTexture");
+			albedoTexture = std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_UNSPECIFIED,
+				TextureDimension::TEXTURE_DIMENSION_UNSPECIFIED, 1, 1));
 		}
 
 		if (normalTextureIndex >= 0)
@@ -85,7 +79,8 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		}
 		else
 		{
-			normalTexture = m_Textures.at("WhiteTexture");
+			normalTexture = std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_UNSPECIFIED,
+				TextureDimension::TEXTURE_DIMENSION_UNSPECIFIED, 1, 1));
 		}
 
 		if (metallicRoughnessTextureIndex >= 0)
@@ -97,20 +92,28 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		}
 		else
 		{
-			metallicRoughnessTexture = m_Textures.at("WhiteTexture");
+			metallicRoughnessTexture = std::make_shared<Texture>("Metallic roughness texture", TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_UNSPECIFIED,
+				TextureDimension::TEXTURE_DIMENSION_UNSPECIFIED, 1, 1));
 		}
 
-		materials.emplace_back(albedoTexture, normalTexture, metallicRoughnessTexture, alphaMode);
+		Material material = {};
+		material.AlbedoTexture = albedoTexture;
+		material.NormalTexture = normalTexture;
+		material.MetallicRoughnessTexture = metallicRoughnessTexture;
+		material.MetalnessFactor = gltfMaterial.pbrMetallicRoughness.metallicFactor;
+		material.RoughnessFactor = gltfMaterial.pbrMetallicRoughness.roughnessFactor;
+		material.Transparency = transparency;
+
+		materials.emplace_back(material);
 	}
 
 	std::size_t totalVertexCount = 0;
 	std::size_t totalIndexCount = 0;
-	std::size_t totalMeshCount = 0;
 
 	// Loop through all meshes/primitives in GLTF to predetermine total amount of vertices/indices/meshes
-	for (auto& mesh : tinygltf.meshes)
+	for (auto& gltfMesh : tinygltf.meshes)
 	{
-		for (auto& prim : mesh.primitives)
+		for (auto& prim : gltfMesh.primitives)
 		{
 			uint32_t vertexPosIndex = prim.attributes.find("POSITION")->second;
 			const tinygltf::Accessor& vertexPosAccessor = tinygltf.accessors[vertexPosIndex];
@@ -119,8 +122,6 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			uint32_t indicesIndex = prim.indices;
 			const tinygltf::Accessor& indexAccessor = tinygltf.accessors[indicesIndex];
 			totalIndexCount += indexAccessor.count;
-
-			totalMeshCount++;
 		}
 	}
 
@@ -131,18 +132,21 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 	indices.resize(totalIndexCount);
 
 	std::vector<std::shared_ptr<Mesh>> meshes;
-	meshes.reserve(totalMeshCount);
+	meshes.reserve(tinygltf.meshes.size());
 
 	std::size_t currentStartVertex = 0;
 	std::size_t currentStartIndex = 0;
 
-	for (auto& mesh : tinygltf.meshes)
+	for (auto& gltfMesh : tinygltf.meshes)
 	{
-		for (auto& prim : mesh.primitives)
+		std::vector<MeshPrimitive> meshPrimitives;
+		meshPrimitives.reserve(gltfMesh.primitives.size());
+
+		for (auto& gltfPrim : gltfMesh.primitives)
 		{
 			// Get vertex position data
-			auto vertexPosAttrib = prim.attributes.find("POSITION");
-			ASSERT(vertexPosAttrib != prim.attributes.end(), "GLTF primitive does not contain vertex attribute POSITION");
+			auto vertexPosAttrib = gltfPrim.attributes.find("POSITION");
+			ASSERT(vertexPosAttrib != gltfPrim.attributes.end(), "GLTF primitive does not contain vertex attribute POSITION");
 
 			uint32_t vertexPosIndex = vertexPosAttrib->second;
 			const tinygltf::Accessor& vertexPosAccessor = tinygltf.accessors[vertexPosIndex];
@@ -154,8 +158,8 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 				"Byte offset for vertex attribute POSITION exceeded total buffer size");
 
 			// Get vertex tex coordinates data
-			auto vertexTexCoordAttrib = prim.attributes.find("TEXCOORD_0");
-			ASSERT(vertexTexCoordAttrib != prim.attributes.end(), "GLTF primitive does not contain vertex attribute TEXCOORD_0");
+			auto vertexTexCoordAttrib = gltfPrim.attributes.find("TEXCOORD_0");
+			ASSERT(vertexTexCoordAttrib != gltfPrim.attributes.end(), "GLTF primitive does not contain vertex attribute TEXCOORD_0");
 
 			uint32_t vertexTexCoordIndex = vertexTexCoordAttrib->second;
 			const tinygltf::Accessor& vertexTexCoordAccessor = tinygltf.accessors[vertexTexCoordIndex];
@@ -167,8 +171,8 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 				"Byte offset for vertex attribute TEXCOORD_0 exceeded total buffer size");
 
 			// Get vertex normal data
-			auto vertexNormalAttrib = prim.attributes.find("NORMAL");
-			ASSERT(vertexNormalAttrib != prim.attributes.end(), "GLTF primitive does not contain vertex attribute NORMAL");
+			auto vertexNormalAttrib = gltfPrim.attributes.find("NORMAL");
+			ASSERT(vertexNormalAttrib != gltfPrim.attributes.end(), "GLTF primitive does not contain vertex attribute NORMAL");
 
 			uint32_t vertexNormalIndex = vertexNormalAttrib->second;
 			const tinygltf::Accessor& vertexNormalAccessor = tinygltf.accessors[vertexNormalIndex];
@@ -176,7 +180,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			const tinygltf::Buffer& vertexNormalBuffer = tinygltf.buffers[vertexNormalBufferView.buffer];
 
 			const glm::vec3* pVertexNormalData = reinterpret_cast<const glm::vec3*>(&vertexNormalBuffer.data[0] + vertexNormalBufferView.byteOffset + vertexNormalAccessor.byteOffset);
-			ASSERT(vertexNormalAccessor.count* vertexNormalAccessor.ByteStride(vertexNormalBufferView) + vertexNormalBufferView.byteOffset + vertexNormalAccessor.byteOffset <= vertexNormalBuffer.data.size(),
+			ASSERT(vertexNormalAccessor.count * vertexNormalAccessor.ByteStride(vertexNormalBufferView) + vertexNormalBufferView.byteOffset + vertexNormalAccessor.byteOffset <= vertexNormalBuffer.data.size(),
 				"Byte offset for vertex attribute NORMAL exceeded total buffer size");
 
 			// Construct a vertex from the primitive attributes data and add it to all vertices
@@ -189,8 +193,8 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			}
 
 			// Get the vertex tangents/bitangents
-			auto vertexTangentAttrib = prim.attributes.find("TANGENT");
-			if (vertexTangentAttrib != prim.attributes.end())
+			auto vertexTangentAttrib = gltfPrim.attributes.find("TANGENT");
+			if (vertexTangentAttrib != gltfPrim.attributes.end())
 			{
 				uint32_t vertexTangentIndex = vertexTangentAttrib->second;
 				const tinygltf::Accessor& vertexTangentAccessor = tinygltf.accessors[vertexTangentIndex];
@@ -228,7 +232,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			glm::vec3 maxBounds = glm::vec3(vertexPosAccessor.maxValues[0], vertexPosAccessor.maxValues[1], vertexPosAccessor.maxValues[2]);
 
 			// Get index data
-			uint32_t indicesIndex = prim.indices;
+			uint32_t indicesIndex = gltfPrim.indices;
 			const tinygltf::Accessor& indexAccessor = tinygltf.accessors[indicesIndex];
 			const tinygltf::BufferView& indexBufferView = tinygltf.bufferViews[indexAccessor.bufferView];
 			const tinygltf::Buffer& indexBuffer = tinygltf.buffers[indexBufferView.buffer];
@@ -257,23 +261,38 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 				}
 			}
 
-			// Meshes need to know their byte offset in both the vertex and index buffer
-			std::string meshName = mesh.name.empty() ? name + std::to_string(meshes.size()) : mesh.name + std::to_string(meshes.size());
-			std::size_t meshHash = std::hash<std::string>{}(filepath + std::to_string(meshes.size()));
-			meshes.push_back(std::make_shared<Mesh>(materials[prim.material], currentStartVertex, currentStartIndex, indexAccessor.count, minBounds, maxBounds, meshName, meshHash));
+			MeshPrimitive meshPrimitive = {};
+			meshPrimitive.Material = materials[gltfPrim.material];
+			meshPrimitive.BB.Min = static_cast<glm::vec3>(minBounds);
+			meshPrimitive.BB.Max = static_cast<glm::vec3>(maxBounds);
+			meshPrimitive.VerticesStart = currentStartVertex;
+			meshPrimitive.IndicesStart = currentStartIndex;
+			meshPrimitive.NumIndices = indexAccessor.count;
+
+			meshPrimitives.push_back(meshPrimitive);
 
 			currentStartVertex += vertexPosAccessor.count;
 			currentStartIndex += indexAccessor.count;
 		}
+
+		// Meshes need to know their byte offset in both the vertex and index buffer
+		Mesh mesh = {};
+		mesh.Primitives = meshPrimitives;
+		mesh.Name = gltfMesh.name.empty() ? name + std::to_string(meshes.size()) : gltfMesh.name + std::to_string(meshes.size());
+		mesh.Hash = std::hash<std::string>{}(filepath + std::to_string(meshes.size()));
+		meshes.push_back(std::make_shared<Mesh>(mesh));
 	}
 
-	std::shared_ptr<Buffer> modelVertexBuffer = std::make_shared<Buffer>(name + " vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, vertices.size(), sizeof(Vertex)), &vertices[0]);
-	std::shared_ptr<Buffer> modelIndexBuffer = std::make_shared<Buffer>(name + " index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, indices.size(), sizeof(uint32_t)), &indices[0]);
+	std::shared_ptr<Buffer> vertexBuffer = std::make_shared<Buffer>(name + " vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, vertices.size(), sizeof(Vertex)), &vertices[0]);
+	std::shared_ptr<Buffer> indexBuffer = std::make_shared<Buffer>(name + " index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, indices.size(), sizeof(uint32_t)), &indices[0]);
 
 	for (auto& mesh : meshes)
 	{
-		mesh->SetVertexBuffer(modelVertexBuffer);
-		mesh->SetIndexBuffer(modelIndexBuffer);
+		for (auto& meshPrimitive : mesh->Primitives)
+		{
+			meshPrimitive.VertexBuffer = vertexBuffer;
+			meshPrimitive.IndexBuffer = indexBuffer;
+		}
 	}
 
 	// Create model containing all of the meshes

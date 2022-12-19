@@ -8,7 +8,6 @@ class ResourceManager
 {
 public:
 	ResourceManager();
-	~ResourceManager();
 
 	void LoadTexture(const std::string& filepath, const std::string& name);
 	void LoadModel(const std::string& filepath, const std::string& name);
