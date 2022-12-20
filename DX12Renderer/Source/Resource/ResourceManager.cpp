@@ -281,19 +281,17 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		mesh.Primitives = meshPrimitives;
 		mesh.Name = gltfMesh.name.empty() ? name + std::to_string(meshes.size()) : gltfMesh.name + std::to_string(meshes.size());
 		mesh.Hash = std::hash<std::string>{}(filepath + std::to_string(meshes.size()));
-		meshes.push_back(std::make_shared<Mesh>(mesh));
-	}
 
-	std::shared_ptr<Buffer> vertexBuffer = std::make_shared<Buffer>(name + " vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, vertices.size(), sizeof(Vertex)), &vertices[0]);
-	std::shared_ptr<Buffer> indexBuffer = std::make_shared<Buffer>(name + " index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, indices.size(), sizeof(uint32_t)), &indices[0]);
+		std::shared_ptr<Buffer> vertexBuffer = std::make_shared<Buffer>(name + " vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, vertices.size(), sizeof(Vertex)), &vertices[0]);
+		std::shared_ptr<Buffer> indexBuffer = std::make_shared<Buffer>(name + " index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, indices.size(), sizeof(uint32_t)), &indices[0]);
 
-	for (auto& mesh : meshes)
-	{
-		for (auto& meshPrimitive : mesh->Primitives)
+		for (auto& meshPrimitive : mesh.Primitives)
 		{
 			meshPrimitive.VertexBuffer = vertexBuffer;
 			meshPrimitive.IndexBuffer = indexBuffer;
 		}
+
+		meshes.push_back(std::make_shared<Mesh>(mesh));
 	}
 
 	// Create model containing all of the meshes

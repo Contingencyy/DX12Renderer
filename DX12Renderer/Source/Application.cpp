@@ -69,7 +69,8 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 	m_ResourceManager = std::make_unique<ResourceManager>();
 	m_ResourceManager->LoadTexture("Resources/Textures/kermit.jpg", "Kermit");
 	m_ResourceManager->LoadModel("Resources/Models/DamagedHelmet/DamagedHelmet.gltf", "DamagedHelmet");
-	m_ResourceManager->LoadModel("Resources/Models/Sponza_OLD/Sponza.gltf", "SponzaOld");
+	m_ResourceManager->LoadModel("Resources/Models/SponzaOld/Sponza.gltf", "SponzaOld");
+	//m_ResourceManager->LoadModel("Resources/Models/SponzaPBR/NewSponza_Main_glTF_002.gltf", "SponzaPBR");
 
 	m_Scene = std::make_unique<Scene>();
 	m_Initialized = true;

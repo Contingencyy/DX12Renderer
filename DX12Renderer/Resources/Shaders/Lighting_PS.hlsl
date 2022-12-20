@@ -121,9 +121,8 @@ float3 CalculateBRDF(float3 viewDir, float3 lightDir, float NoL, float3 albedo, 
 	float3 F = SchlickFresnel(LoH, f0);
 	float V = SmithHeightCorrelated_GGX(NoV, NoL, roughness);
 
-	float3 diffuse = (1.0f - metalness) * albedo;
 	float3 Fr = (D * V) * F;
-	float3 Fd = diffuse * DiffuseLambert();;
+	float3 Fd = ((1.0f - metalness) * albedo) * DiffuseLambert();
 
 	return Fd + Fr;
 }
