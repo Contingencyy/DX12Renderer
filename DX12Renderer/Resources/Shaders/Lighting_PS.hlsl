@@ -80,7 +80,7 @@ float SmithHeightCorrelated_GGX(float NoV, float NoL, float a)
 // F - Schlick fresnel function (optimized)
 float3 SchlickFresnel(float u, float3 f0)
 {
-	return f0 + (float3(1.0f, 1.0f, 1.0f) - f0) * pow(1.0f - u, 5.0f);
+	return f0 + (1.0f - f0) * pow(1.0f - u, 5.0f);
 }
 
 // kD - Lambertian diffuse function
@@ -109,7 +109,7 @@ float DiffuseLambert()
 float3 CalculateBRDF(float3 viewDir, float3 lightDir, float NoL, float3 albedo, float3 normal, float metalness, float roughness)
 {
 	float3 f0 = float3(0.04f, 0.04f, 0.04f);
-	f0 = lerp(f0, albedo.rgb, metalness);
+	f0 = lerp(f0, albedo, metalness);
 
 	float3 halfVec = normalize(viewDir + lightDir);
 
@@ -121,11 +121,11 @@ float3 CalculateBRDF(float3 viewDir, float3 lightDir, float NoL, float3 albedo, 
 	float3 F = SchlickFresnel(LoH, f0);
 	float V = SmithHeightCorrelated_GGX(NoV, NoL, roughness);
 
+	float3 diffuse = (1.0f - metalness) * albedo;
 	float3 Fr = (D * V) * F;
-	float3 Fd = albedo * DiffuseLambert();
+	float3 Fd = diffuse * DiffuseLambert();;
 
-	// Cook-Torrance BRDF
-	return (1.0f - F) * Fd + Fr;
+	return Fd + Fr;
 }
 
 float DistanceAttenuation(float3 lightAttenuation, float distance)
