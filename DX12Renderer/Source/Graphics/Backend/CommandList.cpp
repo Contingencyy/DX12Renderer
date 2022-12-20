@@ -337,7 +337,7 @@ void CommandList::GenerateMips(Texture& texture)
 		m_d3d12CommandList->SetComputeRootSignature(d3d12RootSignature);
 	}
 
-	mipGenCB.IsSRGB = 0;
+	mipGenCB.IsSRGB = srcResourceDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ? 1 : 0;
 
 	for (uint32_t srcMip = 0; srcMip < (srcResourceDesc.MipLevels - 1);)
 	{
@@ -376,7 +376,7 @@ void CommandList::GenerateMips(Texture& texture)
 		for (uint32_t mip = 0; mip < mipCount; ++mip)
 		{
 			D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-			uavDesc.Format = srcResourceDesc.Format;
+			uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 			uavDesc.Texture2D.MipSlice = srcMip + mip + 1;
 

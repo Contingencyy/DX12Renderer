@@ -8,6 +8,8 @@ DXGI_FORMAT TextureFormatToDXGIFormat(TextureFormat format)
 	{
 	case TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM:
 		return DXGI_FORMAT_R8G8B8A8_UNORM;
+	case TextureFormat::TEXTURE_FORMAT_RGBA8_SRGB:
+		return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	case TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT:
 		return DXGI_FORMAT_R16G16B16A16_FLOAT;
 	case TextureFormat::TEXTURE_FORMAT_DEPTH32:

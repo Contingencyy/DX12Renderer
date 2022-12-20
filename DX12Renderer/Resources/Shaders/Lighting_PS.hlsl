@@ -32,7 +32,7 @@ float4 main(PixelShaderInput IN) : SV_TARGET
 	float3 textureNormal = Texture2DTable[IN.NormalTexture].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord).xyz;
 	textureNormal = (textureNormal * 2.0f) - 1.0f;
 
-	float4 metallicRoughness = Texture2DTable[IN.MetallicRoughnessTexture].Sample(Sampler_Point_Wrap, IN.TexCoord);
+	float4 metallicRoughness = Texture2DTable[IN.MetallicRoughnessTexture].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
 	float metalness = metallicRoughness.b * IN.Metalness;
 	float roughness = metallicRoughness.g * IN.Roughness;
 

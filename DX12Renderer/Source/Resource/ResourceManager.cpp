@@ -60,7 +60,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		if (albedoTextureIndex >= 0)
 		{
 			uint32_t albedoImageIndex = tinygltf.textures[albedoTextureIndex].source;
-			albedoTexture = std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+			albedoTexture = std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_SRGB,
 				TextureDimension::TEXTURE_DIMENSION_2D, tinygltf.images[albedoImageIndex].width, tinygltf.images[albedoImageIndex].height,
 				CalculateTotalMipCount(tinygltf.images[albedoImageIndex].width,	tinygltf.images[albedoImageIndex].height)), &tinygltf.images[albedoImageIndex].image[0]);
 		}
