@@ -39,16 +39,14 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Toggle GUI: F3
 
 ## Images
-### Sponza
-![Sponza_Dirlights_Spotlights](https://user-images.githubusercontent.com/34250026/204929516-e82bc7eb-7846-4d31-b155-ed8126a7214f.png)
-![Sponza_Dirlights_Spotlights_Pointlights](https://user-images.githubusercontent.com/34250026/204929518-925c8b83-4dc4-4613-9422-71674364be73.png)
+### Sponza (PBR, shadow mapping)
+![Sponza_All_Lights](https://user-images.githubusercontent.com/34250026/208733401-02697f6f-75f1-460d-8cc3-a7b398a4c42a.png)
+![Sponza_Helmet_PBR](https://user-images.githubusercontent.com/34250026/208733432-a8acb06a-0901-4687-9104-1852faaed82e.png)
+![Sponza_Shadows](https://user-images.githubusercontent.com/34250026/208733436-40a987e2-5e99-4d49-a89a-959afe5269da.png)
 
-### Shadow mapping
-![Sponza_Pointlight_Shadows](https://user-images.githubusercontent.com/34250026/204929501-04e5c15a-c799-472d-b818-32d274a221c4.png)
-![Sponza_Spotlight_Shadow](https://user-images.githubusercontent.com/34250026/204929504-9820795c-d5c1-4ae3-b8de-22d14b7cd09c.png)
-
-### GUI
-![Sponza_GUI_Showcase](https://user-images.githubusercontent.com/34250026/204929523-4dac0a28-d761-4472-a37e-a500647324f3.png)
+### Normal mapping
+![Normal_Mapping](https://user-images.githubusercontent.com/34250026/208733449-04d1e88d-862a-410c-99b1-fa0c97f4d4d0.png)
+![Normal_Mapping_World_Space_Normals](https://user-images.githubusercontent.com/34250026/208733455-da6e5dde-fb2b-461e-94b5-07f3bcd94a3b.png)
 
 ## Building
 The project currently provides the Visual Studio 2022 solution file. CMake is currently not supported. You will need to have installed the latest Windows 10 SDK in the Visual Studio workloads.
