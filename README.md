@@ -40,8 +40,8 @@ The project builds and runs on both Windows 10 and Windows 11.
 
 ## Images
 ### Sponza (PBR, shadow mapping)
-![Sponza_All_Lights](https://user-images.githubusercontent.com/34250026/208733401-02697f6f-75f1-460d-8cc3-a7b398a4c42a.png)
-![Sponza_Helmet_PBR](https://user-images.githubusercontent.com/34250026/208733432-a8acb06a-0901-4687-9104-1852faaed82e.png)
+![Sponza_All_Lights](https://user-images.githubusercontent.com/34250026/208758243-db2acea4-c8fe-44de-9110-616b7a4d309a.png)
+![Sponza_Helmet_PBR](https://user-images.githubusercontent.com/34250026/208758247-bcf287e6-8504-43ac-a22c-e3b2796da325.png)
 ![Sponza_Shadows](https://user-images.githubusercontent.com/34250026/208733436-40a987e2-5e99-4d49-a89a-959afe5269da.png)
 
 ### Normal mapping
