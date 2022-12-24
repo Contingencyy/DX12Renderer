@@ -106,7 +106,13 @@ float DiffuseLambert()
 //}
 //
 
-float3 CalculateBRDF(float3 viewDir, float3 lightDir, float NoL, float3 albedo, float3 normal, float metalness, float roughness)
+struct BRDFResult
+{
+	float3 Diffuse;
+	float3 Specular;
+};
+
+BRDFResult CalculateBRDF(float3 viewDir, float3 lightDir, float NoL, float3 albedo, float3 normal, float metalness, float roughness)
 {
 	float3 f0 = float3(0.04f, 0.04f, 0.04f);
 	f0 = lerp(f0, albedo, metalness);
@@ -121,10 +127,11 @@ float3 CalculateBRDF(float3 viewDir, float3 lightDir, float NoL, float3 albedo, 
 	float3 F = SchlickFresnel(LoH, f0);
 	float V = SmithHeightCorrelated_GGX(NoV, NoL, roughness);
 
-	float3 Fr = (D * V) * F;
-	float3 Fd = ((1.0f - metalness) * albedo) * DiffuseLambert();
+	BRDFResult result;
+	result.Specular = (D * V) * F;
+	result.Diffuse = ((1.0f - metalness) * albedo) * DiffuseLambert();
 
-	return Fd + Fr;
+	return result;
 }
 
 float DistanceAttenuation(float3 lightAttenuation, float distance)
@@ -221,22 +228,18 @@ float3 CalculateDirectionalLight(float4 fragPosWS, float3 fragNormal, float3 alb
 	float NoL = clamp(dot(fragNormal, fragToLight), 0.0f, 1.0f);
 	float3 Lo = float3(0.0f, 0.0f, 0.0f);
 
-	if (NoL > 0.0f)
-	{
-		// Check if current fragment is in shadow
-		float4 fragPosLS = mul(dirLight.ViewProjection, fragPosWS);
-		float shadow = CalculateDirectionalShadow(fragPosLS, NoL, dirLight.ShadowMapIndex);
+	// Check if current fragment is in shadow
+	float4 fragPosLS = mul(dirLight.ViewProjection, fragPosWS);
+	float shadow = CalculateDirectionalShadow(fragPosLS, NoL, dirLight.ShadowMapIndex);
 
-		// Evaluate BRDF
-		float3 halfVec = normalize(viewDir + fragToLight);
-		float3 BRDF = CalculateBRDF(viewDir, fragToLight, NoL, albedo, fragNormal, metalness, roughness);
-		float3 radiance = dirLight.Color;
+	// Evaluate BRDF
+	float3 halfVec = normalize(viewDir + fragToLight);
+	BRDFResult BRDF = CalculateBRDF(viewDir, fragToLight, NoL, albedo, fragNormal, metalness, roughness);
+	float3 radiance = dirLight.Color;
 
-		Lo = (1.0f - shadow) * BRDF * radiance * NoL;
-	}
-
-	// Calculate ambient lighting
-	float3 ambient = dirLight.Ambient * albedo;
+	float3 ambient = BRDF.Diffuse * dirLight.Ambient;
+	float3 totalBRDF = BRDF.Diffuse + BRDF.Specular;
+	Lo = (1.0f - shadow) * totalBRDF * radiance * NoL;
 
 	return ambient + Lo;
 }
@@ -263,7 +266,8 @@ float3 CalculateSpotLight(float4 fragPosWS, float3 fragNormal, float3 albedo, fl
 
 				// Evaluate BRDF
 				float3 halfVec = normalize(viewDir + fragToLight);
-				float3 BRDF = CalculateBRDF(viewDir, fragToLight, NoL, albedo, fragNormal, metalness, roughness);
+				BRDFResult BRDF = CalculateBRDF(viewDir, fragToLight, NoL, albedo, fragNormal, metalness, roughness);
+				float3 totalBRDF = BRDF.Diffuse + BRDF.Specular;
 
 				// Calculate distance attenuation
 				float attenuation = DistanceAttenuation(spotLight.Attenuation, distance);
@@ -273,7 +277,7 @@ float3 CalculateSpotLight(float4 fragPosWS, float3 fragNormal, float3 albedo, fl
 				float epsilon = abs(spotLight.InnerConeAngle - spotLight.OuterConeAngle);
 				float coneAttenuation = clamp((angleToLight - spotLight.OuterConeAngle) / epsilon, 0.0f, 1.0f);
 
-				Lo = (1.0f - shadow) * BRDF * radiance * NoL;
+				Lo = (1.0f - shadow) * totalBRDF * radiance * NoL;
 				Lo *= coneAttenuation;
 			}
 		}
@@ -300,13 +304,14 @@ float3 CalculatePointLight(float4 fragPosWS, float3 fragNormal, float3 albedo, f
 
 			// Evaluate BRDF
 			float3 halfVec = normalize(viewDir + fragToLight);
-			float3 BRDF = CalculateBRDF(viewDir, fragToLight, NoL, albedo, fragNormal, metalness, roughness);
+			BRDFResult BRDF = CalculateBRDF(viewDir, fragToLight, NoL, albedo, fragNormal, metalness, roughness);
+			float3 totalBRDF = BRDF.Diffuse + BRDF.Specular;
 
 			// Calculate distance attenuation
 			float attenuation = DistanceAttenuation(pointLight.Attenuation, distance);
 			float3 radiance = pointLight.Color * attenuation;
 
-			Lo = (1.0f - shadow) * BRDF * radiance * NoL;
+			Lo = (1.0f - shadow) * totalBRDF * radiance * NoL;
 		}
 	}
 

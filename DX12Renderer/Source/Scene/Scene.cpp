@@ -28,24 +28,24 @@ Scene::Scene()
 	GetSceneObject(dirLight1).AddComponent<DirLightComponent>(dirLightData); 
 
 	// Pointlights
-	//PointLightData pointLightData(glm::vec3(1.0f, 0.007f, 0.0002f), glm::vec3(10.0f, 0.0f, 0.0f));
-	//std::size_t pointLight1 = AddSceneObject("PointLight1");
-	//GetSceneObject(pointLight1).AddComponent<TransformComponent>(glm::vec3(-500.0f, 100.0f, 0.0f));
-	//GetSceneObject(pointLight1).AddComponent<PointLightComponent>(pointLightData);
+	PointLightData pointLightData(glm::vec3(1.0f, 0.007f, 0.0002f), glm::vec3(10.0f, 0.0f, 0.0f));
+	std::size_t pointLight1 = AddSceneObject("PointLight1");
+	GetSceneObject(pointLight1).AddComponent<TransformComponent>(glm::vec3(-500.0f, 100.0f, 0.0f));
+	GetSceneObject(pointLight1).AddComponent<PointLightComponent>(pointLightData);
 
-	//pointLightData.Color = glm::vec3(0.0f, 10.0f, 0.0f);
-	////pointLightData.Color = glm::vec3(10.0f, 10.0f, 10.0f);
-	//std::size_t pointLight2 = AddSceneObject("PointLight2");
-	//GetSceneObject(pointLight2).AddComponent<TransformComponent>(glm::vec3(0.0f, 100.0f, 0.0f));
-	//GetSceneObject(pointLight2).AddComponent<PointLightComponent>(pointLightData);
+	pointLightData.Color = glm::vec3(0.0f, 10.0f, 0.0f);
+	//pointLightData.Color = glm::vec3(10.0f, 10.0f, 10.0f);
+	std::size_t pointLight2 = AddSceneObject("PointLight2");
+	GetSceneObject(pointLight2).AddComponent<TransformComponent>(glm::vec3(0.0f, 100.0f, 0.0f));
+	GetSceneObject(pointLight2).AddComponent<PointLightComponent>(pointLightData);
 
-	//pointLightData.Color = glm::vec3(0.0f, 0.0f, 10.0f);
-	//std::size_t pointLight3 = AddSceneObject("PointLight3");
-	//GetSceneObject(pointLight3).AddComponent<TransformComponent>(glm::vec3(500.0f, 100.0f, 0.0f));
-	//GetSceneObject(pointLight3).AddComponent<PointLightComponent>(pointLightData);
+	pointLightData.Color = glm::vec3(0.0f, 0.0f, 10.0f);
+	std::size_t pointLight3 = AddSceneObject("PointLight3");
+	GetSceneObject(pointLight3).AddComponent<TransformComponent>(glm::vec3(500.0f, 100.0f, 0.0f));
+	GetSceneObject(pointLight3).AddComponent<PointLightComponent>(pointLightData);
 
 	// Spotlights
-	/*SpotLightData spotLightData(glm::vec3(1.0f, 0.00014f, 0.00004f), 12.5f, 25.0f, glm::vec3(20.0f, 19.0f, 14.0f));
+	SpotLightData spotLightData(glm::vec3(1.0f, 0.00014f, 0.00004f), 12.5f, 25.0f, glm::vec3(20.0f, 19.0f, 14.0f));
 	std::size_t spotLight1 = AddSceneObject("SpotLight1");
 	GetSceneObject(spotLight1).AddComponent<TransformComponent>(glm::vec3(-50.0f, 500.0f, 0.0f), glm::vec3(-45.0f, 0.0f, 0.0f));
 	GetSceneObject(spotLight1).AddComponent<SpotLightComponent>(spotLightData);
@@ -68,7 +68,7 @@ Scene::Scene()
 
 	std::size_t spotLight6 = AddSceneObject("SpotLight6");
 	GetSceneObject(spotLight6).AddComponent<TransformComponent>(glm::vec3(-800.0f, 500.0f, 0.0f), glm::vec3(45.0f, 180.0f, 0.0f));
-	GetSceneObject(spotLight6).AddComponent<SpotLightComponent>(spotLightData);*/
+	GetSceneObject(spotLight6).AddComponent<SpotLightComponent>(spotLightData);
 
 	// Mesh objects
 	auto& meshes1 = Application::Get().GetResourceManager()->GetModel("SponzaOld")->GetMeshes();
