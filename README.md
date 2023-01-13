@@ -25,6 +25,7 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Reflections & Ambient occlusion
 - Particle system
 - PostFX (e.g. Bloom, Vignette, Chromatic abberation)
+- Additional VFX (e.g. God Rays, volumetric clouds)
 
 ## Camera controls
 - Forward/backward: W/S
