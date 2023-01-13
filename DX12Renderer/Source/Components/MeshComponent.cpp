@@ -70,9 +70,13 @@ void MeshComponent::OnImGuiRender()
 			{
 				ImGui::Indent(20.0f);
 
-				ImGui::Text("Material");
-				ImGui::DragFloat("Metalness", &primitive.Material.MetalnessFactor, 0.001f, 0.0f, 1.0f, "%.3f");
-				ImGui::DragFloat("Roughness", &primitive.Material.RoughnessFactor, 0.001f, 0.0f, 1.0f, "%.3f");
+				if (ImGui::CollapsingHeader("Material"))
+				{
+					ImGui::Indent(20.0f);
+					ImGui::DragFloat("Metalness", &primitive.Material.MetalnessFactor, 0.001f, 0.0f, 1.0f, "%.3f");
+					ImGui::DragFloat("Roughness", &primitive.Material.RoughnessFactor, 0.001f, 0.0f, 1.0f, "%.3f");
+					ImGui::Unindent(20.0f);
+				}
 
 				ImGui::Unindent(20.0f);
 			}
