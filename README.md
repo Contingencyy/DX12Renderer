@@ -22,7 +22,7 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Multithreaded rendering/command list recording
 - G-Buffering/Deferred rendering
 - Temporal anti-aliasing
-- Ambient occlusion
+- Reflections & Ambient occlusion
 - Particle system
 - PostFX (e.g. Bloom, Vignette, Chromatic abberation)
 
