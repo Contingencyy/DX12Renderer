@@ -120,7 +120,7 @@
     <ClCompile Include="Source\Scene\Camera\ViewFrustum.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\RenderPass.cpp">
+    <ClCompile Include="Source\Graphics\RasterPass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\Backend\RenderBackend.cpp">
@@ -157,6 +157,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Components\TransformComponent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\ComputePass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -266,7 +269,7 @@
     <ClInclude Include="Include\Scene\Camera\ViewFrustum.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\RenderPass.h">
+    <ClInclude Include="Include\Graphics\RasterPass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Util\ThreadSafeQueue.h">
@@ -311,12 +314,13 @@
     <ClInclude Include="Include\Components\TransformComponent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Graphics\ComputePass.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Lighting_VS.hlsl" />
     <FxCompile Include="Resources\Shaders\Lighting_PS.hlsl" />
-    <FxCompile Include="Resources\Shaders\ToneMapping_PS.hlsl" />
-    <FxCompile Include="Resources\Shaders\ToneMapping_VS.hlsl" />
     <FxCompile Include="Resources\Shaders\DebugLine_VS.hlsl" />
     <FxCompile Include="Resources\Shaders\DebugLine_PS.hlsl" />
     <FxCompile Include="Resources\Shaders\ShadowMapping_VS.hlsl" />
@@ -325,5 +329,6 @@
     <FxCompile Include="Resources\Shaders\DepthPrepass_VS.hlsl" />
     <FxCompile Include="Resources\Shaders\DepthPrepass_PS.hlsl" />
     <FxCompile Include="Resources\Shaders\MipMapGen_CS.hlsl" />
+    <FxCompile Include="Resources\Shaders\Tonemapping_CS.hlsl" />
   </ItemGroup>
 </Project>

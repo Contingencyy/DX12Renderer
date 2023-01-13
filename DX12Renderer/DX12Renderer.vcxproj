@@ -231,10 +231,11 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClCompile Include="Source\Components\SpotLightComponent.cpp" />
     <ClCompile Include="Source\Components\TransformComponent.cpp" />
     <ClCompile Include="Source\Graphics\Backend\UploadBuffer.cpp" />
+    <ClCompile Include="Source\Graphics\ComputePass.cpp" />
     <ClCompile Include="Source\Graphics\DebugRenderer.cpp" />
     <ClCompile Include="Source\Graphics\Backend\RenderBackend.cpp" />
     <ClCompile Include="Source\Graphics\FrameBuffer.cpp" />
-    <ClCompile Include="Source\Graphics\RenderPass.cpp" />
+    <ClCompile Include="Source\Graphics\RasterPass.cpp" />
     <ClCompile Include="Source\Graphics\Resource.cpp" />
     <ClCompile Include="Source\Scene\BoundingVolume.cpp" />
     <ClCompile Include="Source\Scene\Camera\Camera.cpp" />
@@ -282,11 +283,12 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\Components\SpotLightComponent.h" />
     <ClInclude Include="Include\Components\TransformComponent.h" />
     <ClInclude Include="Include\Graphics\Backend\UploadBuffer.h" />
+    <ClInclude Include="Include\Graphics\ComputePass.h" />
     <ClInclude Include="Include\Graphics\DebugRenderer.h" />
     <ClInclude Include="Include\Graphics\Backend\RenderBackend.h" />
     <ClInclude Include="Include\Graphics\FrameBuffer.h" />
     <ClInclude Include="Include\Graphics\Material.h" />
-    <ClInclude Include="Include\Graphics\RenderPass.h" />
+    <ClInclude Include="Include\Graphics\RasterPass.h" />
     <ClInclude Include="Include\Graphics\Resource.h" />
     <ClInclude Include="Include\Scene\BoundingVolume.h" />
     <ClInclude Include="Include\Scene\Camera\Camera.h" />
@@ -407,25 +409,15 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="Resources\Shaders\ToneMapping_PS.hlsl">
+    <FxCompile Include="Resources\Shaders\Tonemapping_CS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">6.0</ShaderModel>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">6.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-    </FxCompile>
-    <FxCompile Include="Resources\Shaders\ToneMapping_VS.hlsl">
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">6.0</ShaderModel>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">6.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
     </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

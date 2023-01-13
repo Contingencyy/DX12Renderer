@@ -1,20 +1,16 @@
 #include "Pch.h"
-#include "Graphics/RenderPass.h"
+#include "Graphics/RasterPass.h"
 #include "Graphics/Shader.h"
 #include "Graphics/Backend/RenderBackend.h"
 
-RenderPass::RenderPass(const std::string& name, const RenderPassDesc& desc)
-	: m_Name(name), m_RenderPassDesc(desc)
+RasterPass::RasterPass(const std::string& name, const RasterPassDesc& desc)
+	: m_Name(name), m_Desc(desc)
 {
 	CreateRootSignature();
 	CreatePipelineState();
 }
 
-RenderPass::~RenderPass()
-{
-}
-
-void RenderPass::CreateRootSignature()
+void RasterPass::CreateRootSignature()
 {
 	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -70,8 +66,8 @@ void RenderPass::CreateRootSignature()
 	staticSamplers[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC versionedRootSignatureDesc = {};
-	versionedRootSignatureDesc.Init_1_1(static_cast<uint32_t>(m_RenderPassDesc.RootParameters.size()),
-		&m_RenderPassDesc.RootParameters[0],_countof(staticSamplers), &staticSamplers[0], rootSignatureFlags);
+	versionedRootSignatureDesc.Init_1_1(static_cast<uint32_t>(m_Desc.RootParameters.size()),
+		&m_Desc.RootParameters[0],_countof(staticSamplers), &staticSamplers[0], rootSignatureFlags);
 
 	ComPtr<ID3DBlob> serializedRootSig;
 	ComPtr<ID3DBlob> errorBlob;
@@ -88,10 +84,10 @@ void RenderPass::CreateRootSignature()
 	m_d3d12RootSignature->SetName(StringHelper::StringToWString(m_Name + " root signature").c_str());
 }
 
-void RenderPass::CreatePipelineState()
+void RasterPass::CreatePipelineState()
 {
-	m_VertexShader = std::make_unique<Shader>(StringHelper::StringToWString(m_RenderPassDesc.VertexShaderPath), "main", "vs_6_0");
-	m_PixelShader = std::make_unique<Shader>(StringHelper::StringToWString(m_RenderPassDesc.PixelShaderPath), "main", "ps_6_0");
+	m_VertexShader = std::make_unique<Shader>(StringHelper::StringToWString(m_Desc.VertexShaderPath), "main", "vs_6_0");
+	m_PixelShader = std::make_unique<Shader>(StringHelper::StringToWString(m_Desc.PixelShaderPath), "main", "ps_6_0");
 
 	D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
 	rtBlendDesc.BlendEnable = TRUE;
@@ -111,35 +107,35 @@ void RenderPass::CreatePipelineState()
 	blendDesc.RenderTarget[0] = rtBlendDesc;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-	psoDesc.InputLayout = { &m_RenderPassDesc.ShaderInputLayout[0], static_cast<uint32_t>(m_RenderPassDesc.ShaderInputLayout.size()) };
+	psoDesc.InputLayout = { &m_Desc.ShaderInputLayout[0], static_cast<uint32_t>(m_Desc.ShaderInputLayout.size()) };
 	psoDesc.VS = m_VertexShader->GetShaderByteCode();
 	psoDesc.PS = m_PixelShader->GetShaderByteCode();
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	psoDesc.BlendState = blendDesc;
-	psoDesc.DepthStencilState.DepthEnable = m_RenderPassDesc.DepthEnabled ? TRUE : FALSE;
+	psoDesc.DepthStencilState.DepthEnable = m_Desc.DepthEnabled ? TRUE : FALSE;
 
-	if (m_RenderPassDesc.DepthEnabled)
+	if (m_Desc.DepthEnabled)
 	{
-		psoDesc.DSVFormat = TextureFormatToDXGIFormat(m_RenderPassDesc.DepthAttachmentDesc.Format);
+		psoDesc.DSVFormat = TextureFormatToDXGIFormat(m_Desc.DepthAttachmentDesc.Format);
 		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		psoDesc.DepthStencilState.DepthFunc = m_RenderPassDesc.DepthComparisonFunc;
-		psoDesc.RasterizerState.DepthBias = m_RenderPassDesc.DepthBias;
-		psoDesc.RasterizerState.SlopeScaledDepthBias = m_RenderPassDesc.SlopeScaledDepthBias;
-		psoDesc.RasterizerState.DepthBiasClamp = m_RenderPassDesc.DepthBiasClamp;
+		psoDesc.DepthStencilState.DepthFunc = m_Desc.DepthComparisonFunc;
+		psoDesc.RasterizerState.DepthBias = m_Desc.DepthBias;
+		psoDesc.RasterizerState.SlopeScaledDepthBias = m_Desc.SlopeScaledDepthBias;
+		psoDesc.RasterizerState.DepthBiasClamp = m_Desc.DepthBiasClamp;
 	}
 
 	psoDesc.DepthStencilState.StencilEnable = FALSE;
 	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = m_RenderPassDesc.TopologyType;
+	psoDesc.PrimitiveTopologyType = m_Desc.TopologyType;
 
-	if (m_RenderPassDesc.ColorAttachmentDesc.Usage == TextureUsage::TEXTURE_USAGE_NONE && m_RenderPassDesc.ColorAttachmentDesc.Format == TextureFormat::TEXTURE_FORMAT_UNSPECIFIED)
+	if (m_Desc.ColorAttachmentDesc.Usage == TextureUsage::TEXTURE_USAGE_NONE && m_Desc.ColorAttachmentDesc.Format == TextureFormat::TEXTURE_FORMAT_UNSPECIFIED)
 	{
 		psoDesc.NumRenderTargets = 0;
 	}
 	else
 	{
 		psoDesc.NumRenderTargets = 1;
-		psoDesc.RTVFormats[0] = TextureFormatToDXGIFormat(m_RenderPassDesc.ColorAttachmentDesc.Format);
+		psoDesc.RTVFormats[0] = TextureFormatToDXGIFormat(m_Desc.ColorAttachmentDesc.Format);
 	}
 
 	psoDesc.SampleDesc.Count = 1;

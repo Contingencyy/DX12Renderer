@@ -1,7 +1,8 @@
 #include "Pch.h"
 #include "Graphics/DebugRenderer.h"
 #include "Graphics/Buffer.h"
-#include "Graphics/RenderPass.h"
+#include "Graphics/Shader.h"
+#include "Graphics/RasterPass.h"
 #include "Graphics/FrameBuffer.h"
 #include "Graphics/Backend/RenderBackend.h"
 #include "Graphics/Backend/CommandList.h"
@@ -37,7 +38,7 @@ struct LineVertex
 
 struct InternalDebugRendererData
 {
-    std::unique_ptr<RenderPass> RenderPass;
+    std::unique_ptr<RasterPass> RasterPass;
     std::shared_ptr<FrameBuffer> FrameBuffer;
 
     DebugRendererSettings DebugRenderSettings;
@@ -84,7 +85,7 @@ void DebugRenderer::Render()
     auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
     // Set viewports, scissor rects and render targets
-    commandList->SetRenderPassBindables(*s_Data.RenderPass);
+    commandList->SetRenderPassBindables(*s_Data.RasterPass);
 
     const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
     CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(renderSettings.RenderResolution.x),
@@ -151,7 +152,7 @@ void DebugRenderer::MakeRenderPasses()
 
     {
         // Debug line render pass
-        RenderPassDesc desc;
+        RasterPassDesc desc;
         desc.VertexShaderPath = "Resources/Shaders/DebugLine_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/DebugLine_PS.hlsl";
         desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
@@ -169,7 +170,7 @@ void DebugRenderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         desc.ShaderInputLayout.push_back({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 
-        s_Data.RenderPass = std::make_unique<RenderPass>("Debug line", desc);
+        s_Data.RasterPass = std::make_unique<RasterPass>("Debug line", desc);
     }
 }
 

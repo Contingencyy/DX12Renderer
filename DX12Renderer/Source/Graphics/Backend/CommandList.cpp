@@ -1,7 +1,7 @@
 #include "Pch.h"
 #include "Graphics/Backend/CommandList.h"
 #include "Graphics/Buffer.h"
-#include "Graphics/RenderPass.h"
+#include "Graphics/RasterPass.h"
 #include "Graphics/Backend/DescriptorHeap.h"
 #include "Graphics/Backend/UploadBuffer.h"
 
@@ -53,7 +53,7 @@ void CommandList::SetRenderTargets(uint32_t numRTVS, D3D12_CPU_DESCRIPTOR_HANDLE
 	m_d3d12CommandList->OMSetRenderTargets(numRTVS, rtvs, false, dsv);
 }
 
-void CommandList::SetRenderPassBindables(const RenderPass& renderPass)
+void CommandList::SetRenderPassBindables(const RasterPass& renderPass)
 {
 	// Set the pipeline state
 	m_d3d12CommandList->SetPipelineState(renderPass.GetD3D12PipelineState());
@@ -67,7 +67,7 @@ void CommandList::SetRenderPassBindables(const RenderPass& renderPass)
 	}
 
 	// Set the primitive topology
-	m_d3d12CommandList->IASetPrimitiveTopology(renderPass.GetRenderPassDesc().Topology);
+	m_d3d12CommandList->IASetPrimitiveTopology(renderPass.GetDesc().Topology);
 }
 
 void CommandList::SetRootConstants(uint32_t rootIndex, uint32_t numValues, const void* data, uint32_t offset)

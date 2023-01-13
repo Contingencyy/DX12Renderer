@@ -5,7 +5,8 @@
 #include "Graphics/Mesh.h"
 #include "Graphics/Shader.h"
 #include "Resource/Model.h"
-#include "Graphics/RenderPass.h"
+#include "Graphics/RasterPass.h"
+#include "Graphics/ComputePass.h"
 #include "Graphics/FrameBuffer.h"
 #include "Graphics/Backend/CommandList.h"
 #include "Graphics/Backend/SwapChain.h"
@@ -57,8 +58,13 @@ enum RenderPassType : uint32_t
     SHADOW_MAPPING,
     DEPTH_PREPASS,
     LIGHTING,
+    NUM_RENDER_PASSES
+};
+
+enum ComputePassType : uint32_t
+{
     TONE_MAPPING,
-    NUM_RENDER_PASSES = (TONE_MAPPING + 1)
+    NUM_COMPUTE_PASSES
 };
 
 struct MaterialData
@@ -95,7 +101,8 @@ enum class TonemapType : uint32_t
 
 struct TonemapSettings
 {
-    uint32_t HDRTargetIndex = 0;
+    uint32_t HDRRenderTargetIndex = 0;
+    uint32_t SDRRenderTargetIndex = 0;
     float Exposure = 1.5f;
     float Gamma = 2.2f;
     TonemapType Type = TonemapType::UNCHARTED2;
@@ -123,8 +130,10 @@ std::string TonemapTypeToString(TonemapType type)
 struct InternalRendererData
 {
     // Render passes
-    std::unique_ptr<RenderPass> RenderPasses[RenderPassType::NUM_RENDER_PASSES];
+    std::unique_ptr<RasterPass> RenderPasses[RenderPassType::NUM_RENDER_PASSES];
+    std::unique_ptr<ComputePass> ComputePasses[ComputePassType::NUM_COMPUTE_PASSES];
     std::array<std::shared_ptr<FrameBuffer>, RenderPassType::NUM_RENDER_PASSES> FrameBuffers;
+    std::unique_ptr<Texture> SDRRenderTarget;
 
     // Renderer settings and statistics
     Renderer::RenderSettings RenderSettings;
@@ -133,8 +142,6 @@ struct InternalRendererData
     // Tone mapping settings and buffers
     TonemapSettings TonemapSettings;
     std::unique_ptr<Buffer> TonemapConstantBuffer;
-    std::unique_ptr<Buffer> TonemapVertexBuffer;
-    std::unique_ptr<Buffer> TonemapIndexBuffer;
 
     // Scene data and buffer
     Camera SceneCamera;
@@ -377,36 +384,21 @@ void Renderer::Render()
         // Transition the HDR render target to pixel shader resource state
         auto& hdrColorTarget = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetColorAttachment();
         commandList->Transition(hdrColorTarget, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        commandList->Transition(*s_Data.SDRRenderTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        // Set bindless descriptor heap
-        commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, descriptorHeap);
+        commandList->GetGraphicsCommandList()->SetComputeRootSignature(s_Data.ComputePasses[ComputePassType::TONE_MAPPING]->GetD3D12RootSignature().Get());
+        commandList->GetGraphicsCommandList()->SetPipelineState(s_Data.ComputePasses[ComputePassType::TONE_MAPPING]->GetD3D12PipelineState().Get());
 
-        // Bind render pass bindables (sets viewport, scissor rect, render targets, pipeline state, root signature and primitive topology)
-        commandList->SetRenderPassBindables(*s_Data.RenderPasses[RenderPassType::TONE_MAPPING]);
+        ID3D12DescriptorHeap* const heaps = { RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).GetD3D12DescriptorHeap().Get() };
+        commandList->GetGraphicsCommandList()->SetDescriptorHeaps(1, &heaps);
 
-        CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(s_Data.RenderSettings.RenderResolution.x),
-            static_cast<float>(s_Data.RenderSettings.RenderResolution.y), 0.0f, 1.0f);
-        CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
+        commandList->GetGraphicsCommandList()->SetComputeRootConstantBufferView(0, s_Data.TonemapConstantBuffer->GetD3D12Resource()->GetGPUVirtualAddress());
+        commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(1, RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).GetGPUBaseDescriptor());
+        commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(2, RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).GetGPUBaseDescriptor());
 
-        commandList->SetViewports(1, &viewport);
-        commandList->SetScissorRects(1, &scissorRect);
-
-        D3D12_CPU_DESCRIPTOR_HANDLE rtv = s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetColorAttachment().GetDescriptor(DescriptorType::RTV);
-        commandList->SetRenderTargets(1, &rtv, nullptr);
-
-        uint32_t pbrColorTargetIndex = hdrColorTarget.GetDescriptorHeapIndex(DescriptorType::SRV);
-        s_Data.TonemapSettings.HDRTargetIndex = pbrColorTargetIndex;
-        s_Data.TonemapConstantBuffer->SetBufferData(&s_Data.TonemapSettings);
-        commandList->SetRootConstantBufferView(0, *s_Data.TonemapConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
-
-        // Set root descriptor table for bindless CBV_SRV_UAV descriptor array
-        commandList->SetRootDescriptorTable(1, descriptorHeap.GetGPUBaseDescriptor());
-
-        // Set tone mapping vertex buffer
-        commandList->SetVertexBuffers(0, 1, *s_Data.TonemapVertexBuffer.get());
-        commandList->SetIndexBuffer(*s_Data.TonemapIndexBuffer.get());
-
-        commandList->DrawIndexed(static_cast<uint32_t>(s_Data.TonemapIndexBuffer->GetBufferDesc().NumElements), 1);
+        uint32_t threadX = MathHelper::AlignUp(s_Data.RenderSettings.RenderResolution.x, 8) / 8;
+        uint32_t threadY = MathHelper::AlignUp(s_Data.RenderSettings.RenderResolution.y, 8) / 8;
+        commandList->GetGraphicsCommandList()->Dispatch(threadX, threadY, 1);
 
         commandList->EndTimestampQuery("Tonemapping");
         RenderBackend::ExecuteCommandList(commandList);
@@ -456,7 +448,7 @@ void Renderer::EndScene()
 {
     SCOPED_TIMER("Renderer::EndScene");
 
-    RenderBackend::GetSwapChain().ResolveToBackBuffer(s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetColorAttachment());
+    RenderBackend::GetSwapChain().ResolveToBackBuffer(*s_Data.SDRRenderTarget);
 
     s_Data.NumMeshes[TransparencyMode::OPAQUE] = 0;
     s_Data.NumMeshes[TransparencyMode::TRANSPARENT] = 0;
@@ -554,6 +546,8 @@ void Renderer::Resize(uint32_t width, uint32_t height)
                 frameBuffer->Resize(s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
             }
         }
+
+        s_Data.SDRRenderTarget->Resize(width, height);
     }
 }
 
@@ -576,7 +570,7 @@ const Renderer::RenderSettings& Renderer::GetSettings()
 // Temp
 Texture& Renderer::GetFinalColorOutput()
 {
-    return s_Data.FrameBuffers[RenderPassType::TONE_MAPPING]->GetColorAttachment();
+    return *s_Data.SDRRenderTarget;
 }
 
 // Temp
@@ -589,7 +583,7 @@ void Renderer::MakeRenderPasses()
 {
     {
         // Shadow mapping render pass
-        RenderPassDesc desc;
+        RasterPassDesc desc;
         desc.VertexShaderPath = "Resources/Shaders/ShadowMapping_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/ShadowMapping_PS.hlsl";
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
@@ -607,12 +601,12 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
-        s_Data.RenderPasses[RenderPassType::SHADOW_MAPPING] = std::make_unique<RenderPass>("Shadow mapping", desc);
+        s_Data.RenderPasses[RenderPassType::SHADOW_MAPPING] = std::make_unique<RasterPass>("Shadow mapping", desc);
     }
 
     {
         // Depth pre-pass
-        RenderPassDesc desc;
+        RasterPassDesc desc;
         desc.VertexShaderPath = "Resources/Shaders/DepthPrepass_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/DepthPrepass_PS.hlsl";
         desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
@@ -628,12 +622,12 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
-        s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS] = std::make_unique<RenderPass>("Depth pre-pass", desc);
+        s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS] = std::make_unique<RasterPass>("Depth pre-pass", desc);
     }
 
     {
         // Lighting render pass
-        RenderPassDesc desc;
+        RasterPassDesc desc;
         desc.VertexShaderPath = "Resources/Shaders/Lighting_VS.hlsl";
         desc.PixelShaderPath = "Resources/Shaders/Lighting_PS.hlsl";
         desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
@@ -664,33 +658,28 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MATERIAL_ID", 0, DXGI_FORMAT_R32_UINT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
-        s_Data.RenderPasses[RenderPassType::LIGHTING] = std::make_unique<RenderPass>("Lighting", desc);
+        s_Data.RenderPasses[RenderPassType::LIGHTING] = std::make_unique<RasterPass>("Lighting", desc);
     }
 
     {
         // Tonemapping render pass
-        RenderPassDesc desc;
-        desc.VertexShaderPath = "Resources/Shaders/ToneMapping_VS.hlsl";
-        desc.PixelShaderPath = "Resources/Shaders/ToneMapping_PS.hlsl";
-        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
-        desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
-        desc.DepthEnabled = false;
-        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
+        ComputePassDesc desc;
+        desc.ComputeShaderPath = "Resources/Shaders/Tonemapping_CS.hlsl";
+        desc.NumThreadsX = 64;
+        desc.NumThreadsY = 64;
+        desc.NumThreadsZ = 1;
 
         // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
-        CD3DX12_DESCRIPTOR_RANGE1 ranges[1] = {};
+        CD3DX12_DESCRIPTOR_RANGE1 ranges[2] = {};
         ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+        ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 4096, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
 
-        desc.RootParameters.resize(2);
-        desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE, D3D12_SHADER_VISIBILITY_PIXEL); // Tonemapping settings
-        desc.RootParameters[1].InitAsDescriptorTable(_countof(ranges), &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL); // Bindless SRV table
+        desc.RootParameters.resize(3);
+        desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE); // Tonemapping settings
+        desc.RootParameters[1].InitAsDescriptorTable(1, &ranges[0]); // Bindless SRV table
+        desc.RootParameters[2].InitAsDescriptorTable(1, &ranges[1]); // Bindless UAV table
 
-        desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-
-        s_Data.RenderPasses[RenderPassType::TONE_MAPPING] = std::make_unique<RenderPass>("Tonemapping", desc);
+        s_Data.ComputePasses[ComputePassType::TONE_MAPPING] = std::make_unique<ComputePass>("Tonemapping", desc);
     }
 }
 
@@ -708,21 +697,7 @@ void Renderer::MakeBuffers()
     std::size_t totalLightBufferByteSize = MAX_DIR_LIGHTS * sizeof(DirectionalLightData) + MAX_SPOT_LIGHTS * sizeof(SpotLightData) + MAX_POINT_LIGHTS * sizeof(PointLightData);
     s_Data.LightConstantBuffer = std::make_unique<Buffer>("Light constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, totalLightBufferByteSize));
 
-    // Tone mapping vertices, positions are in normalized device coordinates
-    std::vector<float> toneMappingVertices = {
-        -1.0f, -1.0f, 0.0f, 1.0f,
-        -1.0f, 1.0f, 0.0f, 0.0f,
-        1.0f, 1.0f, 1.0f, 0.0f,
-        1.0f, -1.0f, 1.0f, 1.0f,
-    };
-    std::vector<WORD> toneMappingIndices = {
-        0, 1, 2,
-        2, 3, 0
-    };
     s_Data.TonemapConstantBuffer = std::make_unique<Buffer>("Tonemap constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(TonemapSettings)));
-    s_Data.TonemapVertexBuffer = std::make_unique<Buffer>("Tonemap vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, 4, sizeof(float) * 4), &toneMappingVertices[0]);
-    s_Data.TonemapIndexBuffer = std::make_unique<Buffer>("Tonemap index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, 6, sizeof(WORD)), &toneMappingIndices[0]);
-
     s_Data.SceneDataConstantBuffer = std::make_unique<Buffer>("Scene data constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(SceneData)));
 }
 
@@ -743,10 +718,8 @@ void Renderer::MakeFrameBuffers()
         TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
     s_Data.FrameBuffers[RenderPassType::LIGHTING] = std::make_shared<FrameBuffer>("HDR frame buffer", hdrDesc);
 
-    FrameBufferDesc tonemapDesc = {};
-    tonemapDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
-    s_Data.FrameBuffers[RenderPassType::TONE_MAPPING] = std::make_shared<FrameBuffer>("Tonemap color target", tonemapDesc);
+    s_Data.SDRRenderTarget = std::make_unique<Texture>("SDR render target", TextureDesc(TextureUsage::TEXTURE_USAGE_WRITE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y));
 }
 
 void Renderer::PrepareInstanceBuffer()

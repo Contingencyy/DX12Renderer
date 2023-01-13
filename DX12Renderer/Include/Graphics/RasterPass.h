@@ -4,7 +4,7 @@
 class FrameBuffer;
 class Shader;
 
-struct RenderPassDesc
+struct RasterPassDesc
 {
 	std::string VertexShaderPath;
 	std::string PixelShaderPath;
@@ -25,24 +25,22 @@ struct RenderPassDesc
 	std::vector<D3D12_INPUT_ELEMENT_DESC> ShaderInputLayout;
 };
 
-class RenderPass
+class RasterPass
 {
 public:
-	RenderPass(const std::string& name, const RenderPassDesc& desc);
-	~RenderPass();
-
-	RenderPassDesc& GetRenderPassDesc() { return m_RenderPassDesc; }
-	const RenderPassDesc& GetRenderPassDesc() const { return m_RenderPassDesc; }
+	RasterPass(const std::string& name, const RasterPassDesc& desc);
 
 	ID3D12PipelineState* GetD3D12PipelineState() const { return m_d3d12PipelineState.Get(); }
 	ID3D12RootSignature* GetD3D12RootSignature() const { return m_d3d12RootSignature.Get(); }
+
+	const RasterPassDesc& GetDesc() const { return m_Desc; }
 
 private:
 	void CreateRootSignature();
 	void CreatePipelineState();
 
 private:
-	RenderPassDesc m_RenderPassDesc;
+	RasterPassDesc m_Desc;
 	std::string m_Name;
 
 	ComPtr<ID3D12PipelineState> m_d3d12PipelineState;

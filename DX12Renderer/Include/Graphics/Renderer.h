@@ -6,7 +6,7 @@
 #include "Components/SpotLightComponent.h"
 
 struct MeshPrimitive;
-class RenderPass;
+class RasterPass;
 class Buffer;
 class Texture;
 class CommandList;

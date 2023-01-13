@@ -1,42 +1,8 @@
 #include "DataStructs.hlsl"
 
-struct PixelShaderInput
-{
-	float4 Position : SV_POSITION;
-	float2 TexCoord : TEXCOORD;
-};
-
 ConstantBuffer<TonemapSettings> TonemapCB : register(b0);
-
 Texture2D Texture2DTable[] : register(t0, space0);
-SamplerState samp2D : register(s0);
-
-float3 LinearToneMapping(float3 color);
-float3 ReinhardToneMapping(float3 color);
-float3 UnchartedTwoToneMapping(float3 color);
-float3 FilmicToneMapping(float3 color);
-float3 ACESFilmicToneMapping(float3 color);
-
-float4 main(PixelShaderInput IN) : SV_TARGET
-{
-	float4 sampled = Texture2DTable[TonemapCB.HDRTargetIndex].Sample(samp2D, IN.TexCoord);
-
-	switch (TonemapCB.Type)
-	{
-	case 0:
-		return float4(LinearToneMapping(sampled.xyz), sampled.w);
-	case 1:
-		return float4(ReinhardToneMapping(sampled.xyz), sampled.w);
-	case 2:
-		return float4(UnchartedTwoToneMapping(sampled.xyz), sampled.w);
-	case 3:
-		return float4(FilmicToneMapping(sampled.xyz), sampled.w);
-	case 4:
-		return float4(ACESFilmicToneMapping(sampled.xyz), sampled.w);
-	default:
-		return float4(ReinhardToneMapping(sampled.xyz), sampled.w);
-	}
-}
+RWTexture2D<float4> RWTexture2DTable[] : register(u0, space0);
 
 float3 LinearToneMapping(float3 color)
 {
@@ -90,4 +56,10 @@ float3 ACESFilmicToneMapping(float3 color)
 	float e = 0.14f;
 
 	return saturate((color * (a * color + b)) / (color * (c * color + d) + e));
+}
+
+[numthreads(8, 8, 1)]
+void main(uint3 threadID : SV_DispatchThreadID)
+{
+
 }
