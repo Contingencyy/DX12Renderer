@@ -16,6 +16,7 @@
 
 constexpr uint32_t MAX_MESH_INSTANCES = 1000;
 constexpr uint32_t MAX_MESHES = 1000;
+constexpr uint32_t MAX_MATERIALS = 1000;
 constexpr uint32_t MAX_DIR_LIGHTS = 1;
 constexpr uint32_t MAX_POINT_LIGHTS = 50;
 constexpr uint32_t MAX_SPOT_LIGHTS = 50;
@@ -69,6 +70,7 @@ struct MaterialData
     uint32_t MetallicRoughnessTextureIndex = 0;
     float Metalness = 0.0f;
     float Roughness = 0.3f;
+    BYTE_PADDING(12);
 };;
 
 struct MeshInstanceData
@@ -76,7 +78,7 @@ struct MeshInstanceData
     MeshInstanceData() = default;
 
     glm::mat4 Transform = glm::identity<glm::mat4>();
-    MaterialData MaterialData;
+    uint32_t MaterialID = 0;
 };
 
 struct MeshDrawData
@@ -143,6 +145,10 @@ struct InternalRendererData
     std::array<std::unique_ptr<Buffer>, TransparencyMode::NUM_ALPHA_MODES> MeshInstanceBuffer;
     std::array<std::array<MeshDrawData, 1000>, TransparencyMode::NUM_ALPHA_MODES> MeshDrawData;
     std::size_t NumMeshes[TransparencyMode::NUM_ALPHA_MODES];
+
+    // Material constant buffer
+    std::unique_ptr<Buffer> MaterialConstantBuffer;
+    std::size_t NumMaterials;
 
     // Directional/point/spotlight constant buffers
     std::unique_ptr<Buffer> LightConstantBuffer;
@@ -347,12 +353,14 @@ void Renderer::Render()
             D3D12_CPU_DESCRIPTOR_HANDLE dsv = s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment().GetDescriptor(DescriptorType::DSV);
             commandList->SetRenderTargets(1, &rtv, &dsv);
 
-            // Set root CBVs for scene data
+            // Set root CBV for scene data constant buffer
             commandList->SetRootConstantBufferView(0, *s_Data.SceneDataConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
-            // Set root CBVs for lights
-            commandList->SetRootConstantBufferView(1, *s_Data.LightConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+            // Set root CBV for material constant buffer
+            commandList->SetRootConstantBufferView(1, *s_Data.MaterialConstantBuffer.get(), D3D12_RESOURCE_STATE_COMMON);
+            // Set root CBV for light constant buffer
+            commandList->SetRootConstantBufferView(2, *s_Data.LightConstantBuffer.get(), D3D12_RESOURCE_STATE_GENERIC_READ);
             // Set root descriptor table for bindless CBV_SRV_UAV descriptor array
-            commandList->SetRootDescriptorTable(2, descriptorHeap.GetGPUBaseDescriptor());
+            commandList->SetRootDescriptorTable(3, descriptorHeap.GetGPUBaseDescriptor());
 
             RenderGeometry(*commandList, s_Data.SceneCamera, i);
 
@@ -452,6 +460,7 @@ void Renderer::EndScene()
 
     s_Data.NumMeshes[TransparencyMode::OPAQUE] = 0;
     s_Data.NumMeshes[TransparencyMode::TRANSPARENT] = 0;
+    s_Data.NumMaterials = 0;
 
     s_Data.SceneData.Reset();
     s_Data.RenderStatistics.Reset();
@@ -474,17 +483,24 @@ void Renderer::Submit(const MeshPrimitive& meshPrimitive, const BoundingBox& bb,
     auto& meshDrawData = s_Data.MeshDrawData[meshPrimitive.Material.Transparency];
     std::size_t& numMeshes = s_Data.NumMeshes[meshPrimitive.Material.Transparency];
 
+    MaterialData materialData = {};
+    materialData.BaseColorTextureIndex = albedoTextureIndex;
+    materialData.NormalTextureIndex = normalTextureIndex;
+    materialData.MetallicRoughnessTextureIndex = metallicRoughnessTextureIndex;
+    materialData.Metalness = meshPrimitive.Material.MetalnessFactor;
+    materialData.Roughness = meshPrimitive.Material.RoughnessFactor;
+    s_Data.MaterialConstantBuffer->SetBufferDataAtOffset(&materialData, sizeof(MaterialData), s_Data.NumMaterials * sizeof(MaterialData));
+
     meshDrawData[numMeshes].Primitive = meshPrimitive;
     meshDrawData[numMeshes].Primitive.BB = bb;
     meshDrawData[numMeshes].InstanceData.Transform = transform;
-    meshDrawData[numMeshes].InstanceData.MaterialData.BaseColorTextureIndex = albedoTextureIndex;
-    meshDrawData[numMeshes].InstanceData.MaterialData.NormalTextureIndex = normalTextureIndex;
-    meshDrawData[numMeshes].InstanceData.MaterialData.MetallicRoughnessTextureIndex = metallicRoughnessTextureIndex;
-    meshDrawData[numMeshes].InstanceData.MaterialData.Metalness = meshPrimitive.Material.MetalnessFactor;
-    meshDrawData[numMeshes].InstanceData.MaterialData.Roughness = meshPrimitive.Material.RoughnessFactor;
+    meshDrawData[numMeshes].InstanceData.MaterialID = s_Data.NumMaterials;
 
     numMeshes++;
     ASSERT(numMeshes <= MAX_MESHES, "Exceeded the maximum amount of meshes");
+
+    s_Data.NumMaterials++;
+    ASSERT(s_Data.NumMaterials <= MAX_MATERIALS, "Exceeded the maximum amount of materials");
 }
 
 void Renderer::Submit(const DirectionalLightData& dirLightData, const Camera& lightCamera, const std::shared_ptr<Texture>& shadowMap)
@@ -631,10 +647,11 @@ void Renderer::MakeRenderPasses()
         ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
         ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
 
-        desc.RootParameters.resize(3);
+        desc.RootParameters.resize(4);
         desc.RootParameters[0].InitAsConstantBufferView(0); // Scene data
-        desc.RootParameters[1].InitAsConstantBufferView(1); // Light constant buffer
-        desc.RootParameters[2].InitAsDescriptorTable(_countof(ranges), &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL); // Bindless SRV table
+        desc.RootParameters[1].InitAsConstantBufferView(1); // Material constant buffer
+        desc.RootParameters[2].InitAsConstantBufferView(2); // Light constant buffer
+        desc.RootParameters[3].InitAsDescriptorTable(_countof(ranges), &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL); // Bindless SRV table
 
         desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
         desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
@@ -645,11 +662,7 @@ void Renderer::MakeRenderPasses()
         desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
         desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "BASE_COLOR_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "NORMAL_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 68, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "METALLIC_ROUGHNESS_TEXTURE", 0, DXGI_FORMAT_R32_UINT, 1, 72, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "METALNESS_FACTOR", 0, DXGI_FORMAT_R32_FLOAT, 1, 76, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "ROUGHNESS_FACTOR", 0, DXGI_FORMAT_R32_FLOAT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MATERIAL_ID", 0, DXGI_FORMAT_R32_UINT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
         s_Data.RenderPasses[RenderPassType::LIGHTING] = std::make_unique<RenderPass>("Lighting", desc);
     }
@@ -688,6 +701,9 @@ void Renderer::MakeBuffers()
         s_Data.MeshInstanceBuffer[i] = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD,
             MAX_MESHES * RenderBackend::GetSwapChain().GetBackBufferCount(), sizeof(MeshInstanceData)));
     }
+
+    s_Data.MaterialConstantBuffer = std::make_unique<Buffer>("Material constant buffer",
+        BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, MAX_MATERIALS, sizeof(MaterialData)));
 
     std::size_t totalLightBufferByteSize = MAX_DIR_LIGHTS * sizeof(DirectionalLightData) + MAX_SPOT_LIGHTS * sizeof(SpotLightData) + MAX_POINT_LIGHTS * sizeof(PointLightData);
     s_Data.LightConstantBuffer = std::make_unique<Buffer>("Light constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, totalLightBufferByteSize));

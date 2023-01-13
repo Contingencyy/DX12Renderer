@@ -55,3 +55,17 @@ struct TonemapSettings
 	float Gamma;
 	uint Type;
 };
+
+struct Material
+{
+	uint AlbedoTextureIndex;
+	uint NormalTextureIndex;
+	uint MetallicRoughnessTextureIndex;
+	float Metalness;
+	float Roughness;
+};
+
+struct MaterialCBData
+{
+	Material materials[1000];
+};

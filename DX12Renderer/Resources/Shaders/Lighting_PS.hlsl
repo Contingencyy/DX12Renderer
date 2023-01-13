@@ -6,15 +6,12 @@ struct PixelShaderInput
 	float2 TexCoord : TEXCOORD;
 	float3x3 TBN : TBN;
 	float4 WorldPosition : WORLD_POSITION;
-	uint BaseColorTexture : BASE_COLOR_TEXTURE;
-	uint NormalTexture : NORMAL_TEXTURE;
-	uint MetallicRoughnessTexture : METALLIC_ROUGHNESS_TEXTURE;
-	float Metalness : METALNESS_FACTOR;
-	float Roughness : ROUGHNESS_FACTOR;
+	uint MaterialID : MATERIAL_ID;
 };
 
 ConstantBuffer<SceneData> SceneDataCB : register(b0);
-ConstantBuffer<LightCBData> LightCB : register(b1);
+ConstantBuffer<MaterialCBData> MaterialCB : register(b1);
+ConstantBuffer<LightCBData> LightCB : register(b2);
 
 Texture2D Texture2DTable[] : register(t0, space0);
 TextureCube TextureCubeTable[] : register(t0, space1);
@@ -28,13 +25,15 @@ float3 CalculatePointLight(float4 fragPosWS, float3 fragNormal, float3 albedo, f
 
 float4 main(PixelShaderInput IN) : SV_TARGET
 {
-	float4 albedo = Texture2DTable[IN.BaseColorTexture].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
-	float3 textureNormal = Texture2DTable[IN.NormalTexture].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord).xyz;
+	Material mat = MaterialCB.materials[IN.MaterialID];
+
+	float4 albedo = Texture2DTable[mat.AlbedoTextureIndex].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
+	float3 textureNormal = Texture2DTable[mat.NormalTextureIndex].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord).xyz;
 	textureNormal = (textureNormal * 2.0f) - 1.0f;
 
-	float4 metallicRoughness = Texture2DTable[IN.MetallicRoughnessTexture].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
-	float metalness = metallicRoughness.b * IN.Metalness;
-	float roughness = metallicRoughness.g * IN.Roughness;
+	float4 metallicRoughness = Texture2DTable[mat.MetallicRoughnessTextureIndex].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
+	float metalness = metallicRoughness.b * mat.Metalness;
+	float roughness = metallicRoughness.g * mat.Roughness;
 
 	float4 fragPosWS = IN.WorldPosition;
 	float3 fragNormalWS = normalize(mul(IN.TBN, textureNormal));

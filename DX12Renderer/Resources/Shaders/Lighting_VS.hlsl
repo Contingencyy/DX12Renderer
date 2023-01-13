@@ -8,11 +8,7 @@ struct VertexShaderInput
 	float3 Tangent : TANGENT;
 	float3 Bitangent : BITANGENT;
 	matrix Model : MODEL;
-	uint BaseColorTexture : BASE_COLOR_TEXTURE;
-	uint NormalTexture : NORMAL_TEXTURE;
-	uint MetallicRoughnessTexture : METALLIC_ROUGHNESS_TEXTURE;
-	float Metalness : METALNESS_FACTOR;
-	float Roughness : ROUGHNESS_FACTOR;
+	uint MaterialID : MATERIAL_ID;
 };
 
 ConstantBuffer<SceneData> SceneDataCB : register(b0);
@@ -23,11 +19,7 @@ struct VertexShaderOutput
 	float2 TexCoord : TEXCOORD;
 	float3x3 TBN : TBN;
 	float4 WorldPosition : WORLD_POSITION;
-	uint BaseColorTexture : BASE_COLOR_TEXTURE;
-	uint NormalTexture : NORMAL_TEXTURE;
-	uint MetallicRoughnessTexture : METALLIC_ROUGHNESS_TEXTURE;
-	float Metalness : METALNESS_FACTOR;
-	float Roughness : ROUGHNESS_FACTOR;
+	uint MaterialID : MATERIAL_ID;
 };
 
 VertexShaderOutput main(VertexShaderInput IN)
@@ -45,11 +37,7 @@ VertexShaderOutput main(VertexShaderInput IN)
 
 	OUT.TBN = transpose(float3x3(T, B, N));
 
-	OUT.BaseColorTexture = IN.BaseColorTexture;
-	OUT.NormalTexture = IN.NormalTexture;
-	OUT.MetallicRoughnessTexture = IN.MetallicRoughnessTexture;
-	OUT.Metalness = IN.Metalness;
-	OUT.Roughness = IN.Roughness;
+	OUT.MaterialID = IN.MaterialID;
 
 	return OUT;
 }
