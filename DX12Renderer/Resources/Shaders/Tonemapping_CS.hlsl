@@ -1,26 +1,22 @@
 #include "DataStructs.hlsl"
 
-ConstantBuffer<TonemapSettings> TonemapCB : register(b0);
-Texture2D Texture2DTable[] : register(t0, space0);
-RWTexture2D<float4> RWTexture2DTable[] : register(u0, space0);
-
-float3 LinearToneMapping(float3 color)
+float3 LinearToneMapping(float3 color, float exposure, float gamma)
 {
-	color = clamp(TonemapCB.Exposure * color, 0.0f, 1.0f);
-	color = pow(abs(color), (1.0f / TonemapCB.Gamma));
+	color = clamp(exposure * color, 0.0f, 1.0f);
+	color = pow(abs(color), (1.0f / gamma));
 
 	return color;
 }
 
-float3 ReinhardToneMapping(float3 color)
+float3 ReinhardToneMapping(float3 color, float exposure, float gamma)
 {
-	color = float3(1.0f, 1.0f, 1.0f) - exp(-color * TonemapCB.Exposure);
-	color = pow(abs(color), 1.0f / TonemapCB.Gamma);
+	color = float3(1.0f, 1.0f, 1.0f) - exp(-color * exposure);
+	color = pow(abs(color), 1.0f / gamma);
 
 	return color;
 }
 
-float3 UnchartedTwoToneMapping(float3 color)
+float3 Uncharted2ToneMapping(float3 color, float exposure, float gamma)
 {
 	float A = 0.15f;
 	float B = 0.50f;
@@ -30,11 +26,11 @@ float3 UnchartedTwoToneMapping(float3 color)
 	float F = 0.30f;
 	float W = 11.2f;
 
-	color *= TonemapCB.Exposure;
+	color *= exposure;
 	color = ((color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F)) - E / F;
 	float white = ((W * (A * W + C * B) + D * E) / (W * (A * W + B) + D * F)) - E / F;
 	color /= white;
-	color = pow(abs(color), (1.0f / TonemapCB.Gamma));
+	color = pow(abs(color), (1.0f / gamma));
 
 	return color;
 }
@@ -58,8 +54,44 @@ float3 ACESFilmicToneMapping(float3 color)
 	return saturate((color * (a * color + b)) / (color * (c * color + d) + e));
 }
 
+ConstantBuffer<TonemapSettings> TonemapCB : register(b0);
+Texture2D Texture2DTable[] : register(t0, space0);
+RWTexture2D<float4> RWTexture2DTable[] : register(u0, space0);
+
+#define LINEAR_TONEMAP 0
+#define REINHARD_TONEMAP 1
+#define UNCHARTED2_TONEMAP 2
+#define FILMIC_TONEMAP 3
+#define ACES_FILMIC_TONEMAP 4
+
 [numthreads(8, 8, 1)]
 void main(uint3 threadID : SV_DispatchThreadID)
 {
+	Texture2D hdrTarget = Texture2DTable[TonemapCB.HDRRenderTargetIndex];
+	RWTexture2D<float4> sdrTarget = RWTexture2DTable[TonemapCB.SDRRenderTargetIndex];
 
+	float exposure = TonemapCB.Exposure;
+	float gamma = TonemapCB.Gamma;
+	float4 hdrColor = hdrTarget[threadID.xy];
+
+	sdrTarget[threadID.xy].a = hdrColor.a;
+
+	switch (TonemapCB.Type)
+	{
+	case LINEAR_TONEMAP:
+		sdrTarget[threadID.xy].rgb = LinearToneMapping(hdrColor.rgb, exposure, gamma);
+		break;
+	case REINHARD_TONEMAP:
+		sdrTarget[threadID.xy].rgb = ReinhardToneMapping(hdrColor.rgb, exposure, gamma);
+		break;
+	case UNCHARTED2_TONEMAP:
+		sdrTarget[threadID.xy].rgb = Uncharted2ToneMapping(hdrColor.rgb, exposure, gamma);
+		break;
+	case FILMIC_TONEMAP:
+		sdrTarget[threadID.xy].rgb = FilmicToneMapping(hdrColor.rgb);
+		break;
+	case ACES_FILMIC_TONEMAP:
+		sdrTarget[threadID.xy].rgb = ACESFilmicToneMapping(hdrColor.rgb);
+		break;
+	}
 }

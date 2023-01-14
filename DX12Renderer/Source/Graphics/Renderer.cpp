@@ -392,6 +392,10 @@ void Renderer::Render()
         ID3D12DescriptorHeap* const heaps = { RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).GetD3D12DescriptorHeap().Get() };
         commandList->GetGraphicsCommandList()->SetDescriptorHeaps(1, &heaps);
 
+        s_Data.TonemapSettings.HDRRenderTargetIndex = s_Data.FrameBuffers[RenderPassType::LIGHTING]->GetColorAttachment().GetDescriptorHeapIndex(DescriptorType::SRV);
+        s_Data.TonemapSettings.SDRRenderTargetIndex = s_Data.SDRRenderTarget->GetDescriptorHeapIndex(DescriptorType::UAV);
+        s_Data.TonemapConstantBuffer->SetBufferData(&s_Data.TonemapSettings);
+
         commandList->GetGraphicsCommandList()->SetComputeRootConstantBufferView(0, s_Data.TonemapConstantBuffer->GetD3D12Resource()->GetGPUVirtualAddress());
         commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(1, RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).GetGPUBaseDescriptor());
         commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(2, RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).GetGPUBaseDescriptor());
@@ -570,7 +574,7 @@ const Renderer::RenderSettings& Renderer::GetSettings()
 // Temp
 Texture& Renderer::GetFinalColorOutput()
 {
-    return *s_Data.SDRRenderTarget;
+    return *s_Data.SDRRenderTarget.get();
 }
 
 // Temp
@@ -672,7 +676,7 @@ void Renderer::MakeRenderPasses()
         // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
         CD3DX12_DESCRIPTOR_RANGE1 ranges[2] = {};
         ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
-        ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 4096, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+        ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
 
         desc.RootParameters.resize(3);
         desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE); // Tonemapping settings
@@ -718,7 +722,7 @@ void Renderer::MakeFrameBuffers()
         TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
     s_Data.FrameBuffers[RenderPassType::LIGHTING] = std::make_shared<FrameBuffer>("HDR frame buffer", hdrDesc);
 
-    s_Data.SDRRenderTarget = std::make_unique<Texture>("SDR render target", TextureDesc(TextureUsage::TEXTURE_USAGE_WRITE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+    s_Data.SDRRenderTarget = std::make_unique<Texture>("SDR render target", TextureDesc(TextureUsage::TEXTURE_USAGE_WRITE | TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
         TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y));
 }
 

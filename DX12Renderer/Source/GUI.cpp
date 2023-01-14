@@ -73,6 +73,8 @@ void GUI::EndFrame()
 
 	auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	
+	commandList->Transition(Renderer::GetFinalColorOutput(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+
 	D3D12_CPU_DESCRIPTOR_HANDLE rtv = Renderer::GetFinalColorOutput().GetDescriptor(DescriptorType::RTV);
 	D3D12_CPU_DESCRIPTOR_HANDLE dsv = Renderer::GetFinalDepthOutput().GetDescriptor(DescriptorType::DSV);
 

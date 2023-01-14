@@ -50,7 +50,8 @@ struct LightCBData
 
 struct TonemapSettings
 {
-	uint HDRTargetIndex;
+	uint HDRRenderTargetIndex;
+	uint SDRRenderTargetIndex;
 	float Exposure;
 	float Gamma;
 	uint Type;
