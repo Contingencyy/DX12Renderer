@@ -7,6 +7,7 @@
 #include "Components/PointLightComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/RenderAPI.h"
 #include "Graphics/DebugRenderer.h"
 #include "Resource/ResourceManager.h"
 #include "Graphics/Mesh.h"
@@ -19,7 +20,7 @@ static std::vector<std::unique_ptr<SceneObject>> m_SceneObjects;
 
 Scene::Scene()
 {
-	Renderer::RenderSettings renderSettings = Renderer::GetSettings();
+	RenderSettings renderSettings = Renderer::GetSettings();
 	m_ActiveCamera = Camera(glm::vec3(0.0f, 250.0f, 0.0f), 60.0f, static_cast<float>(renderSettings.RenderResolution.x), static_cast<float>(renderSettings.RenderResolution.y), 0.1f, 10000.0f);
 
 	// Directional light

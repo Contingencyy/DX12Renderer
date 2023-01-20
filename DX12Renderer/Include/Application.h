@@ -1,7 +1,6 @@
 #pragma once
 
 class Window;
-class Renderer;
 class GUI;
 class InputHandler;
 class ResourceManager;

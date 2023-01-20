@@ -1,8 +1,7 @@
 #pragma once
 #include "Component.h"
 #include "Scene/Camera/Camera.h"
-
-class Texture;
+#include "Graphics/RenderAPI.h"
 
 struct DirectionalLightData
 {
@@ -43,6 +42,6 @@ private:
 
 	DirectionalLightData m_DirectionalLightData;
 	Camera m_Camera;
-	std::shared_ptr<Texture> m_ShadowMap;
+	RenderResourceHandle m_ShadowMap;
 
 };

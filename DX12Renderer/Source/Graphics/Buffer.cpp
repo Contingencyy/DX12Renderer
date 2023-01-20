@@ -2,29 +2,18 @@
 #include "Graphics/Buffer.h"
 #include "Graphics/Backend/RenderBackend.h"
 
-Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc)
-	: Resource(name), m_BufferDesc(bufferDesc)
+Buffer::Buffer(const BufferDesc& desc)
+	: Resource(desc.DebugName), m_BufferDesc(desc)
 {
 	if (IsValid())
 	{
 		CreateD3D12Resource();
 		AllocateDescriptors();
 		CreateViews();
-		SetName(name);
-	}
-}
+		SetName(desc.DebugName);
 
-Buffer::Buffer(const std::string& name, const BufferDesc& bufferDesc, const void* data)
-	: Resource(name), m_BufferDesc(bufferDesc)
-{
-	if (IsValid())
-	{
-		CreateD3D12Resource();
-		AllocateDescriptors();
-		CreateViews();
-		SetName(name);
-
-		SetBufferData(data);
+		if (desc.DataPtr)
+			SetBufferData(desc.DataPtr);
 	}
 }
 

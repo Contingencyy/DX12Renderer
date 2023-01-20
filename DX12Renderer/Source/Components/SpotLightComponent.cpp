@@ -1,6 +1,7 @@
 #include "Pch.h"
 #include "Components/SpotLightComponent.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/RenderAPI.h"
 #include "Graphics/DebugRenderer.h"
 #include "Graphics/Texture.h"
 #include "Scene/Scene.h"
@@ -18,12 +19,22 @@ SpotLightComponent::SpotLightComponent(const SpotLightData& spotLightData)
 	// This will construct a camera with a reverse-z perspective projection and an infinite far plane
 	m_Camera = Camera(lightView, glm::degrees(m_SpotLightData.OuterConeAngle), 1.0f, m_SpotLightData.Range, 0.1f);
 
-	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
-	m_ShadowMap = std::make_shared<Texture>("Spotlight shadow map", TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-		TextureDimension::TEXTURE_DIMENSION_2D, renderSettings.ShadowMapResolution.x, renderSettings.ShadowMapResolution.y));
+	const RenderSettings& renderSettings = Renderer::GetSettings();
+
+	// Create shadow map
+	m_ShadowMap = Renderer::CreateTexture({
+		TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ,
+		TextureFormat::TEXTURE_FORMAT_DEPTH32,
+		TextureDimension::TEXTURE_DIMENSION_2D,
+		renderSettings.ShadowMapResolution.x,
+		renderSettings.ShadowMapResolution.y,
+		1,
+		glm::vec4(0.0f, 0.0f, 0.0f, 1.0f),
+		nullptr,
+		"Spotlight shadow map"
+	});
 
 	m_SpotLightData.ViewProjection = m_Camera.GetViewProjection();
-	m_SpotLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorHeapIndex(DescriptorType::SRV);
 
 	m_GUIData.InnerConeAngle = glm::degrees(m_SpotLightData.InnerConeAngle);
 	m_GUIData.OuterConeAngle = glm::degrees(m_SpotLightData.OuterConeAngle);

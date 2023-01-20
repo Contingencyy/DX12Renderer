@@ -1,8 +1,9 @@
 #include "Pch.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/RenderAPI.h"
+#include "Graphics/ResourceSlotmap.h"
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
-#include "Graphics/Mesh.h"
 #include "Graphics/Shader.h"
 #include "Resource/Model.h"
 #include "Graphics/RasterPass.h"
@@ -12,6 +13,9 @@
 #include "Graphics/Backend/SwapChain.h"
 #include "Graphics/Backend/DescriptorHeap.h"
 #include "Graphics/Backend/RenderBackend.h"
+#include "Components/DirLightComponent.h"
+#include "Components/SpotLightComponent.h"
+#include "Components/PointLightComponent.h"
 
 #include <imgui/imgui.h>
 
@@ -129,6 +133,10 @@ std::string TonemapTypeToString(TonemapType type)
 
 struct InternalRendererData
 {
+    // Resource slotmaps for buffers and textures
+    ResourceSlotmap<Buffer> BufferSlotmap;
+    ResourceSlotmap<Texture> TextureSlotmap;
+
     // Render passes
     std::unique_ptr<RasterPass> RenderPasses[RenderPassType::NUM_RENDER_PASSES];
     std::unique_ptr<ComputePass> ComputePasses[ComputePassType::NUM_COMPUTE_PASSES];
@@ -136,7 +144,7 @@ struct InternalRendererData
     std::unique_ptr<Texture> SDRRenderTarget;
 
     // Renderer settings and statistics
-    Renderer::RenderSettings RenderSettings;
+    RenderSettings RenderSettings;
     RendererStatistics RenderStatistics;
 
     // Tone mapping settings and buffers
@@ -171,11 +179,255 @@ struct InternalRendererData
     
     uint32_t CurrentBackBufferIndex = 0;
 
-    std::unique_ptr<Texture> WhiteTexture;
+    std::unique_ptr<Texture> DefaultWhiteTexture;
     std::unique_ptr<Texture> DefaultNormalTexture;
+    std::unique_ptr<Texture> DefaultMetallicRoughnessTexture;
 };
 
 static InternalRendererData s_Data;
+
+void MakeRenderPasses()
+{
+    {
+        // Shadow mapping render pass
+        RasterPassDesc desc;
+        desc.VertexShaderPath = "Resources/Shaders/ShadowMapping_VS.hlsl";
+        desc.PixelShaderPath = "Resources/Shaders/ShadowMapping_PS.hlsl";
+        desc.DepthAttachmentDesc = { TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.ShadowMapResolution.x, s_Data.RenderSettings.ShadowMapResolution.y };
+        desc.DepthBias = -50;
+        desc.SlopeScaledDepthBias = -5.0f;
+        desc.DepthBiasClamp = 1.0f;
+
+        desc.RootParameters.resize(1);
+        desc.RootParameters[0].InitAsConstants(16, 0); // Light VP
+
+        desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+
+        s_Data.RenderPasses[RenderPassType::SHADOW_MAPPING] = std::make_unique<RasterPass>("Shadow mapping", desc);
+    }
+
+    {
+        // Depth pre-pass
+        RasterPassDesc desc;
+        desc.VertexShaderPath = "Resources/Shaders/DepthPrepass_VS.hlsl";
+        desc.PixelShaderPath = "Resources/Shaders/DepthPrepass_PS.hlsl";
+        desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
+
+        desc.RootParameters.resize(1);
+        desc.RootParameters[0].InitAsConstantBufferView(0); // Scene data
+
+        desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+
+        s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS] = std::make_unique<RasterPass>("Depth pre-pass", desc);
+    }
+
+    {
+        // Lighting render pass
+        RasterPassDesc desc;
+        desc.VertexShaderPath = "Resources/Shaders/Lighting_VS.hlsl";
+        desc.PixelShaderPath = "Resources/Shaders/Lighting_PS.hlsl";
+        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
+            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+        desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+            TextureDimension::TEXTURE_DIMENSION_2D, 0, 0);
+        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_EQUAL;
+
+        // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
+        CD3DX12_DESCRIPTOR_RANGE1 ranges[2] = {};
+        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+        ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+
+        desc.RootParameters.resize(4);
+        desc.RootParameters[0].InitAsConstantBufferView(0); // Scene data
+        desc.RootParameters[1].InitAsConstantBufferView(1); // Material constant buffer
+        desc.RootParameters[2].InitAsConstantBufferView(2); // Light constant buffer
+        desc.RootParameters[3].InitAsDescriptorTable(_countof(ranges), &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL); // Bindless SRV table
+
+        desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+        desc.ShaderInputLayout.push_back({ "MATERIAL_ID", 0, DXGI_FORMAT_R32_UINT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+
+        s_Data.RenderPasses[RenderPassType::LIGHTING] = std::make_unique<RasterPass>("Lighting", desc);
+    }
+
+    {
+        // Tonemapping render pass
+        ComputePassDesc desc;
+        desc.ComputeShaderPath = "Resources/Shaders/Tonemapping_CS.hlsl";
+        desc.NumThreadsX = 64;
+        desc.NumThreadsY = 64;
+        desc.NumThreadsZ = 1;
+
+        // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
+        CD3DX12_DESCRIPTOR_RANGE1 ranges[2] = {};
+        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+        ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+
+        desc.RootParameters.resize(3);
+        desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE); // Tonemapping settings
+        desc.RootParameters[1].InitAsDescriptorTable(1, &ranges[0]); // Bindless SRV table
+        desc.RootParameters[2].InitAsDescriptorTable(1, &ranges[1]); // Bindless UAV table
+
+        s_Data.ComputePasses[ComputePassType::TONE_MAPPING] = std::make_unique<ComputePass>("Tonemapping", desc);
+    }
+}
+
+void MakeBuffers()
+{
+    for (uint32_t i = 0; i < TransparencyMode::NUM_ALPHA_MODES; ++i)
+    {
+        s_Data.MeshInstanceBuffer[i] = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD,
+            MAX_MESHES * RenderBackend::GetSwapChain().GetBackBufferCount(), sizeof(MeshInstanceData)));
+    }
+
+    s_Data.MaterialConstantBuffer = std::make_unique<Buffer>("Material constant buffer",
+        BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, MAX_MATERIALS, sizeof(MaterialData)));
+
+    std::size_t totalLightBufferByteSize = MAX_DIR_LIGHTS * sizeof(DirectionalLightData) + MAX_SPOT_LIGHTS * sizeof(SpotLightData) + MAX_POINT_LIGHTS * sizeof(PointLightData);
+    s_Data.LightConstantBuffer = std::make_unique<Buffer>("Light constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, totalLightBufferByteSize));
+
+    s_Data.TonemapConstantBuffer = std::make_unique<Buffer>("Tonemap constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(TonemapSettings)));
+    s_Data.SceneDataConstantBuffer = std::make_unique<Buffer>("Scene data constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(SceneData)));
+}
+
+void MakeFrameBuffers()
+{
+    FrameBufferDesc shadowMappingDesc = {};
+    shadowMappingDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.ShadowMapResolution.x, s_Data.RenderSettings.ShadowMapResolution.y, glm::vec2(0.0f, 0.0f));
+    s_Data.FrameBuffers[RenderPassType::SHADOW_MAPPING] = std::make_shared<FrameBuffer>("Shadow mapping frame buffer", shadowMappingDesc);
+
+    FrameBufferDesc depthPrepassDesc = {};
+    depthPrepassDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
+        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y, glm::vec2(1.0f, 0.0f));
+    s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS] = std::make_shared<FrameBuffer>("Depth pre-pass frame buffer", depthPrepassDesc);
+
+    FrameBufferDesc hdrDesc = {};
+    hdrDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
+        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
+    s_Data.FrameBuffers[RenderPassType::LIGHTING] = std::make_shared<FrameBuffer>("HDR frame buffer", hdrDesc);
+
+    s_Data.SDRRenderTarget = std::make_unique<Texture>("SDR render target", TextureDesc(TextureUsage::TEXTURE_USAGE_WRITE | TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y));
+}
+
+void PrepareInstanceBuffer()
+{
+    uint32_t currentBackBufferIndex = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex();
+
+    for (uint32_t i = 0; i < TransparencyMode::NUM_ALPHA_MODES; ++i)
+    {
+        std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * MAX_MESHES) * sizeof(MeshInstanceData);
+        Buffer& instanceBuffer = *s_Data.MeshInstanceBuffer[i];
+
+        for (auto& [primitive, instanceData] : s_Data.MeshDrawData[i])
+        {
+            std::size_t numBytes = sizeof(MeshInstanceData);
+            instanceBuffer.SetBufferDataAtOffset(&instanceData, numBytes, currentByteOffset);
+            currentByteOffset += numBytes;
+        }
+    }
+}
+
+void PrepareLightBuffers()
+{
+    // Set constant buffer data for directional lights/pointlights/spotlights
+    std::size_t dirLightsByteStart = 0;
+    std::size_t spotLightsByteStart = MAX_DIR_LIGHTS * sizeof(DirectionalLightData);
+    std::size_t pointLightsByteStart = spotLightsByteStart + MAX_SPOT_LIGHTS * sizeof(SpotLightData);
+
+    if (s_Data.SceneData.NumDirLights > 0)
+        s_Data.LightConstantBuffer->SetBufferDataAtOffset(&s_Data.DirectionalLightDrawData[0], s_Data.SceneData.NumDirLights * sizeof(DirectionalLightData), dirLightsByteStart);
+
+    if (s_Data.SceneData.NumSpotLights > 0)
+        s_Data.LightConstantBuffer->SetBufferDataAtOffset(&s_Data.SpotLightDrawData[0], s_Data.SceneData.NumSpotLights * sizeof(SpotLightData), spotLightsByteStart);
+
+    if (s_Data.SceneData.NumPointLights > 0)
+        s_Data.LightConstantBuffer->SetBufferDataAtOffset(&s_Data.PointLightDrawData[0], s_Data.SceneData.NumPointLights * sizeof(PointLightData), pointLightsByteStart);
+}
+
+void RenderGeometry(CommandList& commandList, const Camera& camera, uint32_t alphaMode)
+{
+    // Set instance buffer
+    commandList.SetVertexBuffers(1, 1, *s_Data.MeshInstanceBuffer[alphaMode]);
+    uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * MAX_MESHES;
+
+    std::shared_ptr<Buffer> currentVertexBuffer = nullptr, currentIndexBuffer = nullptr;
+
+    for (uint32_t j = 0; j < s_Data.NumMeshes[alphaMode]; ++j)
+    {
+        auto& primitive = s_Data.MeshDrawData[alphaMode][j].Primitive;
+        auto& instanceData = s_Data.MeshDrawData[alphaMode][j].InstanceData;
+
+        // Cull mesh from light camera frustum
+        if (camera.IsFrustumCullingEnabled())
+        {
+            if (!camera.GetViewFrustum().IsBoxInViewFrustum(primitive.BB.Min, primitive.BB.Max))
+            {
+                startInstance++;
+                continue;
+            }
+        }
+
+        auto& vb = primitive.VertexBuffer;
+        auto& ib = primitive.IndexBuffer;
+
+        if (vb != currentVertexBuffer)
+        {
+            commandList.SetVertexBuffers(0, 1, *vb);
+            currentVertexBuffer = vb;
+        }
+        if (ib != currentIndexBuffer)
+        {
+            commandList.SetIndexBuffer(*ib);
+            currentIndexBuffer = ib;
+        }
+
+        commandList.DrawIndexed(static_cast<uint32_t>(primitive.NumIndices), 1,
+            static_cast<uint32_t>(primitive.IndicesStart), static_cast<int32_t>(primitive.VerticesStart), startInstance);
+
+        startInstance++;
+        s_Data.RenderStatistics.DrawCallCount++;
+    }
+}
+
+void RenderShadowMap(CommandList& commandList, const Camera& lightCamera, const Texture& shadowMap, uint32_t descriptorOffset)
+{
+    CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(shadowMap.GetTextureDesc().Width),
+        static_cast<float>(shadowMap.GetTextureDesc().Height), 0.0f, 1.0f);
+    CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
+
+    commandList.SetViewports(1, &viewport);
+    commandList.SetScissorRects(1, &scissorRect);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE dsv = shadowMap.GetDescriptor(DescriptorType::DSV, descriptorOffset);
+    commandList.SetRenderTargets(0, nullptr, &dsv);
+
+    // Set root constant (light VP)
+    const glm::mat4& lightViewProjection = lightCamera.GetViewProjection();
+    commandList.SetRootConstants(0, 16, &lightViewProjection[0][0], 0);
+
+    RenderGeometry(commandList, lightCamera, TransparencyMode::OPAQUE);
+    RenderGeometry(commandList, lightCamera, TransparencyMode::TRANSPARENT);
+}
 
 void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 {
@@ -189,9 +441,9 @@ void Renderer::Initialize(HWND hWnd, uint32_t width, uint32_t height)
     MakeFrameBuffers();
 
     // Make default white and normal textures
-    uint32_t whiteTextureData = 0xFFFFFFFF;
-    s_Data.WhiteTexture = std::make_unique<Texture>("Default white texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-        TextureDimension::TEXTURE_DIMENSION_2D, 1, 1), &whiteTextureData);
+    uint32_t defaultWhiteTextureData = 0xFFFFFFFF;
+    s_Data.DefaultWhiteTexture = std::make_unique<Texture>("Default white texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
+        TextureDimension::TEXTURE_DIMENSION_2D, 1, 1), &defaultWhiteTextureData);
 
     // Texture data is in ABGR layout, the default normal will point forward in tangent space (blue)
     uint32_t defaultNormalTextureData = (255 << 24) + (255 << 16) + (0 << 8) + 0;
@@ -464,7 +716,7 @@ void Renderer::EndScene()
 
 void Renderer::Submit(const MeshPrimitive& meshPrimitive, const BoundingBox& bb, const glm::mat4& transform)
 {
-    uint32_t albedoTextureIndex = s_Data.WhiteTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
+    uint32_t albedoTextureIndex = s_Data.DefaultWhiteTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
     if (meshPrimitive.Material.AlbedoTexture->IsValid())
         albedoTextureIndex = meshPrimitive.Material.AlbedoTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
 
@@ -472,7 +724,7 @@ void Renderer::Submit(const MeshPrimitive& meshPrimitive, const BoundingBox& bb,
     if (meshPrimitive.Material.NormalTexture->IsValid())
         normalTextureIndex = meshPrimitive.Material.NormalTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
 
-    uint32_t metallicRoughnessTextureIndex = s_Data.WhiteTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
+    uint32_t metallicRoughnessTextureIndex = s_Data.DefaultWhiteTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
     if (meshPrimitive.Material.MetallicRoughnessTexture->IsValid())
         metallicRoughnessTextureIndex = meshPrimitive.Material.MetallicRoughnessTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
 
@@ -499,7 +751,7 @@ void Renderer::Submit(const MeshPrimitive& meshPrimitive, const BoundingBox& bb,
     ASSERT(s_Data.NumMaterials <= MAX_MATERIALS, "Exceeded the maximum amount of materials");
 }
 
-void Renderer::Submit(const DirectionalLightData& dirLightData, const Camera& lightCamera, const std::shared_ptr<Texture>& shadowMap)
+void Renderer::Submit(const DirectionalLightData& dirLightData, const Camera& lightCamera, RenderResourceHandle shadowMapHandle)
 {
     s_Data.DirectionalLightDrawData[s_Data.SceneData.NumDirLights] = dirLightData;
     s_Data.LightCameras[s_Data.SceneData.NumDirLights] = lightCamera;
@@ -509,7 +761,21 @@ void Renderer::Submit(const DirectionalLightData& dirLightData, const Camera& li
     ASSERT(s_Data.SceneData.NumDirLights <= MAX_DIR_LIGHTS, "Exceeded the maximum amount of directional lights");
 }
 
-void Renderer::Submit(const PointLightData& pointLightData, const std::array<Camera, 6>& lightCameras, const std::shared_ptr<Texture>& shadowMap)
+void Renderer::Submit(const SpotLightData& spotLightData, const Camera& lightCamera, RenderResourceHandle shadowMapHandle)
+{
+    std::size_t spotLightBaseIndex = MAX_DIR_LIGHTS + MAX_POINT_LIGHTS;
+    const Texture& shadowMapTexture = s_Data.TextureSlotmap.Find(shadowMapHandle);
+
+    s_Data.SpotLightDrawData[s_Data.SceneData.NumSpotLights] = spotLightData;
+    s_Data.SpotLightDrawData[s_Data.SceneData.NumSpotLights].ShadowMapIndex = shadowMapTexture.GetDescriptorHeapIndex(DescriptorType::SRV);
+    s_Data.LightCameras[MAX_DIR_LIGHTS + (MAX_POINT_LIGHTS * 6) + s_Data.SceneData.NumSpotLights] = lightCamera;
+    s_Data.LightShadowMaps[spotLightBaseIndex + s_Data.SceneData.NumSpotLights] = shadowMap;
+
+    s_Data.SceneData.NumSpotLights++;
+    ASSERT(s_Data.SceneData.NumSpotLights <= MAX_SPOT_LIGHTS, "Exceeded the maximum amount of spot lights");
+}
+
+void Renderer::Submit(const PointLightData& pointLightData, const std::array<Camera, 6>& lightCameras, RenderResourceHandle shadowMapHandle)
 {
     std::size_t pointLightBaseIndex = MAX_DIR_LIGHTS;
 
@@ -522,16 +788,16 @@ void Renderer::Submit(const PointLightData& pointLightData, const std::array<Cam
     ASSERT(s_Data.SceneData.NumPointLights <= MAX_POINT_LIGHTS, "Exceeded the maximum amount of point lights");
 }
 
-void Renderer::Submit(const SpotLightData& spotLightData, const Camera& lightCamera, const std::shared_ptr<Texture>& shadowMap)
+RenderResourceHandle Renderer::CreateBuffer(const BufferDesc& desc)
 {
-    std::size_t spotLightBaseIndex = MAX_DIR_LIGHTS + MAX_POINT_LIGHTS;
+    Buffer buffer(desc);
+    return s_Data.BufferSlotmap.Insert(buffer);
+}
 
-    s_Data.SpotLightDrawData[s_Data.SceneData.NumSpotLights] = spotLightData;
-    s_Data.LightCameras[MAX_DIR_LIGHTS + (MAX_POINT_LIGHTS * 6) + s_Data.SceneData.NumSpotLights] = lightCamera;
-    s_Data.LightShadowMaps[spotLightBaseIndex + s_Data.SceneData.NumSpotLights] = shadowMap;
-
-    s_Data.SceneData.NumSpotLights++;
-    ASSERT(s_Data.SceneData.NumSpotLights <= MAX_SPOT_LIGHTS, "Exceeded the maximum amount of spot lights");
+RenderResourceHandle Renderer::CreateTexture(const TextureDesc& desc)
+{
+    Texture texture(desc);
+    return s_Data.TextureSlotmap.Insert(texture);
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height)
@@ -566,262 +832,7 @@ bool Renderer::IsVSyncEnabled()
     return s_Data.RenderSettings.VSync;
 }
 
-const Renderer::RenderSettings& Renderer::GetSettings()
+const RenderSettings& Renderer::GetSettings()
 {
     return s_Data.RenderSettings;
-}
-
-// Temp
-Texture& Renderer::GetFinalColorOutput()
-{
-    return *s_Data.SDRRenderTarget.get();
-}
-
-// Temp
-Texture& Renderer::GetFinalDepthOutput()
-{
-    return s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS]->GetDepthAttachment();
-}
-
-void Renderer::MakeRenderPasses()
-{
-    {
-        // Shadow mapping render pass
-        RasterPassDesc desc;
-        desc.VertexShaderPath = "Resources/Shaders/ShadowMapping_VS.hlsl";
-        desc.PixelShaderPath = "Resources/Shaders/ShadowMapping_PS.hlsl";
-        desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.ShadowMapResolution.x, s_Data.RenderSettings.ShadowMapResolution.y);
-        desc.DepthBias = -50;
-        desc.SlopeScaledDepthBias = -5.0f;
-        desc.DepthBiasClamp = 1.0f;
-
-        desc.RootParameters.resize(1);
-        desc.RootParameters[0].InitAsConstants(16, 0); // Light VP
-
-        desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-
-        s_Data.RenderPasses[RenderPassType::SHADOW_MAPPING] = std::make_unique<RasterPass>("Shadow mapping", desc);
-    }
-
-    {
-        // Depth pre-pass
-        RasterPassDesc desc;
-        desc.VertexShaderPath = "Resources/Shaders/DepthPrepass_VS.hlsl";
-        desc.PixelShaderPath = "Resources/Shaders/DepthPrepass_PS.hlsl";
-        desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
-        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
-
-        desc.RootParameters.resize(1);
-        desc.RootParameters[0].InitAsConstantBufferView(0); // Scene data
-
-        desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-
-        s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS] = std::make_unique<RasterPass>("Depth pre-pass", desc);
-    }
-
-    {
-        // Lighting render pass
-        RasterPassDesc desc;
-        desc.VertexShaderPath = "Resources/Shaders/Lighting_VS.hlsl";
-        desc.PixelShaderPath = "Resources/Shaders/Lighting_PS.hlsl";
-        desc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
-            TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
-        desc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-            TextureDimension::TEXTURE_DIMENSION_2D, 0, 0);
-        desc.DepthComparisonFunc = D3D12_COMPARISON_FUNC_EQUAL;
-
-        // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
-        CD3DX12_DESCRIPTOR_RANGE1 ranges[2] = {};
-        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
-        ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
-
-        desc.RootParameters.resize(4);
-        desc.RootParameters[0].InitAsConstantBufferView(0); // Scene data
-        desc.RootParameters[1].InitAsConstantBufferView(1); // Material constant buffer
-        desc.RootParameters[2].InitAsConstantBufferView(2); // Light constant buffer
-        desc.RootParameters[3].InitAsDescriptorTable(_countof(ranges), &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL); // Bindless SRV table
-
-        desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        desc.ShaderInputLayout.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        desc.ShaderInputLayout.push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        desc.ShaderInputLayout.push_back({ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        desc.ShaderInputLayout.push_back({ "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-        desc.ShaderInputLayout.push_back({ "MATERIAL_ID", 0, DXGI_FORMAT_R32_UINT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-
-        s_Data.RenderPasses[RenderPassType::LIGHTING] = std::make_unique<RasterPass>("Lighting", desc);
-    }
-
-    {
-        // Tonemapping render pass
-        ComputePassDesc desc;
-        desc.ComputeShaderPath = "Resources/Shaders/Tonemapping_CS.hlsl";
-        desc.NumThreadsX = 64;
-        desc.NumThreadsY = 64;
-        desc.NumThreadsZ = 1;
-
-        // Need to mark the bindless descriptor range as DESCRIPTORS_VOLATILE since it will contain empty descriptors
-        CD3DX12_DESCRIPTOR_RANGE1 ranges[2] = {};
-        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
-        ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 4096, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
-
-        desc.RootParameters.resize(3);
-        desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE); // Tonemapping settings
-        desc.RootParameters[1].InitAsDescriptorTable(1, &ranges[0]); // Bindless SRV table
-        desc.RootParameters[2].InitAsDescriptorTable(1, &ranges[1]); // Bindless UAV table
-
-        s_Data.ComputePasses[ComputePassType::TONE_MAPPING] = std::make_unique<ComputePass>("Tonemapping", desc);
-    }
-}
-
-void Renderer::MakeBuffers()
-{
-    for (uint32_t i = 0; i < TransparencyMode::NUM_ALPHA_MODES; ++i)
-    {
-        s_Data.MeshInstanceBuffer[i] = std::make_unique<Buffer>("Mesh instance buffer", BufferDesc(BufferUsage::BUFFER_USAGE_UPLOAD,
-            MAX_MESHES * RenderBackend::GetSwapChain().GetBackBufferCount(), sizeof(MeshInstanceData)));
-    }
-
-    s_Data.MaterialConstantBuffer = std::make_unique<Buffer>("Material constant buffer",
-        BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, MAX_MATERIALS, sizeof(MaterialData)));
-
-    std::size_t totalLightBufferByteSize = MAX_DIR_LIGHTS * sizeof(DirectionalLightData) + MAX_SPOT_LIGHTS * sizeof(SpotLightData) + MAX_POINT_LIGHTS * sizeof(PointLightData);
-    s_Data.LightConstantBuffer = std::make_unique<Buffer>("Light constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, totalLightBufferByteSize));
-
-    s_Data.TonemapConstantBuffer = std::make_unique<Buffer>("Tonemap constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(TonemapSettings)));
-    s_Data.SceneDataConstantBuffer = std::make_unique<Buffer>("Scene data constant buffer", BufferDesc(BufferUsage::BUFFER_USAGE_CONSTANT, 1, sizeof(SceneData)));
-}
-
-void Renderer::MakeFrameBuffers()
-{
-    FrameBufferDesc shadowMappingDesc = {};
-    shadowMappingDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.ShadowMapResolution.x, s_Data.RenderSettings.ShadowMapResolution.y, glm::vec2(0.0f, 0.0f));
-    s_Data.FrameBuffers[RenderPassType::SHADOW_MAPPING] = std::make_shared<FrameBuffer>("Shadow mapping frame buffer", shadowMappingDesc);
-
-    FrameBufferDesc depthPrepassDesc = {};
-    depthPrepassDesc.DepthAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y, glm::vec2(1.0f, 0.0f));
-    s_Data.FrameBuffers[RenderPassType::DEPTH_PREPASS] = std::make_shared<FrameBuffer>("Depth pre-pass frame buffer", depthPrepassDesc);
-
-    FrameBufferDesc hdrDesc = {};
-    hdrDesc.ColorAttachmentDesc = TextureDesc(TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT,
-        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y);
-    s_Data.FrameBuffers[RenderPassType::LIGHTING] = std::make_shared<FrameBuffer>("HDR frame buffer", hdrDesc);
-
-    s_Data.SDRRenderTarget = std::make_unique<Texture>("SDR render target", TextureDesc(TextureUsage::TEXTURE_USAGE_WRITE | TextureUsage::TEXTURE_USAGE_RENDER_TARGET, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-        TextureDimension::TEXTURE_DIMENSION_2D, s_Data.RenderSettings.RenderResolution.x, s_Data.RenderSettings.RenderResolution.y));
-}
-
-void Renderer::PrepareInstanceBuffer()
-{
-    uint32_t currentBackBufferIndex = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex();
-
-    for (uint32_t i = 0; i < TransparencyMode::NUM_ALPHA_MODES; ++i)
-    {
-        std::size_t currentByteOffset = static_cast<std::size_t>(currentBackBufferIndex * MAX_MESHES) * sizeof(MeshInstanceData);
-        Buffer& instanceBuffer = *s_Data.MeshInstanceBuffer[i];
-
-        for (auto& [primitive, instanceData] : s_Data.MeshDrawData[i])
-        {
-            std::size_t numBytes = sizeof(MeshInstanceData);
-            instanceBuffer.SetBufferDataAtOffset(&instanceData, numBytes, currentByteOffset);
-            currentByteOffset += numBytes;
-        }
-    }
-}
-
-void Renderer::PrepareLightBuffers()
-{
-    // Set constant buffer data for directional lights/pointlights/spotlights
-    std::size_t dirLightsByteStart = 0;
-    std::size_t spotLightsByteStart = MAX_DIR_LIGHTS * sizeof(DirectionalLightData);
-    std::size_t pointLightsByteStart = spotLightsByteStart + MAX_SPOT_LIGHTS * sizeof(SpotLightData);
-
-    if (s_Data.SceneData.NumDirLights > 0)
-        s_Data.LightConstantBuffer->SetBufferDataAtOffset(&s_Data.DirectionalLightDrawData[0], s_Data.SceneData.NumDirLights * sizeof(DirectionalLightData), dirLightsByteStart);
-
-    if (s_Data.SceneData.NumSpotLights > 0)
-        s_Data.LightConstantBuffer->SetBufferDataAtOffset(&s_Data.SpotLightDrawData[0], s_Data.SceneData.NumSpotLights * sizeof(SpotLightData), spotLightsByteStart);
-
-    if (s_Data.SceneData.NumPointLights > 0)
-        s_Data.LightConstantBuffer->SetBufferDataAtOffset(&s_Data.PointLightDrawData[0], s_Data.SceneData.NumPointLights * sizeof(PointLightData), pointLightsByteStart);
-}
-
-void Renderer::RenderShadowMap(CommandList& commandList, const Camera& lightCamera, const Texture& shadowMap, uint32_t descriptorOffset)
-{
-    CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(shadowMap.GetTextureDesc().Width),
-        static_cast<float>(shadowMap.GetTextureDesc().Height), 0.0f, 1.0f);
-    CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
-
-    commandList.SetViewports(1, &viewport);
-    commandList.SetScissorRects(1, &scissorRect);
-
-    D3D12_CPU_DESCRIPTOR_HANDLE dsv = shadowMap.GetDescriptor(DescriptorType::DSV, descriptorOffset);
-    commandList.SetRenderTargets(0, nullptr, &dsv);
-
-    // Set root constant (light VP)
-    const glm::mat4& lightViewProjection = lightCamera.GetViewProjection();
-    commandList.SetRootConstants(0, 16, &lightViewProjection[0][0], 0);
-
-    RenderGeometry(commandList, lightCamera, TransparencyMode::OPAQUE);
-    RenderGeometry(commandList, lightCamera, TransparencyMode::TRANSPARENT);
-}
-
-void Renderer::RenderGeometry(CommandList& commandList, const Camera& camera, uint32_t alphaMode)
-{
-    // Set instance buffer
-    commandList.SetVertexBuffers(1, 1, *s_Data.MeshInstanceBuffer[alphaMode]);
-    uint32_t startInstance = RenderBackend::GetSwapChain().GetCurrentBackBufferIndex() * MAX_MESHES;
-
-    std::shared_ptr<Buffer> currentVertexBuffer = nullptr, currentIndexBuffer = nullptr;
-
-    for (uint32_t j = 0; j < s_Data.NumMeshes[alphaMode]; ++j)
-    {
-        auto& primitive = s_Data.MeshDrawData[alphaMode][j].Primitive;
-        auto& instanceData = s_Data.MeshDrawData[alphaMode][j].InstanceData;
-
-        // Cull mesh from light camera frustum
-        if (camera.IsFrustumCullingEnabled())
-        {
-            if (!camera.GetViewFrustum().IsBoxInViewFrustum(primitive.BB.Min, primitive.BB.Max))
-            {
-                startInstance++;
-                continue;
-            }
-        }
-
-        auto& vb = primitive.VertexBuffer;
-        auto& ib = primitive.IndexBuffer;
-
-        if (vb != currentVertexBuffer)
-        {
-            commandList.SetVertexBuffers(0, 1, *vb);
-            currentVertexBuffer = vb;
-        }
-        if (ib != currentIndexBuffer)
-        {
-            commandList.SetIndexBuffer(*ib);
-            currentIndexBuffer = ib;
-        }
-
-        commandList.DrawIndexed(static_cast<uint32_t>(primitive.NumIndices), 1,
-            static_cast<uint32_t>(primitive.IndicesStart), static_cast<int32_t>(primitive.VerticesStart), startInstance);
-
-        startInstance++;
-        s_Data.RenderStatistics.DrawCallCount++;
-    }
 }

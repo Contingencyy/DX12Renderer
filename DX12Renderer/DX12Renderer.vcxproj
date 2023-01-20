@@ -287,9 +287,10 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\Graphics\DebugRenderer.h" />
     <ClInclude Include="Include\Graphics\Backend\RenderBackend.h" />
     <ClInclude Include="Include\Graphics\FrameBuffer.h" />
-    <ClInclude Include="Include\Graphics\Material.h" />
     <ClInclude Include="Include\Graphics\RasterPass.h" />
+    <ClInclude Include="Include\Graphics\RenderAPI.h" />
     <ClInclude Include="Include\Graphics\Resource.h" />
+    <ClInclude Include="Include\Graphics\ResourceSlotmap.h" />
     <ClInclude Include="Include\Scene\BoundingVolume.h" />
     <ClInclude Include="Include\Scene\Camera\Camera.h" />
     <ClInclude Include="Include\Graphics\Buffer.h" />
@@ -297,7 +298,6 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\Graphics\Backend\CommandQueue.h" />
     <ClInclude Include="Include\Graphics\Backend\DescriptorAllocation.h" />
     <ClInclude Include="Include\Graphics\Backend\DescriptorHeap.h" />
-    <ClInclude Include="Include\Graphics\Mesh.h" />
     <ClInclude Include="Include\Resource\Model.h" />
     <ClInclude Include="Include\Graphics\ParticleSystem.h" />
     <ClInclude Include="Include\Graphics\Shader.h" />

@@ -4,8 +4,6 @@
 #include "Resource/Model.h"
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
-#include "Graphics/Mesh.h"
-#include "Graphics/Material.h"
 
 struct Vertex
 {

@@ -1,5 +1,6 @@
 #include "Pch.h"
 #include "Graphics/DebugRenderer.h"
+#include "Graphics/RenderAPI.h"
 #include "Graphics/Buffer.h"
 #include "Graphics/Shader.h"
 #include "Graphics/RasterPass.h"
@@ -87,7 +88,7 @@ void DebugRenderer::Render()
     // Set viewports, scissor rects and render targets
     commandList->SetRenderPassBindables(*s_Data.RasterPass);
 
-    const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
+    const RenderSettings& renderSettings = Renderer::GetSettings();
     CD3DX12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(renderSettings.RenderResolution.x),
         static_cast<float>(renderSettings.RenderResolution.y), 0.0f, 1.0f);
     CD3DX12_RECT scissorRect = CD3DX12_RECT(0.0f, 0.0f, LONG_MAX, LONG_MAX);
@@ -148,7 +149,7 @@ void DebugRenderer::Resize(uint32_t width, uint32_t height)
 
 void DebugRenderer::MakeRenderPasses()
 {
-    const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
+    const RenderSettings& renderSettings = Renderer::GetSettings();
 
     {
         // Debug line render pass
