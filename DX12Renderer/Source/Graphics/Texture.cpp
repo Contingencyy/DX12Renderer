@@ -89,8 +89,7 @@ Texture::~Texture()
 bool Texture::IsValid() const
 {
 	return m_TextureDesc.Usage != TextureUsage::TEXTURE_USAGE_NONE &&
-		m_TextureDesc.Format != TextureFormat::TEXTURE_FORMAT_UNSPECIFIED &&
-		m_TextureDesc.Dimension != TextureDimension::TEXTURE_DIMENSION_UNSPECIFIED;
+		m_TextureDesc.Format != TextureFormat::TEXTURE_FORMAT_UNSPECIFIED;
 }
 
 bool Texture::IsCPUAccessible() const
@@ -105,8 +104,8 @@ void Texture::Invalidate()
 	{
 		CreateD3D12Resource();
 
-		ResetDescriptorAllocations();
-		AllocateDescriptors();
+		/*ResetDescriptorAllocations();
+		AllocateDescriptors();*/
 
 		CreateViews();
 		SetName(m_Name);

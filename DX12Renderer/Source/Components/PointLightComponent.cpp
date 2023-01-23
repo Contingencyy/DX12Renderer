@@ -33,20 +33,18 @@ PointLightComponent::PointLightComponent(const PointLightData& pointLightData)
 		m_Cameras[i] = Camera(lightViewFace, 90.0f, 1.0f, m_PointLightData.Range, 0.1f);
 	}
 
-	const RenderSettings& renderSettings = Renderer::GetSettings();
+	const Resolution& shadowRes = Renderer::GetShadowResolution();
 
 	// Create shadow map
-	m_ShadowMap = Renderer::CreateTexture({
-		TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ,
-		TextureFormat::TEXTURE_FORMAT_DEPTH32,
-		TextureDimension::TEXTURE_DIMENSION_CUBE,
-		renderSettings.ShadowMapResolution.x,
-		renderSettings.ShadowMapResolution.y,
-		1,
-		glm::vec4(0.0f, 0.0f, 0.0f, 1.0f),
-		nullptr,
-		"Pointlight shadow map"
-	});
+	TextureDesc shadowMapDesc = {};
+	shadowMapDesc.Usage = TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ;
+	shadowMapDesc.Format = TextureFormat::TEXTURE_FORMAT_DEPTH32;
+	shadowMapDesc.Dimension = TextureDimension::TEXTURE_DIMENSION_CUBE;
+	shadowMapDesc.Width = shadowRes.x;
+	shadowMapDesc.Height = shadowRes.y;
+	shadowMapDesc.DebugName = "Pointlight shadow map";
+
+	m_ShadowMap = Renderer::CreateTexture(shadowMapDesc);
 }
 
 PointLightComponent::~PointLightComponent()

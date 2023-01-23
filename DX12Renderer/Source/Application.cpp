@@ -114,7 +114,6 @@ void Application::OnWindowResize(uint32_t width, uint32_t height)
 	if (width > 0 && height > 0)
 	{
 		Renderer::Resize(width, height);
-		DebugRenderer::Resize(width, height);
 		m_Scene->GetActiveCamera().ResizeProjection(static_cast<float>(width), static_cast<float>(height));
 	}
 }
@@ -135,7 +134,7 @@ void Application::Render()
 {
 	SCOPED_TIMER("Application::Render");
 
-	RenderBackend::BeginFrame();
+	Renderer::BeginFrame();
 
 	const Camera& sceneCamera = m_Scene->GetActiveCamera();
 	Renderer::BeginScene(sceneCamera);
@@ -168,5 +167,5 @@ void Application::Render()
 	DebugRenderer::EndScene();
 	Renderer::EndScene();
 
-	RenderBackend::EndFrame();
+	Renderer::EndFrame();
 }

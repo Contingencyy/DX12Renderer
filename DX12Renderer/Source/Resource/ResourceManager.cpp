@@ -1,8 +1,8 @@
 #include "Pch.h"
 #include "Resource/ResourceManager.h"
 #include "Resource/FileLoader.h"
-#include "Resource/Model.h"
-#include "Graphics/Buffer.h"
+#include "Graphics/Renderer.h"
+#include "Graphics/RenderAPI.h"
 #include "Graphics/Texture.h"
 
 struct Vertex
@@ -27,7 +27,8 @@ void ResourceManager::LoadTexture(const std::string& filepath, const std::string
 	textureDesc.Format = TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM;
 	textureDesc.Width = imageInfo.Width;
 	textureDesc.Height = imageInfo.Height;
-	m_Textures.insert(std::pair<std::string, std::shared_ptr<Texture>>(name, std::make_shared<Texture>(name, textureDesc)));
+	textureDesc.DebugName = name;
+	m_Textures.insert(std::pair<std::string, std::shared_ptr<Texture>>(name, std::make_shared<Texture>(textureDesc)));
 
 	delete imageInfo.Data;
 
@@ -39,8 +40,8 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 	const tinygltf::Model& tinygltf = FileLoader::LoadGLTFModel(filepath);
 
 	// Create all textures
-	std::vector<Material> materials;
-	materials.reserve(tinygltf.materials.size());
+	std::vector<RenderResourceHandle> materialHandles;
+	materialHandles.reserve(tinygltf.materials.size());
 
 	for (uint32_t matIndex = 0; matIndex < tinygltf.materials.size(); ++matIndex)
 	{
@@ -50,59 +51,52 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		int normalTextureIndex = gltfMaterial.normalTexture.index;
 		int metallicRoughnessTextureIndex = gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture.index;
 
-		std::shared_ptr<Texture> albedoTexture;
-		std::shared_ptr<Texture> normalTexture;
-		std::shared_ptr<Texture> metallicRoughnessTexture;
-		TransparencyMode transparency = gltfMaterial.alphaMode.compare("OPAQUE") == 0 ? TransparencyMode::OPAQUE : TransparencyMode::TRANSPARENT;
+		MaterialDesc materialDesc = {};
 
 		if (albedoTextureIndex >= 0)
 		{
-			uint32_t albedoImageIndex = tinygltf.textures[albedoTextureIndex].source;
-			albedoTexture = std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_SRGB,
-				TextureDimension::TEXTURE_DIMENSION_2D, tinygltf.images[albedoImageIndex].width, tinygltf.images[albedoImageIndex].height,
-				CalculateTotalMipCount(tinygltf.images[albedoImageIndex].width,	tinygltf.images[albedoImageIndex].height)), &tinygltf.images[albedoImageIndex].image[0]);
-		}
-		else
-		{
-			albedoTexture = std::make_shared<Texture>("Albedo texture", TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_UNSPECIFIED,
-				TextureDimension::TEXTURE_DIMENSION_UNSPECIFIED, 1, 1));
+			const tinygltf::Image& albedoImage = tinygltf.images[tinygltf.textures[albedoTextureIndex].source];
+
+			materialDesc.AlbedoDesc.Usage = TextureUsage::TEXTURE_USAGE_READ;
+			materialDesc.AlbedoDesc.Format = TextureFormat::TEXTURE_FORMAT_RGBA8_SRGB;
+			materialDesc.AlbedoDesc.Width = (uint32_t)albedoImage.width;
+			materialDesc.AlbedoDesc.Height = (uint32_t)albedoImage.height;
+			materialDesc.AlbedoDesc.NumMips = CalculateTotalMipCount(materialDesc.AlbedoDesc.Width, materialDesc.AlbedoDesc.Height);
+			materialDesc.AlbedoDesc.DataPtr = &albedoImage.image[0];
+			materialDesc.AlbedoDesc.DebugName = name + " albedo texture";
 		}
 
 		if (normalTextureIndex >= 0)
 		{
-			uint32_t normalImageIndex = tinygltf.textures[normalTextureIndex].source;
-			normalTexture = std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				TextureDimension::TEXTURE_DIMENSION_2D, tinygltf.images[normalImageIndex].width, tinygltf.images[normalImageIndex].height,
-				CalculateTotalMipCount(tinygltf.images[normalImageIndex].width, tinygltf.images[normalImageIndex].height)), &tinygltf.images[normalImageIndex].image[0]);
-		}
-		else
-		{
-			normalTexture = std::make_shared<Texture>("Normal texture", TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_UNSPECIFIED,
-				TextureDimension::TEXTURE_DIMENSION_UNSPECIFIED, 1, 1));
+			const tinygltf::Image& normalImage = tinygltf.images[tinygltf.textures[normalTextureIndex].source];
+
+			materialDesc.NormalDesc.Usage = TextureUsage::TEXTURE_USAGE_READ;
+			materialDesc.NormalDesc.Format = TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM;
+			materialDesc.NormalDesc.Width = (uint32_t)normalImage.width;
+			materialDesc.NormalDesc.Height = (uint32_t)normalImage.height;
+			materialDesc.NormalDesc.NumMips = CalculateTotalMipCount(materialDesc.NormalDesc.Width, materialDesc.NormalDesc.Height);
+			materialDesc.NormalDesc.DataPtr = &normalImage.image[0];
+			materialDesc.NormalDesc.DebugName = name + " normal texture";
 		}
 
 		if (metallicRoughnessTextureIndex >= 0)
 		{
-			uint32_t metallicRoughnessImageIndex = tinygltf.textures[metallicRoughnessTextureIndex].source;
-			metallicRoughnessTexture = std::make_shared<Texture>("Metallic roughness texture", TextureDesc(TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-				TextureDimension::TEXTURE_DIMENSION_2D, tinygltf.images[metallicRoughnessImageIndex].width, tinygltf.images[metallicRoughnessImageIndex].height,
-				CalculateTotalMipCount(tinygltf.images[metallicRoughnessImageIndex].width, tinygltf.images[metallicRoughnessImageIndex].height)), &tinygltf.images[metallicRoughnessImageIndex].image[0]);
-		}
-		else
-		{
-			metallicRoughnessTexture = std::make_shared<Texture>("Metallic roughness texture", TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_UNSPECIFIED,
-				TextureDimension::TEXTURE_DIMENSION_UNSPECIFIED, 1, 1));
+			const tinygltf::Image& metallicRoughnessImage = tinygltf.images[tinygltf.textures[metallicRoughnessTextureIndex].source];
+
+			materialDesc.MetallicRoughnessDesc.Usage = TextureUsage::TEXTURE_USAGE_READ;
+			materialDesc.MetallicRoughnessDesc.Format = TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM;
+			materialDesc.MetallicRoughnessDesc.Width = (uint32_t)metallicRoughnessImage.width;
+			materialDesc.MetallicRoughnessDesc.Height = (uint32_t)metallicRoughnessImage.height;
+			materialDesc.MetallicRoughnessDesc.NumMips = CalculateTotalMipCount(materialDesc.MetallicRoughnessDesc.Width, materialDesc.MetallicRoughnessDesc.Height);
+			materialDesc.MetallicRoughnessDesc.DataPtr = &metallicRoughnessImage.image[0];
+			materialDesc.MetallicRoughnessDesc.DebugName = name + " metallic roughness texture";
 		}
 
-		Material material = {};
-		material.AlbedoTexture = albedoTexture;
-		material.NormalTexture = normalTexture;
-		material.MetallicRoughnessTexture = metallicRoughnessTexture;
-		material.MetalnessFactor = gltfMaterial.pbrMetallicRoughness.metallicFactor;
-		material.RoughnessFactor = gltfMaterial.pbrMetallicRoughness.roughnessFactor;
-		material.Transparency = transparency;
+		materialDesc.Metalness = gltfMaterial.pbrMetallicRoughness.metallicFactor;
+		materialDesc.Roughness = gltfMaterial.pbrMetallicRoughness.roughnessFactor;
+		materialDesc.Transparency = gltfMaterial.alphaMode.compare("OPAQUE") == 0 ? TransparencyMode::OPAQUE : TransparencyMode::TRANSPARENT;
 
-		materials.emplace_back(material);
+		materialHandles.emplace_back(Renderer::CreateMaterial(materialDesc));
 	}
 
 	std::size_t totalVertexCount = 0;
@@ -123,22 +117,15 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		}
 	}
 
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
-	
-	vertices.resize(totalVertexCount);
-	indices.resize(totalIndexCount);
-
-	std::vector<std::shared_ptr<Mesh>> meshes;
-	meshes.reserve(tinygltf.meshes.size());
+	std::vector<RenderResourceHandle> meshHandles;
 
 	std::size_t currentStartVertex = 0;
 	std::size_t currentStartIndex = 0;
 
 	for (auto& gltfMesh : tinygltf.meshes)
 	{
-		std::vector<MeshPrimitive> meshPrimitives;
-		meshPrimitives.reserve(gltfMesh.primitives.size());
+		std::vector<RenderResourceHandle> meshPrimitiveHandles;
+		meshPrimitiveHandles.reserve(gltfMesh.primitives.size());
 
 		for (auto& gltfPrim : gltfMesh.primitives)
 		{
@@ -180,6 +167,8 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			const glm::vec3* pVertexNormalData = reinterpret_cast<const glm::vec3*>(&vertexNormalBuffer.data[0] + vertexNormalBufferView.byteOffset + vertexNormalAccessor.byteOffset);
 			ASSERT(vertexNormalAccessor.count * vertexNormalAccessor.ByteStride(vertexNormalBufferView) + vertexNormalBufferView.byteOffset + vertexNormalAccessor.byteOffset <= vertexNormalBuffer.data.size(),
 				"Byte offset for vertex attribute NORMAL exceeded total buffer size");
+
+			std::vector<Vertex> vertices(vertexPosAccessor.count);
 
 			// Construct a vertex from the primitive attributes data and add it to all vertices
 			for (std::size_t i = currentStartVertex; i < currentStartVertex + vertexPosAccessor.count; ++i)
@@ -239,6 +228,8 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			ASSERT(indexAccessor.count * indexAccessor.ByteStride(indexBufferView) + indexBufferView.byteOffset + indexAccessor.byteOffset,
 				"Byte offset for indices exceeded total buffer size");
 
+			std::vector<uint32_t> indices(indexAccessor.count);
+
 			// Get indices for current primitive/mesh and add it to all indices
 			if (indicesByteSize == 2)
 			{
@@ -259,41 +250,27 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 				}
 			}
 
-			MeshPrimitive meshPrimitive = {};
-			meshPrimitive.Material = materials[gltfPrim.material];
-			meshPrimitive.BB.Min = static_cast<glm::vec3>(minBounds);
-			meshPrimitive.BB.Max = static_cast<glm::vec3>(maxBounds);
-			meshPrimitive.VerticesStart = currentStartVertex;
-			meshPrimitive.IndicesStart = currentStartIndex;
-			meshPrimitive.NumIndices = indexAccessor.count;
-			meshPrimitive.Name = gltfMesh.name + std::to_string(meshPrimitives.size());
+			MeshDesc meshDesc = {};
+			meshDesc.DebugName = gltfMesh.name + std::to_string(meshPrimitiveHandles.size());
+			meshDesc.VertexBufferDesc.Usage = BufferUsage::BUFFER_USAGE_VERTEX;
+			meshDesc.VertexBufferDesc.NumElements = vertices.size();
+			meshDesc.VertexBufferDesc.ElementSize = sizeof(Vertex);
+			meshDesc.VertexBufferDesc.DataPtr = &vertices[0];
+			meshDesc.VertexBufferDesc.DebugName = meshDesc.DebugName + " vertex buffer";
+			meshDesc.IndexBufferDesc.Usage = BufferUsage::BUFFER_USAGE_INDEX;
+			meshDesc.IndexBufferDesc.NumElements = indices.size();
+			meshDesc.IndexBufferDesc.ElementSize = sizeof(uint32_t);
+			meshDesc.IndexBufferDesc.DataPtr = &indices[0];
+			meshDesc.IndexBufferDesc.DebugName = meshDesc.DebugName + " index buffer";
+			meshDesc.MaterialHandle = materialHandles[gltfPrim.material];
+			meshDesc.BB.Min = (glm::vec3)minBounds;
+			meshDesc.BB.Max = (glm::vec3)maxBounds;
 
-			meshPrimitives.push_back(meshPrimitive);
-
-			currentStartVertex += vertexPosAccessor.count;
-			currentStartIndex += indexAccessor.count;
+			meshHandles.emplace_back(Renderer::CreateMesh(meshDesc));
 		}
-
-		// Meshes need to know their byte offset in both the vertex and index buffer
-		Mesh mesh = {};
-		mesh.Primitives = meshPrimitives;
-		mesh.Name = gltfMesh.name.empty() ? name + std::to_string(meshes.size()) : gltfMesh.name + std::to_string(meshes.size());
-		mesh.Hash = std::hash<std::string>{}(filepath + std::to_string(meshes.size()));
-
-		std::shared_ptr<Buffer> vertexBuffer = std::make_shared<Buffer>(name + " vertex buffer", BufferDesc(BufferUsage::BUFFER_USAGE_VERTEX, vertices.size(), sizeof(Vertex)), &vertices[0]);
-		std::shared_ptr<Buffer> indexBuffer = std::make_shared<Buffer>(name + " index buffer", BufferDesc(BufferUsage::BUFFER_USAGE_INDEX, indices.size(), sizeof(uint32_t)), &indices[0]);
-
-		for (auto& meshPrimitive : mesh.Primitives)
-		{
-			meshPrimitive.VertexBuffer = vertexBuffer;
-			meshPrimitive.IndexBuffer = indexBuffer;
-		}
-
-		meshes.push_back(std::make_shared<Mesh>(mesh));
 	}
 
-	// Create model containing all of the meshes
-	m_Models.insert(std::pair<std::string, std::shared_ptr<Model>>(name, std::make_shared<Model>(meshes, name)));
+	m_Models.insert(std::pair<std::string, std::shared_ptr<Model>>(name, std::make_shared<Model>(meshHandles, name)));
 	LOG_INFO("[ResourceManager] Loaded model: " + filepath);
 }
 

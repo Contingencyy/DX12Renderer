@@ -10,6 +10,7 @@ uint16_t CalculateTotalMipCount(uint32_t width, uint32_t height);
 class Texture : public Resource
 {
 public:
+	Texture() = default;
 	Texture(const TextureDesc& textureDesc);
 	virtual ~Texture();
 

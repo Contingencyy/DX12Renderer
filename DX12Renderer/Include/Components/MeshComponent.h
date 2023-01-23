@@ -1,13 +1,12 @@
 #pragma once
 #include "Component.h"
 #include "Scene/BoundingVolume.h"
-
-class Mesh;
+#include "Graphics/RenderAPI.h"
 
 class MeshComponent : public Component
 {
 public:
-	MeshComponent(const std::shared_ptr<Mesh>& mesh);
+	MeshComponent(RenderResourceHandle meshHandle);
 	virtual ~MeshComponent();
 
 	virtual void Update(float deltaTime);
@@ -15,6 +14,6 @@ public:
 	virtual void OnImGuiRender();
 
 private:
-	std::shared_ptr<Mesh> m_Mesh;
+	RenderResourceHandle m_Mesh;
 
 };

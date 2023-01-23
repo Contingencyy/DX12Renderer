@@ -16,18 +16,12 @@ struct RenderResourceHandle
 
 #define RENDER_RESOURCE_HANDLE_NULL RenderResourceHandle{}
 #define RENDER_RESOURCE_HANDLE_VALID(handle) (handle.Index != 0)
+#define RENDER_RESOURCE_HANDLE_COMPARE(lhandle, rhandle) ((lhandle).Index == (rhandle).Index)
 
-struct RenderSettings
+struct Resolution
 {
-	struct Resolution
-	{
-		uint32_t x = 1280;
-		uint32_t y = 720;
-	};
-
-	Resolution RenderResolution;
-	Resolution ShadowMapResolution = { 2048, 2048 };
-	bool VSync = true;
+	uint32_t x = 0;
+	uint32_t y = 0;
 };
 
 enum class BufferUsage : uint32_t
@@ -54,12 +48,12 @@ inline BufferUsage operator|(BufferUsage lhs, BufferUsage rhs)
 
 struct BufferDesc
 {
-	BufferUsage Usage;
-	std::size_t NumElements;
-	std::size_t ElementSize;
-	const void* DataPtr;
+	BufferUsage Usage = BufferUsage::BUFFER_USAGE_NONE;
+	std::size_t NumElements = 0;
+	std::size_t ElementSize = 0;
+	const void* DataPtr = nullptr;
 
-	std::string DebugName;
+	std::string DebugName = "Unnamed";
 };
 
 enum class TextureUsage : uint32_t
@@ -92,30 +86,29 @@ enum class TextureFormat : uint32_t
 
 enum class TextureDimension : uint32_t
 {
-	TEXTURE_DIMENSION_UNSPECIFIED = 0,
-	TEXTURE_DIMENSION_2D,
+	TEXTURE_DIMENSION_2D = 0,
 	TEXTURE_DIMENSION_CUBE
 };
 
 struct TextureDesc
 {
-	TextureUsage Usage;
-	TextureFormat Format;
-	TextureDimension Dimension;
+	TextureUsage Usage = TextureUsage::TEXTURE_USAGE_NONE;
+	TextureFormat Format = TextureFormat::TEXTURE_FORMAT_UNSPECIFIED;
+	TextureDimension Dimension = TextureDimension::TEXTURE_DIMENSION_2D;
 
-	uint32_t Width;
-	uint32_t Height;
-	uint32_t NumMips;
+	uint32_t Width = 0;
+	uint32_t Height = 0;
+	uint32_t NumMips = 1;
 
 	union
 	{
-		glm::vec4 ClearColor;
+		glm::vec4 ClearColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 		glm::vec2 ClearDepthStencil;
 	};
 
-	const void* DataPtr;
+	const void* DataPtr = nullptr;
 
-	std::string DebugName;
+	std::string DebugName = "Unnamed";
 };
 
 enum TransparencyMode : uint32_t
@@ -124,37 +117,27 @@ enum TransparencyMode : uint32_t
 	NUM_ALPHA_MODES = 2
 };
 
-struct Material
+struct MeshDesc
 {
-public:
-	RenderResourceHandle AlbedoTexture;
-	RenderResourceHandle NormalTexture;
-	RenderResourceHandle MetallicRoughnessTexture;
+	BufferDesc VertexBufferDesc;
+	BufferDesc IndexBufferDesc;
 
-	float MetalnessFactor;
-	float RoughnessFactor;
-
-	TransparencyMode Transparency;
-}; 
-
-struct MeshPrimitive
-{
-	Material Material;
+	RenderResourceHandle MaterialHandle;
 	BoundingBox BB;
 
-	std::size_t VerticesStart;
-	std::size_t IndicesStart;
-	std::size_t NumIndices;
-
-	RenderResourceHandle VertexBuffer;
-	RenderResourceHandle IndexBuffer;
-
-	std::string Name;
+	std::string DebugName;
 };
 
-struct Mesh
+struct MaterialDesc
 {
-	std::vector<MeshPrimitive> Primitives;
-	std::string Name;
-	std::size_t Hash;
+	TextureDesc AlbedoDesc;
+	TextureDesc NormalDesc;
+	TextureDesc MetallicRoughnessDesc;
+
+	float Metalness;
+	float Roughness;
+
+	TransparencyMode Transparency;
+
+	std::string DebugName;
 };

@@ -19,20 +19,17 @@ SpotLightComponent::SpotLightComponent(const SpotLightData& spotLightData)
 	// This will construct a camera with a reverse-z perspective projection and an infinite far plane
 	m_Camera = Camera(lightView, glm::degrees(m_SpotLightData.OuterConeAngle), 1.0f, m_SpotLightData.Range, 0.1f);
 
-	const RenderSettings& renderSettings = Renderer::GetSettings();
+	const Resolution& shadowRes = Renderer::GetShadowResolution();
 
 	// Create shadow map
-	m_ShadowMap = Renderer::CreateTexture({
-		TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ,
-		TextureFormat::TEXTURE_FORMAT_DEPTH32,
-		TextureDimension::TEXTURE_DIMENSION_2D,
-		renderSettings.ShadowMapResolution.x,
-		renderSettings.ShadowMapResolution.y,
-		1,
-		glm::vec4(0.0f, 0.0f, 0.0f, 1.0f),
-		nullptr,
-		"Spotlight shadow map"
-	});
+	TextureDesc shadowMapDesc = {};
+	shadowMapDesc.Usage = TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ;
+	shadowMapDesc.Format = TextureFormat::TEXTURE_FORMAT_DEPTH32;
+	shadowMapDesc.Width = shadowRes.x;
+	shadowMapDesc.Height = shadowRes.y;
+	shadowMapDesc.DebugName = "Spotlight shadow map";
+
+	m_ShadowMap = Renderer::CreateTexture(shadowMapDesc);
 
 	m_SpotLightData.ViewProjection = m_Camera.GetViewProjection();
 

@@ -5,6 +5,7 @@
 class Buffer : public Resource
 {
 public:
+	Buffer() = default;
 	Buffer(const BufferDesc& params);
 	virtual ~Buffer();
 

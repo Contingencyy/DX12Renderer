@@ -8,7 +8,8 @@ public:
 	static constexpr uint32_t SLOT_OCCUPIED = 0xFFFFFFFF;
 
 public:
-	ResourceSlotmap(std::size_t capacity)
+	ResourceSlotmap(std::size_t capacity = 1000)
+		: m_Capacity(capacity)
 	{
 		// Allocate initial slots
 		m_Slots = new Slot[capacity];
@@ -17,6 +18,7 @@ public:
 		for (std::size_t slot = 0; slot < m_Capacity - 1; ++slot)
 		{
 			m_Slots[slot].NextFree = (uint32_t)slot + 1;
+			m_Slots[slot].Generation = 0;
 		}
 	}
 
@@ -28,31 +30,45 @@ public:
 		delete[] m_Slots;
 	}
 
-	RenderResourceHandle Insert(Resource_t&& resource)
+	template<typename... TArgs>
+	RenderResourceHandle Insert(TArgs&&... args)
 	{
 		// Allocate slot
 		RenderResourceHandle handle = AllocateSlot();
 
-		// Move data into the slot
+		// Construct resource inplace of the new slot
 		Slot* slot = &m_Slots[handle.Index];
-		new (&slot->Resource) Resource_t(std::move(resource));
+		new (&slot->Resource) Resource_t(std::forward<TArgs>(args)...);
 
 		// Return handle to the slot
 		return handle;
 	}
 
-	RenderResourceHandle Insert(const Resource_t resource)
-	{
-		// Allocate slot
-		RenderResourceHandle handle = AllocateSlot();
+	//RenderResourceHandle Insert(Resource_t&& resource)
+	//{
+	//	// Allocate slot
+	//	RenderResourceHandle handle = AllocateSlot();
 
-		// Move data into the slot
-		Slot* slot = &m_Slots[handle.Index];
-		new (&slot->Resource) Resource_t(resource);
+	//	// Move data into the slot
+	//	Slot* slot = &m_Slots[handle.Index];
+	//	new (&slot->Resource) Resource_t(std::move(resource));
 
-		// Return handle to the slot
-		return handle;
-	}
+	//	// Return handle to the slot
+	//	return handle;
+	//}
+
+	//RenderResourceHandle Insert(const Resource_t resource)
+	//{
+	//	// Allocate slot
+	//	RenderResourceHandle handle = AllocateSlot();
+
+	//	// Move data into the slot
+	//	Slot* slot = &m_Slots[handle.Index];
+	//	new (&slot->Resource) Resource_t(resource);
+
+	//	// Return handle to the slot
+	//	return handle;
+	//}
 
 	void Erase(RenderResourceHandle handle)
 	{
@@ -66,7 +82,7 @@ public:
 		// Call destructor on non trivivally destructible
 	}
 
-	Resource_t& Find(RenderResourceHandle handle)
+	Resource_t* Find(RenderResourceHandle handle)
 	{
 		Resource_t* resource = nullptr;
 
@@ -99,7 +115,9 @@ private:
 			sentinel->NextFree = slot->NextFree;
 
 			slot->NextFree = SLOT_OCCUPIED;
-			handle = { index, slot->Generation };
+
+			handle.Index = index;
+			handle.Version = slot->Generation;
 		}
 
 		return handle;

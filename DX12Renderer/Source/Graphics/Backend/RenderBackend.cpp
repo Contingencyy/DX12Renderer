@@ -6,6 +6,7 @@
 #include "Graphics/Backend/CommandList.h"
 #include "Graphics/Backend/UploadBuffer.h"
 #include "Graphics/Shader.h"
+#include "Graphics/RenderState.h"
 
 #include <imgui/imgui.h>
 
@@ -62,14 +63,19 @@ void RenderBackend::Initialize(HWND hWnd, uint32_t width, uint32_t height)
 
 	D3D12_QUERY_HEAP_DESC queryHeapDesc = {};
 	queryHeapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
-	queryHeapDesc.Count = s_Data.MaxQueriesPerFrame * s_Data.SwapChain->GetBackBufferCount();
+	queryHeapDesc.Count = s_Data.MaxQueriesPerFrame * RenderState::BACK_BUFFER_COUNT;
 	queryHeapDesc.NodeMask = 0;
 	DX_CALL(s_Data.D3D12Device2->CreateQueryHeap(&queryHeapDesc, IID_PPV_ARGS(&s_Data.D3D12QueryHeapTimestamp)));
 
-	for (uint32_t i = 0; i < s_Data.SwapChain->GetBackBufferCount(); ++i)
+	for (uint32_t i = 0; i < RenderState::BACK_BUFFER_COUNT; ++i)
 	{
-		s_Data.QueryReadbackBuffers[i] = std::make_unique<Buffer>("Query result buffer", BufferDesc(BufferUsage::BUFFER_USAGE_READBACK,
-			s_Data.MaxQueriesPerFrame, 8));
+		BufferDesc queryReadbackDesc = {};
+		queryReadbackDesc.Usage = BufferUsage::BUFFER_USAGE_READBACK;
+		queryReadbackDesc.NumElements = s_Data.MaxQueriesPerFrame;
+		queryReadbackDesc.ElementSize = 8;
+		queryReadbackDesc.DebugName = "Query result readback buffer";
+
+		s_Data.QueryReadbackBuffers[i] = std::make_unique<Buffer>(queryReadbackDesc);
 	}
 
 	CreateMipMapComputeState();
@@ -489,7 +495,7 @@ void RenderBackend::CreateMipMapComputeState()
 
 void RenderBackend::ProcessTimestampQueries()
 {
-	uint32_t nextFrameBufferIndex = (s_Data.CurrentBackBufferIndex + 1) % s_Data.SwapChain->GetBackBufferCount();
+	uint32_t nextFrameBufferIndex = (s_Data.CurrentBackBufferIndex + 1) % RenderState::BACK_BUFFER_COUNT;
 
 	for (auto& [name, timestampQuery] : s_Data.TimestampQueries[nextFrameBufferIndex])
 	{
