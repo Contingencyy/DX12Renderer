@@ -4,6 +4,7 @@
 class Resource
 {
 public:
+	Resource() = default;
 	Resource(const std::string& name);
 	virtual ~Resource() = 0;
 

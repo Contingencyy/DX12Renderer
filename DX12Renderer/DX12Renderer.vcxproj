@@ -234,8 +234,8 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClCompile Include="Source\Graphics\ComputePass.cpp" />
     <ClCompile Include="Source\Graphics\DebugRenderer.cpp" />
     <ClCompile Include="Source\Graphics\Backend\RenderBackend.cpp" />
-    <ClCompile Include="Source\Graphics\FrameBuffer.cpp" />
     <ClCompile Include="Source\Graphics\RasterPass.cpp" />
+    <ClCompile Include="Source\Graphics\RenderState.cpp" />
     <ClCompile Include="Source\Graphics\Resource.cpp" />
     <ClCompile Include="Source\Scene\BoundingVolume.cpp" />
     <ClCompile Include="Source\Scene\Camera\Camera.cpp" />
@@ -244,7 +244,6 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClCompile Include="Source\Graphics\Backend\CommandQueue.cpp" />
     <ClCompile Include="Source\Graphics\Backend\DescriptorAllocation.cpp" />
     <ClCompile Include="Source\Graphics\Backend\DescriptorHeap.cpp" />
-    <ClCompile Include="Source\Resource\Model.cpp" />
     <ClCompile Include="Source\Graphics\ParticleSystem.cpp" />
     <ClCompile Include="Source\Graphics\Shader.cpp" />
     <ClCompile Include="Source\Graphics\Backend\SwapChain.cpp" />
@@ -286,10 +285,11 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\Graphics\ComputePass.h" />
     <ClInclude Include="Include\Graphics\DebugRenderer.h" />
     <ClInclude Include="Include\Graphics\Backend\RenderBackend.h" />
-    <ClInclude Include="Include\Graphics\FrameBuffer.h" />
-    <ClInclude Include="Include\Graphics\Material.h" />
     <ClInclude Include="Include\Graphics\RasterPass.h" />
+    <ClInclude Include="Include\Graphics\RenderAPI.h" />
+    <ClInclude Include="Include\Graphics\RenderState.h" />
     <ClInclude Include="Include\Graphics\Resource.h" />
+    <ClInclude Include="Include\Graphics\ResourceSlotmap.h" />
     <ClInclude Include="Include\Scene\BoundingVolume.h" />
     <ClInclude Include="Include\Scene\Camera\Camera.h" />
     <ClInclude Include="Include\Graphics\Buffer.h" />
@@ -297,8 +297,6 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\Graphics\Backend\CommandQueue.h" />
     <ClInclude Include="Include\Graphics\Backend\DescriptorAllocation.h" />
     <ClInclude Include="Include\Graphics\Backend\DescriptorHeap.h" />
-    <ClInclude Include="Include\Graphics\Mesh.h" />
-    <ClInclude Include="Include\Resource\Model.h" />
     <ClInclude Include="Include\Graphics\ParticleSystem.h" />
     <ClInclude Include="Include\Graphics\Shader.h" />
     <ClInclude Include="Include\Graphics\Backend\SwapChain.h" />

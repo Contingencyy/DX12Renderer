@@ -61,31 +61,22 @@ uint16_t CalculateTotalMipCount(uint32_t width, uint32_t height)
 	return numMips;
 }
 
-Texture::Texture(const std::string& name, const TextureDesc& textureDesc)
-	: Resource(name), m_TextureDesc(textureDesc)
+Texture::Texture(const TextureDesc& desc)
+	: Resource(desc.DebugName), m_TextureDesc(desc)
 {
 	if (IsValid())
 	{
 		CreateD3D12Resource();
 		AllocateDescriptors();
 		CreateViews();
-		SetName(name);
-	}
-}
+		SetName(desc.DebugName);
 
-Texture::Texture(const std::string& name, const TextureDesc& textureDesc, const void* data)
-	: Resource(name), m_TextureDesc(textureDesc)
-{
-	if (IsValid())
-	{
-		CreateD3D12Resource();
-		AllocateDescriptors();
-		CreateViews();
-		SetName(name);
-
-		RenderBackend::UploadTextureData(*this, data);
-		if (m_TextureDesc.NumMips > 1)
-			RenderBackend::GenerateMips(*this);
+		if (desc.DataPtr)
+		{
+			RenderBackend::UploadTextureData(*this, desc.DataPtr);
+			if (m_TextureDesc.NumMips > 1)
+				RenderBackend::GenerateMips(*this);
+		}
 	}
 }
 
@@ -98,8 +89,7 @@ Texture::~Texture()
 bool Texture::IsValid() const
 {
 	return m_TextureDesc.Usage != TextureUsage::TEXTURE_USAGE_NONE &&
-		m_TextureDesc.Format != TextureFormat::TEXTURE_FORMAT_UNSPECIFIED &&
-		m_TextureDesc.Dimension != TextureDimension::TEXTURE_DIMENSION_UNSPECIFIED;
+		m_TextureDesc.Format != TextureFormat::TEXTURE_FORMAT_UNSPECIFIED;
 }
 
 bool Texture::IsCPUAccessible() const
@@ -114,8 +104,8 @@ void Texture::Invalidate()
 	{
 		CreateD3D12Resource();
 
-		ResetDescriptorAllocations();
-		AllocateDescriptors();
+		/*ResetDescriptorAllocations();
+		AllocateDescriptors();*/
 
 		CreateViews();
 		SetName(m_Name);

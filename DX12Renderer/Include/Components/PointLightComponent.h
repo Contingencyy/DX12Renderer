@@ -1,8 +1,7 @@
 #pragma once
 #include "Component.h"
 #include "Scene/Camera/Camera.h"
-
-class Texture;
+#include "Graphics/RenderAPI.h"
 
 struct PointLightData
 {
@@ -31,6 +30,6 @@ public:
 private:
 	PointLightData m_PointLightData;
 	std::array<Camera, 6> m_Cameras;
-	std::shared_ptr<Texture> m_ShadowMap;
+	RenderResourceHandle m_ShadowMap;
 
 };

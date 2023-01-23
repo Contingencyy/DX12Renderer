@@ -1,6 +1,7 @@
 #include "Pch.h"
 #include "GUI.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/RenderState.h"
 #include "Graphics/Backend/CommandQueue.h"
 #include "Graphics/Backend/CommandList.h"
 #include "Graphics/Backend/SwapChain.h"
@@ -73,10 +74,11 @@ void GUI::EndFrame()
 
 	auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	
-	commandList->Transition(Renderer::GetFinalColorOutput(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+	commandList->Transition(*g_RenderState.SDRColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	commandList->Transition(*g_RenderState.DepthPrepassDepthTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE rtv = Renderer::GetFinalColorOutput().GetDescriptor(DescriptorType::RTV);
-	D3D12_CPU_DESCRIPTOR_HANDLE dsv = Renderer::GetFinalDepthOutput().GetDescriptor(DescriptorType::DSV);
+	D3D12_CPU_DESCRIPTOR_HANDLE rtv = g_RenderState.SDRColorTarget->GetDescriptor(DescriptorType::RTV);
+	D3D12_CPU_DESCRIPTOR_HANDLE dsv = g_RenderState.DepthPrepassDepthTarget->GetDescriptor(DescriptorType::DSV);
 
 	commandList->SetRenderTargets(1, &rtv, &dsv);
 	ID3D12DescriptorHeap* descriptorHeap = m_d3d12DescriptorHeap.Get();

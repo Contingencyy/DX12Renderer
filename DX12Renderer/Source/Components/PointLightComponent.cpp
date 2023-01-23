@@ -1,6 +1,7 @@
 #include "Pch.h"
 #include "Components/PointLightComponent.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/RenderAPI.h"
 #include "Graphics/Texture.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneObject.h"
@@ -32,11 +33,18 @@ PointLightComponent::PointLightComponent(const PointLightData& pointLightData)
 		m_Cameras[i] = Camera(lightViewFace, 90.0f, 1.0f, m_PointLightData.Range, 0.1f);
 	}
 
-	const Renderer::RenderSettings& renderSettings = Renderer::GetSettings();
+	const Resolution& shadowRes = Renderer::GetShadowResolution();
 
-	m_ShadowMap = std::make_shared<Texture>("Pointlight shadow map", TextureDesc(TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ, TextureFormat::TEXTURE_FORMAT_DEPTH32,
-		TextureDimension::TEXTURE_DIMENSION_CUBE, renderSettings.ShadowMapResolution.x, renderSettings.ShadowMapResolution.y));
-	m_PointLightData.ShadowMapIndex = m_ShadowMap->GetDescriptorHeapIndex(DescriptorType::SRV);
+	// Create shadow map
+	TextureDesc shadowMapDesc = {};
+	shadowMapDesc.Usage = TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ;
+	shadowMapDesc.Format = TextureFormat::TEXTURE_FORMAT_DEPTH32;
+	shadowMapDesc.Dimension = TextureDimension::TEXTURE_DIMENSION_CUBE;
+	shadowMapDesc.Width = shadowRes.x;
+	shadowMapDesc.Height = shadowRes.y;
+	shadowMapDesc.DebugName = "Pointlight shadow map";
+
+	m_ShadowMap = Renderer::CreateTexture(shadowMapDesc);
 }
 
 PointLightComponent::~PointLightComponent()

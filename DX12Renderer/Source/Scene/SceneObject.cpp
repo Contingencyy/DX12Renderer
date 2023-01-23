@@ -1,6 +1,5 @@
 #include "Pch.h"
 #include "Scene/SceneObject.h"
-#include "Resource/Model.h"
 #include "Components/TransformComponent.h"
 
 #include <imgui/imgui.h>

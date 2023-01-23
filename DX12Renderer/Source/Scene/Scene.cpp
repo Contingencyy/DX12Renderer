@@ -7,10 +7,9 @@
 #include "Components/PointLightComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/RenderAPI.h"
 #include "Graphics/DebugRenderer.h"
 #include "Resource/ResourceManager.h"
-#include "Graphics/Mesh.h"
-#include "Resource/Model.h"
 #include "Application.h"
 
 #include <imgui/imgui.h>
@@ -19,8 +18,8 @@ static std::vector<std::unique_ptr<SceneObject>> m_SceneObjects;
 
 Scene::Scene()
 {
-	Renderer::RenderSettings renderSettings = Renderer::GetSettings();
-	m_ActiveCamera = Camera(glm::vec3(0.0f, 250.0f, 0.0f), 60.0f, static_cast<float>(renderSettings.RenderResolution.x), static_cast<float>(renderSettings.RenderResolution.y), 0.1f, 10000.0f);
+	Resolution renderRes = Renderer::GetRenderResolution();
+	m_ActiveCamera = Camera(glm::vec3(0.0f, 250.0f, 0.0f), 60.0f, static_cast<float>(renderRes.x), static_cast<float>(renderRes.y), 0.1f, 10000.0f);
 
 	// Directional light
 	DirectionalLightData dirLightData(glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f)), glm::vec3(0.02f, 0.019f, 0.014f), glm::vec3(2.0f, 1.9f, 1.4f));
@@ -71,18 +70,18 @@ Scene::Scene()
 	GetSceneObject(spotLight6).AddComponent<SpotLightComponent>(spotLightData);
 
 	// Mesh objects
-	auto& meshes1 = Application::Get().GetResourceManager()->GetModel("SponzaOld")->GetMeshes();
+	auto& meshes1 = Application::Get().GetResourceManager()->GetModel("SponzaOld")->Meshes;
 	for (auto& mesh : meshes1)
 	{
-		std::size_t sponzaMesh = AddSceneObject(mesh->Name);
+		std::size_t sponzaMesh = AddSceneObject("Sponza");
 		GetSceneObject(sponzaMesh).AddComponent<TransformComponent>();
 		GetSceneObject(sponzaMesh).AddComponent<MeshComponent>(mesh);
 	}
 
-	auto& meshes2 = Application::Get().GetResourceManager()->GetModel("DamagedHelmet")->GetMeshes();
+	auto& meshes2 = Application::Get().GetResourceManager()->GetModel("DamagedHelmet")->Meshes;
 	for (auto& mesh : meshes2)
 	{
-		std::size_t helmetMesh = AddSceneObject(mesh->Name);
+		std::size_t helmetMesh = AddSceneObject("DamagedHelmet");
 		GetSceneObject(helmetMesh).AddComponent<TransformComponent>(glm::vec3(0.0f, 500.0f, 0.0f), glm::vec3(), glm::vec3(100.0f));
 		GetSceneObject(helmetMesh).AddComponent<MeshComponent>(mesh);
 	}

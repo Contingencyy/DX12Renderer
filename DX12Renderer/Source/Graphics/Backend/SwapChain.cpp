@@ -27,7 +27,7 @@ SwapChain::SwapChain(HWND hWnd, std::shared_ptr<CommandQueue> commandQueue, uint
     swapChainDesc.Stereo = FALSE;
     swapChainDesc.SampleDesc = { 1, 0 };
     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.BufferCount = s_BackBufferCount;
+    swapChainDesc.BufferCount = RenderState::BACK_BUFFER_COUNT;
     swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
@@ -84,15 +84,20 @@ void SwapChain::Resize(uint32_t width, uint32_t height)
 
 void SwapChain::CreateBackBufferTextures()
 {
-    for (uint32_t i = 0; i < s_BackBufferCount; ++i)
+    for (uint32_t i = 0; i < RenderState::BACK_BUFFER_COUNT; ++i)
     {
         ComPtr<ID3D12Resource> backBuffer;
         DX_CALL(m_dxgiSwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
 
         D3D12_RESOURCE_DESC backBufferDesc = backBuffer->GetDesc();
 
-        m_BackBuffers[i] = std::make_unique<Texture>("Back buffer", TextureDesc(TextureUsage::TEXTURE_USAGE_NONE, TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM,
-            TextureDimension::TEXTURE_DIMENSION_2D, static_cast<uint32_t>(backBufferDesc.Width), static_cast<uint32_t>(backBufferDesc.Height)));
+        TextureDesc backBufferTextureDesc = {};
+        backBufferTextureDesc.Format = TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM;
+        backBufferTextureDesc.Width = backBufferDesc.Width;
+        backBufferTextureDesc.Height = backBufferDesc.Height;
+        backBufferTextureDesc.DebugName = "Back buffer " + std::to_string(i);
+
+        m_BackBuffers[i] = std::make_unique<Texture>(backBufferTextureDesc);
         m_BackBuffers[i]->SetD3D12Resource(backBuffer);
         m_BackBuffers[i]->SetD3D12Resourcestate(D3D12_RESOURCE_STATE_PRESENT);
     }
@@ -100,7 +105,7 @@ void SwapChain::CreateBackBufferTextures()
 
 void SwapChain::ResizeBackBuffers(uint32_t width, uint32_t height)
 {
-    for (uint32_t i = 0; i < s_BackBufferCount; ++i)
+    for (uint32_t i = 0; i < RenderState::BACK_BUFFER_COUNT; ++i)
     {
         m_BackBuffers[i]->GetD3D12Resource().Reset();
         m_BackBuffers[i].reset();
@@ -110,7 +115,7 @@ void SwapChain::ResizeBackBuffers(uint32_t width, uint32_t height)
 
     DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
     DX_CALL(m_dxgiSwapChain->GetDesc(&swapChainDesc));
-    DX_CALL(m_dxgiSwapChain->ResizeBuffers(s_BackBufferCount, width, height,
+    DX_CALL(m_dxgiSwapChain->ResizeBuffers(RenderState::BACK_BUFFER_COUNT, width, height,
         swapChainDesc.BufferDesc.Format, swapChainDesc.Flags));
 
     m_CurrentBackBufferIndex = m_dxgiSwapChain->GetCurrentBackBufferIndex();

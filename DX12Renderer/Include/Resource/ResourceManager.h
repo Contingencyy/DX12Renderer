@@ -1,8 +1,18 @@
 #pragma once
 
 class Texture;
-class Model;
 class Vertex;
+class Mesh;
+struct RenderResourceHandle;
+
+struct Model
+{
+	Model(const std::vector<RenderResourceHandle>& meshes, const std::string& name)
+		: Meshes(meshes), Name(name) {}
+
+	std::vector<RenderResourceHandle> Meshes;
+	std::string Name = "";
+};
 
 class ResourceManager
 {
