@@ -53,13 +53,13 @@ struct RenderState
 	RenderSettings Settings;
 	RendererStatistics Stats;
 
-	static constexpr uint32_t MAX_MESH_INSTANCES = 100;
-	static constexpr uint32_t MAX_MESHES = 1000;
-	static constexpr uint32_t MAX_MATERIALS = 1000;
+	static constexpr uint32_t MAX_MESH_INSTANCES = 500;
+	static constexpr uint32_t MAX_MESHES = 500;
+	static constexpr uint32_t MAX_MATERIALS = 500;
 	static constexpr uint32_t MAX_DIR_LIGHTS = 1;
 	static constexpr uint32_t MAX_POINT_LIGHTS = 50;
 	static constexpr uint32_t MAX_SPOT_LIGHTS = 50;
-	static constexpr uint32_t MAX_DEBUG_LINES = 10000;
+	static constexpr uint32_t MAX_DEBUG_LINES = 5000;
 	static constexpr uint32_t BACK_BUFFER_COUNT = 3;
 
 	// Resource slotmaps

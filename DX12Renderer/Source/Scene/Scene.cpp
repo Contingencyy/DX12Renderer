@@ -10,7 +10,6 @@
 #include "Graphics/RenderAPI.h"
 #include "Graphics/DebugRenderer.h"
 #include "Resource/ResourceManager.h"
-#include "Application.h"
 
 #include <imgui/imgui.h>
 
@@ -70,25 +69,9 @@ Scene::Scene()
 	GetSceneObject(spotLight6).AddComponent<SpotLightComponent>(spotLightData);
 
 	// Mesh objects
-	auto& meshes1 = Application::Get().GetResourceManager()->GetModel("SponzaOld")->Meshes;
-	for (auto& mesh : meshes1)
-	{
-		std::size_t sponzaMesh = AddSceneObject("Sponza");
-		GetSceneObject(sponzaMesh).AddComponent<TransformComponent>();
-		GetSceneObject(sponzaMesh).AddComponent<MeshComponent>(mesh);
-	}
-
-	auto& meshes2 = Application::Get().GetResourceManager()->GetModel("DamagedHelmet")->Meshes;
-	for (auto& mesh : meshes2)
-	{
-		std::size_t helmetMesh = AddSceneObject("DamagedHelmet");
-		GetSceneObject(helmetMesh).AddComponent<TransformComponent>(glm::vec3(0.0f, 500.0f, 0.0f), glm::vec3(), glm::vec3(100.0f));
-		GetSceneObject(helmetMesh).AddComponent<MeshComponent>(mesh);
-	}
-}
-
-Scene::~Scene()
-{
+	SpawnModelObject("SponzaOld", glm::vec3(), glm::vec3(), glm::vec3(125.0f));
+	//SpawnModelObject("DamagedHelmet", glm::vec3(), glm::vec3(), glm::vec3(100.0f));
+	SpawnModelObject("Chess", glm::vec3(), glm::vec3(), glm::vec3(500.0f));
 }
 
 void Scene::Update(float deltaTime)
@@ -133,4 +116,42 @@ std::size_t Scene::AddSceneObject(const std::string& name)
 SceneObject& Scene::GetSceneObject(std::size_t objectID)
 {
 	return *m_SceneObjects.at(objectID);
+}
+
+void SpawnNodeMeshes(const Model& model, const Model::Node& node, const glm::mat4& parentTransform)
+{
+	// Spawn mesh objects for each mesh handle in the current node
+	for (auto& nodeMesh : node.MeshHandles)
+	{
+		std::size_t nodeObject = Scene::AddSceneObject(node.Name);
+
+		Scene::GetSceneObject(nodeObject).AddComponent<TransformComponent>(parentTransform);
+		Scene::GetSceneObject(nodeObject).AddComponent<MeshComponent>(nodeMesh);
+	}
+
+	// Now recurse over all child nodes of the current node
+	for (auto& childNodeIndex : node.Children)
+	{
+		const Model::Node& childNode = model.Nodes[childNodeIndex];
+		SpawnNodeMeshes(model, childNode, parentTransform * childNode.Transform);
+	}
+}
+
+void Scene::SpawnModelObject(const std::string& modelName, const glm::vec3& translation,
+	const glm::vec3& rotation, const glm::vec3& scale)
+{
+	auto model = ResourceManager::GetModel(modelName);
+	auto& modelRootNodes = ResourceManager::GetModel(modelName)->RootNodes;
+
+	Transform transform;
+	transform.Translate(translation);
+	transform.Rotate(rotation);
+	transform.Scale(scale);
+
+	// Go through all of the root nodes and spawn them and their child nodes, recursively
+	for (auto& rootNodeIndex : modelRootNodes)
+	{
+		const Model::Node& rootNode = model->Nodes[rootNodeIndex];
+		SpawnNodeMeshes(*model, rootNode, transform.GetTransformMatrix() * rootNode.Transform);
+	}
 }

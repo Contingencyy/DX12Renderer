@@ -3,6 +3,11 @@
 
 #include <imgui/imgui.h>
 
+TransformComponent::TransformComponent(const glm::mat4& matrix)
+{
+	m_Transform = Transform(matrix);
+}
+
 TransformComponent::TransformComponent(const glm::vec3& translation,
 	const glm::vec3& rotation, const glm::vec3& scale)
 {

@@ -5,6 +5,9 @@
 #include "Graphics/RenderAPI.h"
 #include "Graphics/Texture.h"
 
+std::unordered_map<std::string, std::shared_ptr<Texture>> m_Textures;
+std::unordered_map<std::string, std::shared_ptr<Model>> m_Models;
+
 struct Vertex
 {
 	glm::vec3 Position;
@@ -14,8 +17,59 @@ struct Vertex
 	glm::vec3 Bitangent;
 };
 
-ResourceManager::ResourceManager()
+void CalculateVertexTangents(Vertex& vert0, Vertex& vert1, Vertex& vert2)
 {
+	if (glm::abs(vert0.Normal).x > glm::abs(vert0.Normal.y))
+		vert0.Tangent = glm::vec3(vert0.Normal.z, 0.0f, -vert0.Normal.x) / glm::sqrt(vert0.Normal.x * vert0.Normal.x + vert0.Normal.z * vert0.Normal.z);
+	else
+		vert0.Tangent = glm::vec3(0.0f, -vert0.Normal.z, vert0.Normal.y) / glm::sqrt(vert0.Normal.y * vert0.Normal.y + vert0.Normal.z * vert0.Normal.z);
+
+	vert0.Bitangent = glm::cross(vert0.Normal, vert0.Tangent);
+
+	if (glm::abs(vert1.Normal).x > glm::abs(vert1.Normal.y))
+		vert1.Tangent = glm::vec3(vert1.Normal.z, 0.0f, -vert1.Normal.x) / glm::sqrt(vert1.Normal.x * vert1.Normal.x + vert1.Normal.z * vert1.Normal.z);
+	else
+		vert1.Tangent = glm::vec3(0.0f, -vert1.Normal.z, vert1.Normal.y) / glm::sqrt(vert1.Normal.y * vert1.Normal.y + vert1.Normal.z * vert1.Normal.z);
+
+	vert1.Bitangent = glm::cross(vert1.Normal, vert1.Tangent);
+
+	if (glm::abs(vert2.Normal).x > glm::abs(vert2.Normal.y))
+		vert2.Tangent = glm::vec3(vert2.Normal.z, 0.0f, -vert2.Normal.x) / glm::sqrt(vert2.Normal.x * vert2.Normal.x + vert2.Normal.z * vert2.Normal.z);
+	else
+		vert2.Tangent = glm::vec3(0.0f, -vert2.Normal.z, vert2.Normal.y) / glm::sqrt(vert2.Normal.y * vert2.Normal.y + vert2.Normal.z * vert2.Normal.z);
+
+	vert2.Bitangent = glm::cross(vert2.Normal, vert2.Tangent);
+}
+
+glm::mat4 MakeNodeTransform(const tinygltf::Node& gltfnode)
+{
+	glm::mat4 transform = glm::identity<glm::mat4>();
+
+	if (gltfnode.matrix.size() == 16)
+	{
+		transform = *((glm::mat4*)&gltfnode.matrix[0]);
+	}
+	else
+	{
+		glm::vec3 translation(0.0f);
+		glm::vec4 rotation(0.0f);
+		glm::vec3 scale(1.0f);
+
+		if (gltfnode.translation.size() == 3)
+			translation = glm::vec3(gltfnode.translation[0], gltfnode.translation[1], gltfnode.translation[2]);
+		if (gltfnode.rotation.size() == 4)
+			rotation = glm::vec4(gltfnode.rotation[0], gltfnode.rotation[1], gltfnode.rotation[2], gltfnode.rotation[3]);
+		if (gltfnode.scale.size() == 3)
+			scale = glm::vec3(gltfnode.scale[0], gltfnode.scale[1], gltfnode.scale[2]);
+
+		glm::mat4 translationMatrix = glm::translate(glm::identity<glm::mat4>(), translation);
+		glm::mat4 rotationMatrix = glm::mat4_cast(glm::fquat(rotation));
+		glm::mat4 scaleMatrix = glm::scale(glm::identity<glm::mat4>(), scale);
+
+		transform = translationMatrix * rotationMatrix * scaleMatrix;
+	}
+
+	return transform;
 }
 
 void ResourceManager::LoadTexture(const std::string& filepath, const std::string& name)
@@ -202,17 +256,6 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 					pVertexTangentData++;
 				}
 			}
-			else
-			{
-				for (std::size_t i = currentStartVertex; i < currentStartVertex + vertexPosAccessor.count; i += 3)
-				{
-					Vertex& vert0 = vertices[i];
-					Vertex& vert1 = vertices[i + 1];
-					Vertex& vert2 = vertices[i + 2];
-
-					CalculateVertexTangents(vert0, vert1, vert2);
-				}
-			}
 
 			// Set the min and max bounds for the current primitive/mesh
 			glm::vec3 minBounds = glm::vec3(vertexPosAccessor.minValues[0], vertexPosAccessor.minValues[1], vertexPosAccessor.minValues[2]);
@@ -250,6 +293,19 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 				}
 			}
 
+			// Calculate missing tangents and bitangents
+			if (vertexTangentAttrib == gltfPrim.attributes.end())
+			{
+				for (std::size_t i = currentStartIndex; i < currentStartIndex + indexAccessor.count; i += 3)
+				{
+					Vertex& vert0 = vertices[indices[i]];
+					Vertex& vert1 = vertices[indices[i + 1]];
+					Vertex& vert2 = vertices[indices[i + 2]];
+
+					CalculateVertexTangents(vert0, vert1, vert2);
+				}
+			}
+
 			MeshDesc meshDesc = {};
 			meshDesc.DebugName = gltfMesh.name + std::to_string(meshPrimitiveHandles.size());
 			meshDesc.VertexBufferDesc.Usage = BufferUsage::BUFFER_USAGE_VERTEX;
@@ -270,7 +326,30 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		}
 	}
 
-	m_Models.insert(std::pair<std::string, std::shared_ptr<Model>>(name, std::make_shared<Model>(meshHandles, name)));
+	// Load all nodes and their transforms
+	std::vector<Model::Node> nodes;
+	for (auto& gltfnode : tinygltf.nodes)
+	{
+		std::size_t meshIndex = gltfnode.mesh;
+		std::size_t numMeshes = tinygltf.meshes[gltfnode.mesh].primitives.size();
+
+		Model::Node node = {};
+		node.MeshHandles = std::vector<RenderResourceHandle>(meshHandles.begin() + meshIndex, meshHandles.begin() + meshIndex + numMeshes);
+		node.Transform = MakeNodeTransform(gltfnode);
+		node.Name = name + gltfnode.name;
+		node.Children = std::vector<std::size_t>(gltfnode.children.begin(), gltfnode.children.end());
+
+		nodes.emplace_back(node);
+	}
+
+	// Only load the default scene's root nodes
+	std::vector<std::size_t> rootNodes = std::vector<std::size_t>(tinygltf.scenes[tinygltf.defaultScene].nodes.begin(), tinygltf.scenes[tinygltf.defaultScene].nodes.end());
+
+	Model model = {};
+	model.Nodes = nodes;
+	model.RootNodes = rootNodes;
+	model.Name = name;
+	m_Models.insert(std::pair<std::string, std::shared_ptr<Model>>(name, std::make_shared<Model>(model)));
 	LOG_INFO("[ResourceManager] Loaded model: " + filepath);
 }
 
@@ -284,28 +363,4 @@ std::shared_ptr<Model> ResourceManager::GetModel(const std::string& name)
 {
 	ASSERT(m_Models.find(name) != m_Models.end(), "Model does not exist");
 	return m_Models.at(name);
-}
-
-void ResourceManager::CalculateVertexTangents(Vertex& vert0, Vertex& vert1, Vertex& vert2)
-{
-	if (glm::abs(vert0.Normal).x > glm::abs(vert0.Normal.y))
-		vert0.Tangent = glm::vec3(vert0.Normal.z, 0.0f, -vert0.Normal.x) / glm::sqrt(vert0.Normal.x * vert0.Normal.x + vert0.Normal.z * vert0.Normal.z);
-	else
-		vert0.Tangent = glm::vec3(0.0f, -vert0.Normal.z, vert0.Normal.y) / glm::sqrt(vert0.Normal.y * vert0.Normal.y + vert0.Normal.z * vert0.Normal.z);
-
-	vert0.Bitangent = glm::cross(vert0.Normal, vert0.Tangent);
-
-	if (glm::abs(vert1.Normal).x > glm::abs(vert1.Normal.y))
-		vert1.Tangent = glm::vec3(vert1.Normal.z, 0.0f, -vert1.Normal.x) / glm::sqrt(vert1.Normal.x * vert1.Normal.x + vert1.Normal.z * vert1.Normal.z);
-	else
-		vert1.Tangent = glm::vec3(0.0f, -vert1.Normal.z, vert1.Normal.y) / glm::sqrt(vert1.Normal.y * vert1.Normal.y + vert1.Normal.z * vert1.Normal.z);
-
-	vert1.Bitangent = glm::cross(vert1.Normal, vert1.Tangent);
-
-	if (glm::abs(vert2.Normal).x > glm::abs(vert2.Normal.y))
-		vert2.Tangent = glm::vec3(vert2.Normal.z, 0.0f, -vert2.Normal.x) / glm::sqrt(vert2.Normal.x * vert2.Normal.x + vert2.Normal.z * vert2.Normal.z);
-	else
-		vert2.Tangent = glm::vec3(0.0f, -vert2.Normal.z, vert2.Normal.y) / glm::sqrt(vert2.Normal.y * vert2.Normal.y + vert2.Normal.z * vert2.Normal.z);
-
-	vert2.Bitangent = glm::cross(vert2.Normal, vert2.Tangent);
 }

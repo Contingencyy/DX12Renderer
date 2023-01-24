@@ -64,11 +64,11 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 	m_GUI->Initialize(m_Window->GetHandle());
 	LOG_INFO("[GUI] Initialized GUI");
 
-	m_ResourceManager = std::make_unique<ResourceManager>();
-	m_ResourceManager->LoadTexture("Resources/Textures/kermit.jpg", "Kermit");
-	m_ResourceManager->LoadModel("Resources/Models/DamagedHelmet/DamagedHelmet.gltf", "DamagedHelmet");
-	m_ResourceManager->LoadModel("Resources/Models/SponzaOld/Sponza.gltf", "SponzaOld");
-	//m_ResourceManager->LoadModel("Resources/Models/SponzaPBR/NewSponza_Main_glTF_002.gltf", "SponzaPBR");
+	ResourceManager::LoadTexture("Resources/Textures/kermit.jpg", "Kermit");
+	ResourceManager::LoadModel("Resources/Models/DamagedHelmet/DamagedHelmet.gltf", "DamagedHelmet");
+	ResourceManager::LoadModel("Resources/Models/SponzaOld/Sponza.gltf", "SponzaOld");
+	ResourceManager::LoadModel("Resources/Models/ABeautifulGame/glTF/ABeautifulGame.gltf", "Chess");
+	//ResourceManager::LoadModel("Resources/Models/SponzaPBR/NewSponza_Main_glTF_002.gltf", "SponzaPBR");
 
 	m_Scene = std::make_unique<Scene>();
 	m_Initialized = true;

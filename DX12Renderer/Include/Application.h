@@ -3,7 +3,6 @@
 class Window;
 class GUI;
 class InputHandler;
-class ResourceManager;
 class Scene;
 
 class Application
@@ -23,7 +22,6 @@ public:
 	void ToggleRenderGUI() { m_RenderGUI = !m_RenderGUI; }
 
 	Window* GetWindow() const { return m_Window.get(); }
-	ResourceManager* GetResourceManager() const { return m_ResourceManager.get(); }
 
 private:
 	Application();
@@ -44,7 +42,6 @@ private:
 private:
 	std::unique_ptr<Window> m_Window = nullptr;
 	std::unique_ptr<GUI> m_GUI = nullptr;
-	std::unique_ptr<ResourceManager> m_ResourceManager = nullptr;
 	std::unique_ptr<Scene> m_Scene = nullptr;
 
 	bool m_Initialized = false;

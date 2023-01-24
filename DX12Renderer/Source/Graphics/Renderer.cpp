@@ -82,7 +82,7 @@ struct LightSubmission
 enum class TonemapType : uint32_t
 {
     LINEAR, REINHARD, UNCHARTED2, FILMIC, ACES_FILMIC,
-    NUM_TYPES = 5
+    NUM_TYPES
 };
 
 struct TonemapSettings
@@ -727,19 +727,19 @@ void Renderer::Submit(RenderResourceHandle meshPrimitiveHandle, const glm::mat4&
     uint32_t albedoTextureIndex = g_RenderState.DefaultWhiteTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
     Texture* albedoTexture = g_RenderState.TextureSlotmap.Find(material->AlbedoTexture);
 
-    if (albedoTexture)
+    if (albedoTexture && albedoTexture->IsValid())
         albedoTextureIndex = albedoTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
 
     uint32_t normalTextureIndex = g_RenderState.DefaultNormalTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
     Texture* normalTexture = g_RenderState.TextureSlotmap.Find(material->NormalTexture);
 
-    if (normalTexture)
+    if (normalTexture && normalTexture->IsValid())
         normalTextureIndex = normalTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
 
     uint32_t metallicRoughnessTextureIndex = g_RenderState.DefaultWhiteTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
     Texture* metallicRoughnessTexture = g_RenderState.TextureSlotmap.Find(material->MetallicRoughnessTexture);
 
-    if (metallicRoughnessTexture)
+    if (metallicRoughnessTexture && metallicRoughnessTexture->IsValid())
         metallicRoughnessTextureIndex = metallicRoughnessTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
 
     MaterialData materialData = {};

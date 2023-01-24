@@ -5,6 +5,7 @@
 class TransformComponent : public Component
 {
 public:
+	TransformComponent(const glm::mat4& matrix);
 	TransformComponent(const glm::vec3& translation = glm::vec3(0.0f),
 		const glm::vec3& rotation = glm::vec3(0.0f), const glm::vec3& scale = glm::vec3(1.0f));
 	virtual ~TransformComponent();
