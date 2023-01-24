@@ -248,7 +248,7 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClCompile Include="Source\Graphics\Shader.cpp" />
     <ClCompile Include="Source\Graphics\Backend\SwapChain.cpp" />
     <ClCompile Include="Source\Graphics\Texture.cpp" />
-    <ClCompile Include="Source\GUI.cpp" />
+    <ClCompile Include="Source\Graphics\GUIRenderer.cpp" />
     <ClCompile Include="Source\InputHandler.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Pch.cpp">
@@ -301,7 +301,7 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\Graphics\Shader.h" />
     <ClInclude Include="Include\Graphics\Backend\SwapChain.h" />
     <ClInclude Include="Include\Graphics\Texture.h" />
-    <ClInclude Include="Include\GUI.h" />
+    <ClInclude Include="Include\Graphics\GUIRenderer.h" />
     <ClInclude Include="Include\InputHandler.h" />
     <ClInclude Include="Include\Resource\FileLoader.h" />
     <ClInclude Include="Include\Resource\ResourceManager.h" />

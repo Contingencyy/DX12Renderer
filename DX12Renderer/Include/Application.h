@@ -1,8 +1,6 @@
 #pragma once
 
 class Window;
-class GUI;
-class InputHandler;
 class Scene;
 
 class Application
@@ -41,7 +39,6 @@ private:
 
 private:
 	std::unique_ptr<Window> m_Window = nullptr;
-	std::unique_ptr<GUI> m_GUI = nullptr;
 	std::unique_ptr<Scene> m_Scene = nullptr;
 
 	bool m_Initialized = false;

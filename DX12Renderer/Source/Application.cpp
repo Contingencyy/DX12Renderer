@@ -3,8 +3,8 @@
 #include "Window.h"
 #include "Graphics/Renderer.h"
 #include "Graphics/DebugRenderer.h"
+#include "Graphics/GUIRenderer.h"
 #include "Graphics/Backend/RenderBackend.h"
-#include "GUI.h"
 #include "Scene/Scene.h"
 #include "InputHandler.h"
 #include "Resource/ResourceManager.h"
@@ -60,8 +60,7 @@ void Application::Initialize(HINSTANCE hInst, uint32_t width, uint32_t height)
 	DebugRenderer::Initialize(m_Window->GetWidth(), m_Window->GetHeight());
 	LOG_INFO("[DebugRenderer] Initialized DebugRenderer");
 
-	m_GUI = std::make_unique<GUI>();
-	m_GUI->Initialize(m_Window->GetHandle());
+	GUIRenderer::Initialize(m_Window->GetHandle());
 	LOG_INFO("[GUI] Initialized GUI");
 
 	//ResourceManager::LoadTexture("Resources/Textures/kermit.jpg", "Kermit");
@@ -97,7 +96,7 @@ void Application::Run()
 
 void Application::Finalize()
 {
-	m_GUI->Finalize();
+	GUIRenderer::Finalize();
 	LOG_INFO("Finalized GUI");
 
 	DebugRenderer::Finalize();
@@ -127,7 +126,6 @@ void Application::PollEvents()
 void Application::Update(float deltaTime)
 {
 	SCOPED_TIMER("Application::Update");
-	m_GUI->Update(deltaTime);
 	m_Scene->Update(deltaTime);
 }
 
@@ -147,7 +145,7 @@ void Application::Render()
 
 	if (m_RenderGUI)
 	{
-		m_GUI->BeginFrame();
+		GUIRenderer::BeginFrame();
 		m_Scene->OnImGuiRender();
 
 		ImGui::Begin("Rendering");
@@ -160,7 +158,7 @@ void Application::Render()
 
 		Profiler::OnImGuiRender();
 
-		m_GUI->EndFrame();
+		GUIRenderer::EndFrame();
 	}
 
 	Profiler::Reset();

@@ -39,7 +39,7 @@
     <ClCompile Include="Source\Graphics\Backend\CommandList.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\GUI.cpp">
+    <ClCompile Include="Source\Graphics\GUIRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Extern\imgui\imgui.cpp">
@@ -197,7 +197,7 @@
     <ClInclude Include="Include\Graphics\Backend\CommandList.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\GUI.h">
+    <ClInclude Include="Include\Graphics\GUIRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Extern\imgui\imgui.h">

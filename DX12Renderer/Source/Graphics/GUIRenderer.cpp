@@ -1,25 +1,17 @@
 #include "Pch.h"
-#include "GUI.h"
-#include "Graphics/Renderer.h"
+#include "Graphics/GUIRenderer.h"
 #include "Graphics/RenderState.h"
 #include "Graphics/Backend/CommandQueue.h"
 #include "Graphics/Backend/CommandList.h"
-#include "Graphics/Backend/SwapChain.h"
 #include "Graphics/Backend/RenderBackend.h"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_win32.h>
 #include <imgui/imgui_impl_dx12.h>
 
-GUI::GUI()
-{
-}
+ComPtr<ID3D12DescriptorHeap> m_d3d12DescriptorHeap;
 
-GUI::~GUI()
-{
-}
-
-void GUI::Initialize(HWND hWnd)
+void GUIRenderer::Initialize(HWND hWnd)
 {
 	// Set up ImGui context, styles and flags
 	IMGUI_CHECKVERSION();
@@ -57,18 +49,14 @@ void GUI::Initialize(HWND hWnd)
 	);
 }
 
-void GUI::Update(float deltaTime)
-{
-}
-
-void GUI::BeginFrame()
+void GUIRenderer::BeginFrame()
 {
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 }
 
-void GUI::EndFrame()
+void GUIRenderer::EndFrame()
 {
 	ImGui::Render();
 
@@ -95,7 +83,7 @@ void GUI::EndFrame()
 	RenderBackend::ExecuteCommandListAndWait(commandList);
 }
 
-void GUI::Finalize()
+void GUIRenderer::Finalize()
 {
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
