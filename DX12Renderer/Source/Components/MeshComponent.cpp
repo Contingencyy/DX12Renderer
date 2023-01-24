@@ -26,22 +26,6 @@ void MeshComponent::Render()
 {
 	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>().GetTransform();
 	Renderer::Submit(m_Mesh, objectTransform.GetTransformMatrix());
-
-	// Draw bounding box
-	/*DebugRenderer::Submit(bb.Min, glm::vec3(bb.Max.x, bb.Min.y, bb.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(bb.Max.x, bb.Min.y, bb.Min.z), glm::vec3(bb.Max.x, bb.Max.y, bb.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(bb.Max.x, bb.Max.y, bb.Min.z), glm::vec3(bb.Min.x, bb.Max.y, bb.Min.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(bb.Min.x, bb.Max.y, bb.Min.z), bb.Min, glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-
-	DebugRenderer::Submit(glm::vec3(bb.Min.x, bb.Min.y, bb.Max.z), glm::vec3(bb.Max.x, bb.Min.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(bb.Max.x, bb.Min.y, bb.Max.z), glm::vec3(bb.Max.x, bb.Max.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(bb.Max.x, bb.Max.y, bb.Max.z), glm::vec3(bb.Min.x, bb.Max.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(bb.Min.x, bb.Max.y, bb.Max.z), glm::vec3(bb.Min.x, bb.Min.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-
-	DebugRenderer::Submit(bb.Min, glm::vec3(bb.Min.x, bb.Min.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(bb.Min.x, bb.Max.y, bb.Min.z), glm::vec3(bb.Min.x, bb.Max.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(bb.Max.x, bb.Min.y, bb.Min.z), glm::vec3(bb.Max.x, bb.Min.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));
-	DebugRenderer::Submit(glm::vec3(bb.Max.x, bb.Max.y, bb.Min.z), glm::vec3(bb.Max.x, bb.Max.y, bb.Max.z), glm::vec4(0.8f, 0.0f, 0.8f, 1.0f));*/
 }
 
 void MeshComponent::OnImGuiRender()

@@ -73,9 +73,12 @@ namespace DebugRenderer
     {
         BufferDesc debugLineBufferDesc = {};
         debugLineBufferDesc.Usage = BufferUsage::BUFFER_USAGE_CONSTANT;
-        debugLineBufferDesc.NumElements = g_RenderState.MAX_DEBUG_LINES * g_RenderState.BACK_BUFFER_COUNT;
+        //debugLineBufferDesc.NumElements = g_RenderState.MAX_DEBUG_LINES * g_RenderState.BACK_BUFFER_COUNT;
+        debugLineBufferDesc.NumElements = g_RenderState.MAX_DEBUG_LINES;
         debugLineBufferDesc.ElementSize = sizeof(LineVertex);
         debugLineBufferDesc.DebugName = "Debug line buffer";
+
+        g_RenderState.DebugLineBuffer = std::make_unique<Buffer>(debugLineBufferDesc);
     }
 
 }
@@ -145,10 +148,32 @@ void DebugRenderer::EndScene()
 
 void DebugRenderer::Submit(const glm::vec3& lineStart, const glm::vec3& lineEnd, const glm::vec4& color)
 {
+    //ASSERT(s_Data.DebugLineAt <= g_RenderState.MAX_DEBUG_LINES, "Exceeded the maximum amount of debug lines");
+    if (s_Data.DebugLineAt > g_RenderState.MAX_DEBUG_LINES)
+        return;
+
     LineVertex vertices[2] = {
         { lineStart, color },
         { lineEnd, color }
     };
-    g_RenderState.DebugLineBuffer->SetBufferDataAtOffset(&vertices, sizeof(LineVertex), s_Data.DebugLineAt * sizeof(LineVertex));
-    s_Data.DebugLineAt++;
+    g_RenderState.DebugLineBuffer->SetBufferDataAtOffset(&vertices, 2 * sizeof(LineVertex), s_Data.DebugLineAt * sizeof(LineVertex));
+    s_Data.DebugLineAt += 2;
+}
+
+void DebugRenderer::SubmitAABB(const glm::vec3& min, const glm::vec3& max, const glm::vec4& color)
+{
+    Submit(min, glm::vec3(max.x, min.y, min.z), color);
+    Submit(glm::vec3(max.x, min.y, min.z), glm::vec3(max.x, max.y, min.z), color);
+    Submit(glm::vec3(max.x, max.y, min.z), glm::vec3(min.x, max.y, min.z), color);
+    Submit(glm::vec3(min.x, max.y, min.z), min, color);
+
+    Submit(glm::vec3(min.x, min.y, max.z), glm::vec3(max.x, min.y, max.z), color);
+    Submit(glm::vec3(max.x, min.y, max.z), glm::vec3(max.x, max.y, max.z), color);
+    Submit(glm::vec3(max.x, max.y, max.z), glm::vec3(min.x, max.y, max.z), color);
+    Submit(glm::vec3(min.x, max.y, max.z), glm::vec3(min.x, min.y, max.z), color);
+
+    Submit(min, glm::vec3(min.x, min.y, max.z), color);
+    Submit(glm::vec3(min.x, max.y, min.z), glm::vec3(min.x, max.y, max.z), color);
+    Submit(glm::vec3(max.x, min.y, min.z), glm::vec3(max.x, min.y, max.z), color);
+    Submit(glm::vec3(max.x, max.y, min.z), glm::vec3(max.x, max.y, max.z), color);
 }

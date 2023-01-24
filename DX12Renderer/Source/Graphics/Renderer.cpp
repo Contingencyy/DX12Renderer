@@ -3,6 +3,7 @@
 #include "Graphics/RenderState.h"
 #include "Graphics/RenderAPI.h"
 #include "Graphics/ResourceSlotmap.h"
+#include "Graphics/DebugRenderer.h"
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
 #include "Graphics/Shader.h"
@@ -394,6 +395,17 @@ namespace Renderer
         g_RenderState.SDRColorTarget->Resize(width, height);
     }
 
+    bool CullViewFrustum(const ViewFrustum& frustum, const Mesh* mesh, const MeshInstanceData& meshInstance)
+    {
+        BoundingBox meshInstanceBB = mesh->BB;
+        meshInstanceBB.Min = meshInstance.Transform * glm::vec4(mesh->BB.Min, 1.0f);
+        meshInstanceBB.Max = meshInstance.Transform * glm::vec4(mesh->BB.Max, 1.0f);
+
+        DebugRenderer::SubmitAABB(meshInstanceBB.Min, meshInstanceBB.Max, glm::vec4(1.0f, 0.0f, 1.0f, 1.0f));
+
+        return frustum.IsBoxInViewFrustum(meshInstanceBB.Min, meshInstanceBB.Max);
+    }
+
     void RenderGeometry(CommandList& commandList, const Camera& camera, TransparencyMode transparency)
     {
         std::array<MeshSubmission, RenderState::MAX_MESH_INSTANCES>* meshSubmissions;
@@ -417,13 +429,12 @@ namespace Renderer
 
         for (std::size_t m = 0; m < numSubmissions; ++m)
         {
-            auto mesh = (*meshSubmissions)[m].Mesh;
-
-            // TODO: Here we should transform the bounding box with this current instance's transform matrix
+            const auto mesh = (*meshSubmissions)[m].Mesh;
+            const auto& meshInstance = (*meshSubmissions)[m].InstanceData;
 
             if (camera.IsFrustumCullingEnabled())
             {
-                if (!camera.GetViewFrustum().IsBoxInViewFrustum(mesh->BB.Min, mesh->BB.Max))
+                if (!CullViewFrustum(camera.GetViewFrustum(), mesh, meshInstance))
                 {
                     currentInstance++;
                     continue;
@@ -830,7 +841,7 @@ void Renderer::Submit(PointLightData& pointLightData, const std::array<Camera, 6
     for (std::size_t i = 0; i < 6; ++i)
     {
         s_Data.LightSubmissions[s_Data.LightCount + i].ShadowMap = shadowMapTexture;
-        s_Data.LightSubmissions[s_Data.LightCount + i].Face = i;
+        s_Data.LightSubmissions[s_Data.LightCount + i].Face = i + 1;
         s_Data.LightSubmissions[s_Data.LightCount + i].LightCamera = lightCameras[i];
     }
 
