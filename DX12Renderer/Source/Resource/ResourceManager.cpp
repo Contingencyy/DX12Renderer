@@ -47,7 +47,10 @@ glm::mat4 MakeNodeTransform(const tinygltf::Node& gltfnode)
 
 	if (gltfnode.matrix.size() == 16)
 	{
-		transform = *((glm::mat4*)&gltfnode.matrix[0]);
+		transform[0] = glm::vec4(gltfnode.matrix[0], gltfnode.matrix[1], gltfnode.matrix[2], gltfnode.matrix[3]);
+		transform[1] = glm::vec4(gltfnode.matrix[4], gltfnode.matrix[5], gltfnode.matrix[6], gltfnode.matrix[7]);
+		transform[2] = glm::vec4(gltfnode.matrix[8], gltfnode.matrix[9], gltfnode.matrix[10], gltfnode.matrix[11]);
+		transform[3] = glm::vec4(gltfnode.matrix[12], gltfnode.matrix[13], gltfnode.matrix[14], gltfnode.matrix[15]);
 	}
 	else
 	{
@@ -328,22 +331,51 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 
 	// Load all nodes and their transforms
 	std::vector<Model::Node> nodes;
-	for (auto& gltfnode : tinygltf.nodes)
+	if (tinygltf.nodes.size() > 0)
 	{
-		std::size_t meshIndex = gltfnode.mesh;
-		std::size_t numMeshes = tinygltf.meshes[gltfnode.mesh].primitives.size();
+		for (auto& gltfnode : tinygltf.nodes)
+		{
+			Model::Node node = {};
 
-		Model::Node node = {};
-		node.MeshHandles = std::vector<RenderResourceHandle>(meshHandles.begin() + meshIndex, meshHandles.begin() + meshIndex + numMeshes);
-		node.Transform = MakeNodeTransform(gltfnode);
-		node.Name = name + gltfnode.name;
-		node.Children = std::vector<std::size_t>(gltfnode.children.begin(), gltfnode.children.end());
+			if (gltfnode.mesh >= 0)
+			{
+				std::size_t meshIndex = gltfnode.mesh;
+				std::size_t numMeshes = tinygltf.meshes[gltfnode.mesh].primitives.size();
 
-		nodes.emplace_back(node);
+				node.MeshHandles = std::vector<RenderResourceHandle>(meshHandles.begin() + meshIndex, meshHandles.begin() + meshIndex + numMeshes);
+			}
+
+			node.Transform = MakeNodeTransform(gltfnode);
+			node.Name = name + gltfnode.name;
+			node.Children = std::vector<std::size_t>(gltfnode.children.begin(), gltfnode.children.end());
+
+			nodes.emplace_back(node);
+		}
+	}
+	else
+	{
+		for (auto& meshHandle : meshHandles)
+		{
+			Model::Node node = {};
+			node.MeshHandles.emplace_back(meshHandle);
+			node.Transform = glm::identity<glm::mat4>();
+			node.Name = name;
+
+			nodes.emplace_back(node);
+		}
 	}
 
-	// Only load the default scene's root nodes
-	std::vector<std::size_t> rootNodes = std::vector<std::size_t>(tinygltf.scenes[tinygltf.defaultScene].nodes.begin(), tinygltf.scenes[tinygltf.defaultScene].nodes.end());
+	std::vector<std::size_t> rootNodes;
+	if (tinygltf.scenes.size() > 0)
+	{
+		// Only load the default scene's root nodes
+		rootNodes = std::vector<std::size_t>(tinygltf.scenes[tinygltf.defaultScene].nodes.begin(), tinygltf.scenes[tinygltf.defaultScene].nodes.end());
+	}
+	else
+	{
+		for (std::size_t i = 0; i < nodes.size(); ++i)
+			rootNodes.emplace_back(i);
+	}
 
 	Model model = {};
 	model.Nodes = nodes;
