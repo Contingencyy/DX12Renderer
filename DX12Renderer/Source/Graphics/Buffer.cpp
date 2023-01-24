@@ -79,11 +79,9 @@ void Buffer::CreateD3D12Resource()
 	uint32_t alignment = static_cast<uint32_t>(m_BufferDesc.ElementSize);
 
 	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT)
-	{
-		alignment = 256;
-	}
-
-	m_ByteSize = MathHelper::AlignUp(m_BufferDesc.NumElements * m_BufferDesc.ElementSize, alignment);
+		m_ByteSize = MathHelper::AlignUp(m_BufferDesc.NumElements * m_BufferDesc.ElementSize, 256);
+	else
+		m_ByteSize = m_BufferDesc.NumElements * m_BufferDesc.ElementSize;
 
 	if (m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_CONSTANT || m_BufferDesc.Usage & BufferUsage::BUFFER_USAGE_UPLOAD)
 	{
@@ -100,9 +98,7 @@ void Buffer::CreateD3D12Resource()
 	RenderBackend::CreateBuffer(m_d3d12Resource, heapType, d3d12ResourceDesc, m_d3d12ResourceState);
 
 	if (IsCPUAccessible())
-	{
 		m_d3d12Resource->Map(0, nullptr, &m_CPUPtr);
-	}
 }
 
 void Buffer::AllocateDescriptors()

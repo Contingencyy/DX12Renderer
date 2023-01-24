@@ -529,6 +529,18 @@ void Renderer::Render()
     g_RenderState.SceneDataConstantBuffer->SetBufferData(&s_Data.SceneData);
     g_RenderState.Stats.MeshCount = s_Data.OpaqueMeshCount + s_Data.TransparentMeshCount;
 
+    for (std::size_t i = 0; i < s_Data.OpaqueMeshCount; ++i)
+    {
+        Buffer* indexBuffer = g_RenderState.BufferSlotmap.Find(s_Data.OpaqueMeshSubmissions[i].Mesh->IndexBuffer);
+        g_RenderState.Stats.TriangleCount += indexBuffer->GetBufferDesc().NumElements / 3;
+    }
+
+    for (std::size_t i = 0; i < s_Data.TransparentMeshCount; ++i)
+    {
+        Buffer* indexBuffer = g_RenderState.BufferSlotmap.Find(s_Data.TransparentMeshSubmissions[i].Mesh->IndexBuffer);
+        g_RenderState.Stats.TriangleCount += indexBuffer->GetBufferDesc().NumElements / 3;
+    }
+
     auto& bindlessDescriptorHeap = RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
     {

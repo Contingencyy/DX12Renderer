@@ -156,34 +156,12 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 		materialHandles.emplace_back(Renderer::CreateMaterial(materialDesc));
 	}
 
-	std::size_t totalVertexCount = 0;
-	std::size_t totalIndexCount = 0;
-
-	// Loop through all meshes/primitives in GLTF to predetermine total amount of vertices/indices/meshes
-	for (auto& gltfMesh : tinygltf.meshes)
-	{
-		for (auto& prim : gltfMesh.primitives)
-		{
-			uint32_t vertexPosIndex = prim.attributes.find("POSITION")->second;
-			const tinygltf::Accessor& vertexPosAccessor = tinygltf.accessors[vertexPosIndex];
-			totalVertexCount += vertexPosAccessor.count;
-
-			uint32_t indicesIndex = prim.indices;
-			const tinygltf::Accessor& indexAccessor = tinygltf.accessors[indicesIndex];
-			totalIndexCount += indexAccessor.count;
-		}
-	}
-
 	std::vector<RenderResourceHandle> meshHandles;
-
-	std::size_t currentStartVertex = 0;
-	std::size_t currentStartIndex = 0;
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;
 
 	for (auto& gltfMesh : tinygltf.meshes)
 	{
-		std::vector<RenderResourceHandle> meshPrimitiveHandles;
-		meshPrimitiveHandles.reserve(gltfMesh.primitives.size());
-
 		for (auto& gltfPrim : gltfMesh.primitives)
 		{
 			// Get vertex position data
@@ -225,10 +203,10 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			ASSERT(vertexNormalAccessor.count * vertexNormalAccessor.ByteStride(vertexNormalBufferView) + vertexNormalBufferView.byteOffset + vertexNormalAccessor.byteOffset <= vertexNormalBuffer.data.size(),
 				"Byte offset for vertex attribute NORMAL exceeded total buffer size");
 
-			std::vector<Vertex> vertices(vertexPosAccessor.count);
+			vertices.resize(vertexPosAccessor.count);
 
 			// Construct a vertex from the primitive attributes data and add it to all vertices
-			for (std::size_t i = currentStartVertex; i < currentStartVertex + vertexPosAccessor.count; ++i)
+			for (std::size_t i = 0; i < vertexPosAccessor.count; ++i)
 			{
 				Vertex& v = vertices[i];
 				v.Position = *pVertexPosData++;
@@ -249,7 +227,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 				ASSERT(vertexTangentAccessor.count * vertexTangentAccessor.ByteStride(vertexTangentBufferView) + vertexTangentBufferView.byteOffset + vertexTangentAccessor.byteOffset <= vertexTangentBuffer.data.size(),
 					"Byte offset for vertex attribute TANGENT exceeded total buffer size");
 
-				for (std::size_t i = currentStartVertex; i < currentStartVertex + vertexTangentAccessor.count; ++i)
+				for (std::size_t i = 0; i < vertexTangentAccessor.count; ++i)
 				{
 					Vertex& vert0 = vertices[i];
 
@@ -274,14 +252,14 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			ASSERT(indexAccessor.count * indexAccessor.ByteStride(indexBufferView) + indexBufferView.byteOffset + indexAccessor.byteOffset,
 				"Byte offset for indices exceeded total buffer size");
 
-			std::vector<uint32_t> indices(indexAccessor.count);
+			indices.resize(indexAccessor.count);
 
 			// Get indices for current primitive/mesh and add it to all indices
 			if (indicesByteSize == 2)
 			{
 				const uint16_t* pIndexData = reinterpret_cast<const uint16_t*>(&indexBuffer.data[0] + indexBufferView.byteOffset + indexAccessor.byteOffset);
 
-				for (std::size_t i = currentStartIndex; i < currentStartIndex + indexAccessor.count; ++i)
+				for (std::size_t i = 0; i < indexAccessor.count; ++i)
 				{
 					indices[i] = static_cast<uint32_t>(*pIndexData++);
 				}
@@ -290,7 +268,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			{
 				const uint32_t* pIndexData = reinterpret_cast<const uint32_t*>(&indexBuffer.data[0] + indexBufferView.byteOffset + indexAccessor.byteOffset);
 
-				for (std::size_t i = currentStartIndex; i < currentStartIndex + indexAccessor.count; ++i)
+				for (std::size_t i = 0; i < indexAccessor.count; ++i)
 				{
 					indices[i] = *pIndexData++;
 				}
@@ -299,7 +277,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			// Calculate missing tangents and bitangents
 			if (vertexTangentAttrib == gltfPrim.attributes.end())
 			{
-				for (std::size_t i = currentStartIndex; i < currentStartIndex + indexAccessor.count; i += 3)
+				for (std::size_t i = 0; i < indexAccessor.count; i += 3)
 				{
 					Vertex& vert0 = vertices[indices[i]];
 					Vertex& vert1 = vertices[indices[i + 1]];
@@ -310,7 +288,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			}
 
 			MeshDesc meshDesc = {};
-			meshDesc.DebugName = gltfMesh.name + std::to_string(meshPrimitiveHandles.size());
+			meshDesc.DebugName = gltfMesh.name + std::to_string(meshHandles.size());
 			meshDesc.VertexBufferDesc.Usage = BufferUsage::BUFFER_USAGE_VERTEX;
 			meshDesc.VertexBufferDesc.NumElements = vertices.size();
 			meshDesc.VertexBufferDesc.ElementSize = sizeof(Vertex);
