@@ -333,8 +333,9 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 	std::vector<Model::Node> nodes;
 	if (tinygltf.nodes.size() > 0)
 	{
-		for (auto& gltfnode : tinygltf.nodes)
+		for (std::size_t nodeIndex = 0; nodeIndex < tinygltf.nodes.size(); ++nodeIndex)
 		{
+			const tinygltf::Node& gltfnode = tinygltf.nodes[nodeIndex];
 			Model::Node node = {};
 
 			if (gltfnode.mesh >= 0)
@@ -346,7 +347,7 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			}
 
 			node.Transform = MakeNodeTransform(gltfnode);
-			node.Name = name + gltfnode.name;
+			node.Name = gltfnode.name.empty() ? "Node" + std::to_string(nodeIndex) : gltfnode.name;
 			node.Children = std::vector<std::size_t>(gltfnode.children.begin(), gltfnode.children.end());
 
 			nodes.emplace_back(node);
@@ -354,12 +355,14 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 	}
 	else
 	{
-		for (auto& meshHandle : meshHandles)
+		for (std::size_t meshIndex = 0; meshIndex < meshHandles.size(); ++meshIndex)
 		{
+			const RenderResourceHandle& meshHandle = meshHandles[meshIndex];
+
 			Model::Node node = {};
 			node.MeshHandles.emplace_back(meshHandle);
 			node.Transform = glm::identity<glm::mat4>();
-			node.Name = name;
+			node.Name = "Node" + std::to_string(meshIndex);
 
 			nodes.emplace_back(node);
 		}

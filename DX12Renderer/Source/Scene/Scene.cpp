@@ -122,12 +122,13 @@ SceneObject& Scene::GetSceneObject(std::size_t objectID)
 void SpawnNodeMeshes(const Model& model, const Model::Node& node, const glm::mat4& parentTransform)
 {
 	// Spawn mesh objects for each mesh handle in the current node
-	for (auto& nodeMesh : node.MeshHandles)
+	for (std::size_t nodeMeshIndex = 0; nodeMeshIndex < node.MeshHandles.size(); ++nodeMeshIndex)
 	{
-		std::size_t nodeObject = Scene::AddSceneObject(node.Name);
+		const RenderResourceHandle nodeMeshHandle = node.MeshHandles[nodeMeshIndex];
+		std::size_t nodeObject = Scene::AddSceneObject(node.Name + std::to_string(nodeMeshIndex));
 
 		Scene::GetSceneObject(nodeObject).AddComponent<TransformComponent>(parentTransform);
-		Scene::GetSceneObject(nodeObject).AddComponent<MeshComponent>(nodeMesh);
+		Scene::GetSceneObject(nodeObject).AddComponent<MeshComponent>(nodeMeshHandle);
 	}
 
 	// Now recurse over all child nodes of the current node
