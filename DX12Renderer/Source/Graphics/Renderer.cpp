@@ -825,7 +825,7 @@ void Renderer::Submit(PointLightData& pointLightData, const std::array<Camera, 6
         pointLightData.ShadowMapIndex = shadowMapTexture->GetDescriptorHeapIndex(DescriptorType::SRV);
 
     g_RenderState.LightConstantBuffer->SetBufferDataAtOffset(&pointLightData, sizeof(PointLightData),
-        sizeof(DirectionalLightData) + s_Data.SceneData.SpotLightCount * sizeof(SpotLightData) + s_Data.SceneData.PointLightCount * sizeof(PointLightData));
+        sizeof(DirectionalLightData) + g_RenderState.MAX_SPOT_LIGHTS * sizeof(SpotLightData) + s_Data.SceneData.PointLightCount * sizeof(PointLightData));
 
     for (std::size_t i = 0; i < 6; ++i)
     {

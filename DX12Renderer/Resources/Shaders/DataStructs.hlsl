@@ -68,5 +68,5 @@ struct Material
 
 struct MaterialCBData
 {
-	Material materials[1000];
+	Material materials[500];
 };
