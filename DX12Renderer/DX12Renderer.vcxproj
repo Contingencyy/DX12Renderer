@@ -223,6 +223,10 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Extern\mikkt\mikktspace.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Source\Application.cpp" />
     <ClCompile Include="Source\Components\Component.cpp" />
     <ClCompile Include="Source\Components\DirLightComponent.cpp" />
@@ -273,6 +277,7 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Extern\imgui\imgui.h" />
     <ClInclude Include="Extern\imgui\imgui_impl_dx12.h" />
     <ClInclude Include="Extern\imgui\imgui_impl_win32.h" />
+    <ClInclude Include="Extern\mikkt\mikktspace.h" />
     <ClInclude Include="Extern\stb_image\stb_image.h" />
     <ClInclude Include="Include\Application.h" />
     <ClInclude Include="Include\Components\Component.h" />

@@ -4,7 +4,9 @@ struct PixelShaderInput
 {
 	float4 Position : SV_POSITION;
 	float2 TexCoord : TEXCOORD;
-	float3x3 TBN : TBN;
+	float3 Normal : NORMAL;
+	float3 Tangent : TANGENT;
+	float3 Bitangent : BITANGENT;
 	float4 WorldPosition : WORLD_POSITION;
 	uint MaterialID : MATERIAL_ID;
 };
@@ -28,15 +30,15 @@ float4 main(PixelShaderInput IN) : SV_TARGET
 	Material mat = MaterialCB.materials[IN.MaterialID];
 
 	float4 albedo = Texture2DTable[mat.AlbedoTextureIndex].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
-	float3 textureNormal = Texture2DTable[mat.NormalTextureIndex].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord).xyz;
-	textureNormal = (textureNormal * 2.0f) - 1.0f;
+	float3 normalTS = Texture2DTable[mat.NormalTextureIndex].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord).xyz;
+	normalTS = (normalTS * 2.0f) - 1.0f;
 
 	float4 metallicRoughness = Texture2DTable[mat.MetallicRoughnessTextureIndex].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
 	float metalness = metallicRoughness.b * mat.Metalness;
 	float roughness = metallicRoughness.g * mat.Roughness;
 
 	float4 fragPosWS = IN.WorldPosition;
-	float3 fragNormalWS = normalize(mul(IN.TBN, textureNormal));
+	float3 fragNormalWS = normalize(normalTS.x * IN.Tangent + normalTS.y * IN.Bitangent + normalTS.z * IN.Normal);
 	float3 viewDir = normalize(SceneDataCB.ViewPosition - fragPosWS);
 
 	float3 finalColor = float3(0.0f, 0.0f, 0.0f);

@@ -5,8 +5,7 @@
 #include "Graphics/RenderAPI.h"
 #include "Graphics/Texture.h"
 
-std::unordered_map<std::string, std::shared_ptr<Texture>> m_Textures;
-std::unordered_map<std::string, std::shared_ptr<Model>> m_Models;
+#include "mikkt/mikktspace.h"
 
 struct Vertex
 {
@@ -17,29 +16,115 @@ struct Vertex
 	glm::vec3 Bitangent;
 };
 
-void CalculateVertexTangents(Vertex& vert0, Vertex& vert1, Vertex& vert2)
+struct LoadedMesh
 {
-	if (glm::abs(vert0.Normal).x > glm::abs(vert0.Normal.y))
-		vert0.Tangent = glm::vec3(vert0.Normal.z, 0.0f, -vert0.Normal.x) / glm::sqrt(vert0.Normal.x * vert0.Normal.x + vert0.Normal.z * vert0.Normal.z);
-	else
-		vert0.Tangent = glm::vec3(0.0f, -vert0.Normal.z, vert0.Normal.y) / glm::sqrt(vert0.Normal.y * vert0.Normal.y + vert0.Normal.z * vert0.Normal.z);
+	std::vector<Vertex>* Vertices;
+	std::vector<uint32_t>* Indices;
+};
 
-	vert0.Bitangent = glm::cross(vert0.Normal, vert0.Tangent);
+class TangentCalculator
+{
+public:
+	TangentCalculator()
+	{
+		m_MikkTInterface.m_getNumFaces = GetNumFaces;
+		m_MikkTInterface.m_getNumVerticesOfFace = GetNumVerticesOfFace;
 
-	if (glm::abs(vert1.Normal).x > glm::abs(vert1.Normal.y))
-		vert1.Tangent = glm::vec3(vert1.Normal.z, 0.0f, -vert1.Normal.x) / glm::sqrt(vert1.Normal.x * vert1.Normal.x + vert1.Normal.z * vert1.Normal.z);
-	else
-		vert1.Tangent = glm::vec3(0.0f, -vert1.Normal.z, vert1.Normal.y) / glm::sqrt(vert1.Normal.y * vert1.Normal.y + vert1.Normal.z * vert1.Normal.z);
+		m_MikkTInterface.m_getNormal = GetNormal;
+		m_MikkTInterface.m_getPosition = GetPosition;
+		m_MikkTInterface.m_getTexCoord = GetTexCoord;
+		m_MikkTInterface.m_setTSpaceBasic = SetTSpaceBasic;
 
-	vert1.Bitangent = glm::cross(vert1.Normal, vert1.Tangent);
+		m_MikkTContext.m_pInterface = &m_MikkTInterface;
+	}
 
-	if (glm::abs(vert2.Normal).x > glm::abs(vert2.Normal.y))
-		vert2.Tangent = glm::vec3(vert2.Normal.z, 0.0f, -vert2.Normal.x) / glm::sqrt(vert2.Normal.x * vert2.Normal.x + vert2.Normal.z * vert2.Normal.z);
-	else
-		vert2.Tangent = glm::vec3(0.0f, -vert2.Normal.z, vert2.Normal.y) / glm::sqrt(vert2.Normal.y * vert2.Normal.y + vert2.Normal.z * vert2.Normal.z);
+	void Calculate(LoadedMesh* loadedMesh)
+	{
+		m_MikkTContext.m_pUserData = loadedMesh;
+		genTangSpaceDefault(&m_MikkTContext);
+	}
 
-	vert2.Bitangent = glm::cross(vert2.Normal, vert2.Tangent);
-}
+private:
+	static int GetNumFaces(const SMikkTSpaceContext* context)
+	{
+		LoadedMesh* loadedMesh = static_cast<LoadedMesh*>(context->m_pUserData);
+		return (uint32_t)(*loadedMesh->Indices).size() / 3;
+	}
+
+	static int GetVertexIndex(const SMikkTSpaceContext* context, int iFace, int iVert)
+	{
+		LoadedMesh* loadedMesh = static_cast<LoadedMesh*>(context->m_pUserData);
+
+		uint32_t faceSize = GetNumVerticesOfFace(context, iFace);
+		uint32_t indicesIndex = (iFace * faceSize) + iVert;
+
+		return (*loadedMesh->Indices)[indicesIndex];
+	}
+
+	static int GetNumVerticesOfFace(const SMikkTSpaceContext* context, int iFace)
+	{
+		// We only expect triangles (for now), so always return 3
+		return 3;
+	}
+
+	static void GetPosition(const SMikkTSpaceContext* context, float outpos[], int iFace, int iVert)
+	{
+		LoadedMesh* loadedMesh = static_cast<LoadedMesh*>(context->m_pUserData);
+
+		uint32_t index = GetVertexIndex(context, iFace, iVert);
+		const Vertex& vertex = (*loadedMesh->Vertices)[index];
+
+		outpos[0] = vertex.Position.x;
+		outpos[1] = vertex.Position.y;
+		outpos[2] = vertex.Position.z;
+	}
+
+	static void GetNormal(const SMikkTSpaceContext* context, float outnormal[], int iFace, int iVert)
+	{
+		LoadedMesh* loadedMesh = static_cast<LoadedMesh*>(context->m_pUserData);
+
+		uint32_t index = GetVertexIndex(context, iFace, iVert);
+		const Vertex& vertex = (*loadedMesh->Vertices)[index];
+
+		outnormal[0] = vertex.Normal.x;
+		outnormal[1] = vertex.Normal.y;
+		outnormal[2] = vertex.Normal.z;
+	}
+
+	static void GetTexCoord(const SMikkTSpaceContext* context, float outuv[], int iFace, int iVert)
+	{
+		LoadedMesh* loadedMesh = static_cast<LoadedMesh*>(context->m_pUserData);
+
+		uint32_t index = GetVertexIndex(context, iFace, iVert);
+		const Vertex& vertex = (*loadedMesh->Vertices)[index];
+
+		outuv[0] = vertex.TexCoord.x;
+		outuv[1] = vertex.TexCoord.y;
+	}
+
+	static void SetTSpaceBasic(const SMikkTSpaceContext* context, const float tangentu[], float fSign, int iFace, int iVert)
+	{
+		LoadedMesh* loadedMesh = static_cast<LoadedMesh*>(context->m_pUserData);
+
+		uint32_t index = GetVertexIndex(context, iFace, iVert);
+		Vertex& vertex = (*loadedMesh->Vertices)[index];
+
+		vertex.Tangent.x = tangentu[0];
+		vertex.Tangent.y = tangentu[1];
+		vertex.Tangent.z = tangentu[2];
+
+		vertex.Bitangent = glm::cross(vertex.Normal, vertex.Tangent) * fSign;
+	}
+
+private:
+	SMikkTSpaceInterface m_MikkTInterface = {};
+	SMikkTSpaceContext m_MikkTContext = {};
+
+};
+
+std::unordered_map<std::string, std::shared_ptr<Texture>> m_Textures;
+std::unordered_map<std::string, std::shared_ptr<Model>> m_Models;
+TangentCalculator m_TangentCalculator;
 
 glm::mat4 MakeNodeTransform(const tinygltf::Node& gltfnode)
 {
@@ -277,14 +362,11 @@ void ResourceManager::LoadModel(const std::string& filepath, const std::string& 
 			// Calculate missing tangents and bitangents
 			if (vertexTangentAttrib == gltfPrim.attributes.end())
 			{
-				for (std::size_t i = 0; i < indexAccessor.count; i += 3)
-				{
-					Vertex& vert0 = vertices[indices[i]];
-					Vertex& vert1 = vertices[indices[i + 1]];
-					Vertex& vert2 = vertices[indices[i + 2]];
+				LoadedMesh loadedMesh = {};
+				loadedMesh.Vertices = &vertices;
+				loadedMesh.Indices = &indices;
 
-					CalculateVertexTangents(vert0, vert1, vert2);
-				}
+				m_TangentCalculator.Calculate(&loadedMesh);
 			}
 
 			MeshDesc meshDesc = {};

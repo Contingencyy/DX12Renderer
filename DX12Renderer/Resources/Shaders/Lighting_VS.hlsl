@@ -17,7 +17,9 @@ struct VertexShaderOutput
 {
 	float4 Position : SV_POSITION;
 	float2 TexCoord : TEXCOORD;
-	float3x3 TBN : TBN;
+	float3 Normal : NORMAL;
+	float3 Tangent : TANGENT;
+	float3 Bitangent : BITANGENT;
 	float4 WorldPosition : WORLD_POSITION;
 	uint MaterialID : MATERIAL_ID;
 };
@@ -28,14 +30,13 @@ VertexShaderOutput main(VertexShaderInput IN)
 
 	OUT.Position = mul(IN.Model, float4(IN.Position, 1.0f));
 	OUT.WorldPosition = OUT.Position;
+
 	OUT.Position = mul(SceneDataCB.ViewProjection, OUT.Position);
 	OUT.TexCoord = IN.TexCoord;
 
-	float3 T = normalize(mul(IN.Model, float4(IN.Tangent, 0.0f))).xyz;
-	float3 B = normalize(mul(IN.Model, float4(IN.Bitangent, 0.0f))).xyz;
-	float3 N = mul(IN.Model, float4(IN.Normal, 0.0f));
-
-	OUT.TBN = transpose(float3x3(T, B, N));
+	OUT.Normal = IN.Normal;
+	OUT.Tangent = IN.Tangent;
+	OUT.Bitangent = IN.Bitangent;
 
 	OUT.MaterialID = IN.MaterialID;
 
