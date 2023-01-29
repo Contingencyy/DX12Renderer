@@ -512,8 +512,6 @@ void Renderer::BeginFrame()
 
 void Renderer::BeginScene(const Camera& sceneCamera)
 {
-    SCOPED_TIMER("Renderer::BeginScene");
-
     s_Data.SceneCamera = sceneCamera;
     s_Data.SceneData.SceneCameraViewProjection = sceneCamera.GetViewProjection();
     s_Data.SceneData.SceneCameraPosition = sceneCamera.GetTransform().GetPosition();
@@ -720,8 +718,6 @@ void Renderer::OnImGuiRender()
 
 void Renderer::EndScene()
 {
-    SCOPED_TIMER("Renderer::EndScene");
-
     s_Data.OpaqueMeshCount = 0;
     s_Data.TransparentMeshCount = 0;
     s_Data.MaterialCount = 0;

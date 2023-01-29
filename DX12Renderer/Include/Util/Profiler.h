@@ -9,14 +9,14 @@ struct TimerResult
 	float Duration = 0.0f;
 };
 
-class Profiler
+namespace Profiler
 {
-public:
-	static void AddFrameTime(const TimerResult& result);
-	static void AddCPUTimer(const TimerResult& result);
-	static void AddGPUTimer(const TimerResult& result);
-	static void OnImGuiRender();
-	static void Reset();
+
+	void AddFrameTime(const TimerResult& result);
+	void AddCPUTimer(const TimerResult& result);
+	void AddGPUTimer(const TimerResult& result);
+	void OnImGuiRender();
+	void Reset();
 
 };
 

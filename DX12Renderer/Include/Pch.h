@@ -39,6 +39,7 @@
 #include <glm/glm/gtx/matrix_decompose.hpp>
 #include <glm/glm/gtc/quaternion.hpp>
 #include <glm/glm/gtc/type_ptr.hpp>
+#include <glm/glm/gtx/string_cast.hpp>
 
 /*
 

@@ -119,6 +119,11 @@ void Camera::OnImGuiRender()
 	}
 	ImGui::DragFloat("Exposure", &m_Exposure, 0.01f, 0.01f, 10.0f);
 	ImGui::DragFloat("Gamma", &m_Gamma, 0.01f, 0.01f, 10.0f);
+	if (ImGui::Button("Debug print transform"))
+	{
+		glm::mat4 mat = m_Transform.GetTransformMatrix();
+		LOG_INFO("Camera transform: " + glm::to_string(mat));
+	}
 }
 
 bool Camera::UpdateMovement(float deltaTime)
