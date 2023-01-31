@@ -24,9 +24,7 @@ public:
 
 	~ResourceSlotmap()
 	{
-		// Call destructor on is_non_trivially_destructible_v before releasing
-
-		// Release slots
+		// Release slots, delete[] calls destructors
 		delete[] m_Slots;
 	}
 

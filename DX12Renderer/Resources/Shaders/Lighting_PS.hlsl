@@ -18,12 +18,11 @@ ConstantBuffer<LightCBData> LightCB : register(b2);
 Texture2D Texture2DTable[] : register(t0, space0);
 TextureCube TextureCubeTable[] : register(t0, space1);
 SamplerState Sampler_Antisotropic_Wrap : register(s0, space0);
-SamplerComparisonState Sampler_PCF : register(s0, space1);
-SamplerState Sampler_Point_Wrap : register(s0, space2);
+SamplerState Sampler_Linear_Border : register(s0, space1);
 
-float3 CalculateDirectionalLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, DirectionalLight dirLight);
-float3 CalculateSpotLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, SpotLight spotLight);
-float3 CalculatePointLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, PointLight pointLight);
+float3 EvaluateDirectionalLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, DirectionalLight dirLight);
+float3 EvaluateSpotLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, SpotLight spotLight);
+float3 EvaluatePointLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, PointLight pointLight);
 
 float4 main(PixelShaderInput IN) : SV_TARGET
 {
@@ -44,22 +43,20 @@ float4 main(PixelShaderInput IN) : SV_TARGET
 	float3 finalColor = float3(0.0f, 0.0f, 0.0f);
 
 	if (SceneDataCB.NumDirectionalLights == 1)
-		finalColor += CalculateDirectionalLight(fragPosWS, fragNormalWS, albedo, metalness, roughness, viewDir, LightCB.DirLight);
+		finalColor += EvaluateDirectionalLight(fragPosWS, fragNormalWS, albedo, metalness, roughness, viewDir, LightCB.DirLight);
 
 	for (uint s = 0; s < SceneDataCB.NumSpotLights; ++s)
 	{
-		finalColor += CalculateSpotLight(fragPosWS, fragNormalWS, albedo, metalness, roughness, viewDir, LightCB.SpotLights[s]);
+		finalColor += EvaluateSpotLight(fragPosWS, fragNormalWS, albedo, metalness, roughness, viewDir, LightCB.SpotLights[s]);
 	}
 
 	for (uint p = 0; p < SceneDataCB.NumPointLights; ++p)
 	{
-		finalColor += CalculatePointLight(fragPosWS, fragNormalWS, albedo, metalness, roughness, viewDir, LightCB.PointLights[p]);
+		finalColor += EvaluatePointLight(fragPosWS, fragNormalWS, albedo, metalness, roughness, viewDir, LightCB.PointLights[p]);
 	}
 
 	return float4(finalColor, albedo.w);
 }
-
-#define PI 3.14159265
 
 // D - GGX normal distribution function
 float NormalDist_GGX(float NoH, float a)
@@ -87,10 +84,9 @@ float3 SchlickFresnel(float u, float3 f0)
 // kD - Lambertian diffuse function
 float DiffuseLambert()
 {
-	return 1.0f / PI;
+	return 1.0f * INV_PI;
 }
 
-//
 //// F - Schlick fresnel function
 //float SchlickFresnel(float u, float f0, float f90)
 //{
@@ -103,9 +99,8 @@ float DiffuseLambert()
 //	float f90 = 0.5f + 2.0f * roughness * LoH * LoH;
 //	float lightScatter = SchlickFresnel(NoL, 1.0f, f90);
 //	float viewScatter = SchlickFresnel(NoV, 1.0f, f90);
-//	return lightScatter * viewScatter * (1.0f / PI);
+//	return lightScatter * viewScatter * (1.0f * INV_PI);
 //}
-//
 
 struct BRDFResult
 {
@@ -124,9 +119,11 @@ BRDFResult CalculateBRDF(float3 viewDir, float3 lightDir, float NoL, float3 albe
 	float NoH = clamp(dot(normal, halfVec), 0.0f, 1.0f);
 	float LoH = clamp(dot(lightDir, halfVec), 0.0f, 1.0f);
 
-	float D = NormalDist_GGX(NoH, roughness);
+	float a = roughness * roughness;
+
+	float D = NormalDist_GGX(NoH, a);
 	float3 F = SchlickFresnel(LoH, f0);
-	float V = SmithHeightCorrelated_GGX(NoV, NoL, roughness);
+	float V = SmithHeightCorrelated_GGX(NoV, NoL, a);
 
 	BRDFResult result;
 	result.Specular = (D * V) * F;
@@ -154,76 +151,93 @@ float DirectionToDepthValue(float3 direction, float near, float far)
 	return (normZComp + 1.0f) * 0.5f;
 }
 
-#define PCF_SAMPLE_RANGE 2
+float BoxBlur4x4(float4x4 gather, float currentDepth)
+{
+	// TODO: Different weights?
+	//int range = int(floor(BOX_BLUR_SIZE / 2));
+	const uint blurSize = 4;
+	float accumulator = 0.0f;
 
-float CalculateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIndex)
+	for (uint x = 0; x < blurSize; ++x)
+	{
+		for (uint y = 0; y < blurSize; ++y)
+		{
+			if (gather[x][y] > currentDepth)
+				accumulator += 1.0f;
+		}
+	}
+	
+	accumulator /= pow(blurSize, 2);
+	return accumulator;
+}
+
+float SampleShadowGather4BoxBlur(float2 uv, float currentDepth, uint shadowMapIndex)
+{
+	Texture2D<float4> shadowMap = Texture2DTable[shadowMapIndex];
+
+	float4 gather0 = shadowMap.Gather(Sampler_Linear_Border, uv, int2(-1, -1));
+	float4 gather1 = shadowMap.Gather(Sampler_Linear_Border, uv, int2(1, -1));
+	float4 gather2 = shadowMap.Gather(Sampler_Linear_Border, uv, int2(-1, 1));
+	float4 gather3 = shadowMap.Gather(Sampler_Linear_Border, uv, int2(1, 1));
+
+	return BoxBlur4x4(float4x4(gather0, gather1, gather2, gather3), currentDepth);
+}
+
+float SampleShadowGather4BoxBlur(float3 lightToFrag, float currentDepth, uint shadowMapIndex)
+{
+	TextureCube<float4> shadowMap = TextureCubeTable[shadowMapIndex];
+	float2 textureSize;
+	shadowMap.GetDimensions(textureSize.x, textureSize.y);
+
+	float texelSize = 1.0f / textureSize.x;
+	float lightDistance = length(lightToFrag);
+
+	float3 uvwOffset0 = float3(-1.0f, -1.0f, 0.0f) * lightDistance * texelSize;
+	float3 uvwOffset1 = float3(1.0f, -1.0f, 0.0f) * lightDistance * texelSize;
+	float3 uvwOffset2 = float3(-1.0f, 1.0f, 0.0f) * lightDistance * texelSize;
+	float3 uvwOffset3 = float3(1.0f, 1.0f, 0.0f) * lightDistance * texelSize;
+
+	float4 gather0 = shadowMap.Gather(Sampler_Linear_Border, (lightToFrag.xyz + uvwOffset0));
+	float4 gather1 = shadowMap.Gather(Sampler_Linear_Border, (lightToFrag.xyz + uvwOffset1));
+	float4 gather2 = shadowMap.Gather(Sampler_Linear_Border, (lightToFrag.xyz + uvwOffset2));
+	float4 gather3 = shadowMap.Gather(Sampler_Linear_Border, (lightToFrag.xyz + uvwOffset3));
+
+	return BoxBlur4x4(float4x4(gather0, gather1, gather2, gather3), currentDepth);
+}
+
+float EvaluateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIndex)
 {
 	float3 projectedCoords = fragPosLS.xyz / fragPosLS.w;
 	float currentDepth = projectedCoords.z;
 	projectedCoords = projectedCoords * 0.5f;
 	projectedCoords.xy += 0.5f;
-
 	// Invert Y for D3D style screen coordinates
 	projectedCoords.y = 1.0f - projectedCoords.y;
+
 	float shadow = 0.0f;
 
 	if (projectedCoords.z > 1.0f || projectedCoords.z < 0.0f)
-	{
 		shadow = 1.0f;
-	}
 	else
-	{
-		// Sample from -PCF_SAMPLE_RANGE to +PCF_SAMPLE_RANGE texels with a bilinear filter to obtain a multisampled and bilinearly filtered shadow
-		[unroll]
-		for (int x = -PCF_SAMPLE_RANGE; x <= PCF_SAMPLE_RANGE; ++x)
-		{
-			[unroll]
-			for (int y = -PCF_SAMPLE_RANGE; y <= PCF_SAMPLE_RANGE; ++y)
-			{
-				shadow += Texture2DTable[shadowMapIndex].SampleCmpLevelZero(Sampler_PCF, projectedCoords.xy, currentDepth, int2(x, y));
-			}
-		}
-		shadow /= (PCF_SAMPLE_RANGE * 2 + 1) * (PCF_SAMPLE_RANGE * 2 + 1);
-	}
+		shadow = SampleShadowGather4BoxBlur(projectedCoords.xy, currentDepth, shadowMapIndex);
 
 	return shadow;
 }
 
-float CalculateOmnidirectionalShadow(float3 lightToFrag, float angle, float farPlane, uint shadowMapIndex)
+float EvaluateOmnidirectionalShadow(float3 lightToFrag, float angle, float farPlane, uint shadowMapIndex)
 {
 	float currentDepth = DirectionToDepthValue(lightToFrag, farPlane, 0.1f);
 	float shadow = 0.0f;
 
 	if (currentDepth > 1.0f || currentDepth < 0.0f)
-	{
 		shadow = 1.0f;
-	}
 	else
-	{
-		float2 textureSize;
-		TextureCubeTable[shadowMapIndex].GetDimensions(textureSize.x, textureSize.y);
-		float texelSize = 1.0f / textureSize.x;
-
-		// Sample from -PCF_SAMPLE_RANGE to +PCF_SAMPLE_RANGE texels with a bilinear filter to obtain a multisampled and bilinearly filtered shadow
-		// For cubemaps we need to calculate the offset of texels manually since cube maps do not support an offset parameter by default.
-		[unroll]
-		for (int x = -PCF_SAMPLE_RANGE; x <= PCF_SAMPLE_RANGE; ++x)
-		{
-			[unroll]
-			for (int y = -PCF_SAMPLE_RANGE; y <= PCF_SAMPLE_RANGE; ++y)
-			{
-				float3 uvwOffset = (float3(x, y, 0.0f) * length(lightToFrag)) * texelSize;
-				float3 uvwSample = lightToFrag.xyz + uvwOffset;
-				shadow += TextureCubeTable[shadowMapIndex].SampleCmpLevelZero(Sampler_PCF, uvwSample.xyz, currentDepth);
-			}
-		}
-		shadow /= (PCF_SAMPLE_RANGE * 2 + 1) * (PCF_SAMPLE_RANGE * 2 + 1);
-	}
+		shadow = SampleShadowGather4BoxBlur(lightToFrag, currentDepth, shadowMapIndex);
 
 	return shadow;
 }
 
-float3 CalculateDirectionalLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, DirectionalLight dirLight)
+float3 EvaluateDirectionalLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, DirectionalLight dirLight)
 {
 	float3 fragToLight = normalize(-dirLight.Direction);
 	float NoL = clamp(dot(fragNormal, fragToLight), 0.0f, 1.0f);
@@ -231,7 +245,7 @@ float3 CalculateDirectionalLight(float4 fragPosWS, float3 fragNormal, float3 alb
 
 	// Check if current fragment is in shadow
 	float4 fragPosLS = mul(dirLight.ViewProjection, fragPosWS);
-	float shadow = CalculateDirectionalShadow(fragPosLS, NoL, dirLight.ShadowMapIndex);
+	float shadow = EvaluateDirectionalShadow(fragPosLS, NoL, dirLight.ShadowMapIndex);
 
 	// Evaluate BRDF
 	float3 halfVec = normalize(viewDir + fragToLight);
@@ -245,7 +259,7 @@ float3 CalculateDirectionalLight(float4 fragPosWS, float3 fragNormal, float3 alb
 	return ambient + Lo;
 }
 
-float3 CalculateSpotLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, SpotLight spotLight)
+float3 EvaluateSpotLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, SpotLight spotLight)
 {
 	float distance = length(spotLight.Position - fragPosWS);
 	float3 Lo = float3(0.0f, 0.0f, 0.0f);
@@ -263,7 +277,7 @@ float3 CalculateSpotLight(float4 fragPosWS, float3 fragNormal, float3 albedo, fl
 			{
 				// Check if current fragment is in shadow
 				float4 fragPosLS = mul(spotLight.ViewProjection, fragPosWS);
-				float shadow = CalculateDirectionalShadow(fragPosLS, NoL, spotLight.ShadowMapIndex);
+				float shadow = EvaluateDirectionalShadow(fragPosLS, NoL, spotLight.ShadowMapIndex);
 
 				// Evaluate BRDF
 				float3 halfVec = normalize(viewDir + fragToLight);
@@ -287,7 +301,7 @@ float3 CalculateSpotLight(float4 fragPosWS, float3 fragNormal, float3 albedo, fl
 	return Lo;
 }
 
-float3 CalculatePointLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, PointLight pointLight)
+float3 EvaluatePointLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, PointLight pointLight)
 {
 	float distance = length(pointLight.Position - fragPosWS);
 	float3 Lo = float3(0.0f, 0.0f, 0.0f);
@@ -301,7 +315,7 @@ float3 CalculatePointLight(float4 fragPosWS, float3 fragNormal, float3 albedo, f
 		{
 			// Check if current fragment is in shadow
 			float3 lightToFrag = fragPosWS.xyz - pointLight.Position;
-			float shadow = CalculateOmnidirectionalShadow(lightToFrag, NoL, pointLight.Range, pointLight.ShadowMapIndex);
+			float shadow = EvaluateOmnidirectionalShadow(lightToFrag, NoL, pointLight.Range, pointLight.ShadowMapIndex);
 
 			// Evaluate BRDF
 			float3 halfVec = normalize(viewDir + fragToLight);

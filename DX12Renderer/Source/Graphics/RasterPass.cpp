@@ -19,7 +19,7 @@ void RasterPass::CreateRootSignature()
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
 	// Default texture sampler (antisotropic)
-	CD3DX12_STATIC_SAMPLER_DESC staticSamplers[3] = {};
+	CD3DX12_STATIC_SAMPLER_DESC staticSamplers[2] = {};
 	staticSamplers[0].Filter = D3D12_FILTER_ANISOTROPIC;
 	staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -35,8 +35,7 @@ void RasterPass::CreateRootSignature()
 	staticSamplers[0].RegisterSpace = 0;
 	staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-	// Shadow map sampler
-	// This sampler performs the percentage-closer filtering in hardware
+	// Shadow map sampler (bilinear)
 	staticSamplers[1].Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
 	staticSamplers[1].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
 	staticSamplers[1].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
@@ -50,20 +49,6 @@ void RasterPass::CreateRootSignature()
 	staticSamplers[1].ShaderRegister = 0;
 	staticSamplers[1].RegisterSpace = 1;
 	staticSamplers[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-	staticSamplers[2].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-	staticSamplers[2].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	staticSamplers[2].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	staticSamplers[2].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	staticSamplers[2].MaxAnisotropy = 1;
-	staticSamplers[2].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-	staticSamplers[0].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-	staticSamplers[2].MinLOD = 0.0f;
-	staticSamplers[2].MaxLOD = D3D12_FLOAT32_MAX;
-	staticSamplers[2].MipLODBias = 0;
-	staticSamplers[2].ShaderRegister = 0;
-	staticSamplers[2].RegisterSpace = 2;
-	staticSamplers[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC versionedRootSignatureDesc = {};
 	versionedRootSignatureDesc.Init_1_1(static_cast<uint32_t>(m_Desc.RootParameters.size()),

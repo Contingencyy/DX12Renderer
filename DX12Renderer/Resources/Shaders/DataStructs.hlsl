@@ -1,3 +1,6 @@
+#define PI 3.14159265
+#define INV_PI 1.0 / PI
+
 struct SceneData
 {
 	matrix ViewProjection;
