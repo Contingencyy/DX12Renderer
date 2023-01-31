@@ -6,7 +6,6 @@
 TimerResult m_FrameTime;
 std::array<std::array<TimerResult, 50>, 2> m_Timers;
 uint32_t m_TimerCounts[2] = { 0, 0 };
-bool m_CPUTimersOpen = true, m_GPUTimersOpen = true;
 
 enum TimerType : uint32_t
 {
@@ -45,7 +44,7 @@ void Profiler::OnImGuiRender()
 		return lhs.Duration > rhs.Duration;
 	});
 
-	ImGui::SetNextItemOpen(m_CPUTimersOpen);
+	ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 	if (ImGui::CollapsingHeader("CPU Timers"))
 	{
 		uint32_t currentTimer = 0;
@@ -63,16 +62,12 @@ void Profiler::OnImGuiRender()
 				break;
 		}
 	}
-	else if (m_CPUTimersOpen)
-	{
-		m_CPUTimersOpen = false;
-	}
 
 	std::sort(m_Timers[GPU].begin(), m_Timers[GPU].begin() + m_TimerCounts[GPU], [](TimerResult& lhs, TimerResult& rhs) {
 		return lhs.Duration > rhs.Duration;
 	});
 
-	ImGui::SetNextItemOpen(m_GPUTimersOpen);
+	ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 	if (ImGui::CollapsingHeader("GPU Timers"))
 	{
 		uint32_t currentTimer = 0;
@@ -89,10 +84,6 @@ void Profiler::OnImGuiRender()
 			if (currentTimer >= m_TimerCounts[GPU])
 				break;
 		}
-	}
-	else if (m_GPUTimersOpen)
-	{
-		m_GPUTimersOpen = false;
 	}
 
 	ImGui::End();

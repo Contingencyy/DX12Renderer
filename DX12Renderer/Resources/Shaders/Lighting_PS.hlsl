@@ -153,8 +153,6 @@ float DirectionToDepthValue(float3 direction, float near, float far)
 
 float BoxBlur4x4(float4x4 gather, float currentDepth)
 {
-	// TODO: Different weights?
-	//int range = int(floor(BOX_BLUR_SIZE / 2));
 	const uint blurSize = 4;
 	float accumulator = 0.0f;
 

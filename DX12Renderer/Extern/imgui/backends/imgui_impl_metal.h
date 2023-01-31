@@ -25,7 +25,7 @@
 IMGUI_IMPL_API bool ImGui_ImplMetal_Init(id<MTLDevice> device);
 IMGUI_IMPL_API void ImGui_ImplMetal_Shutdown();
 IMGUI_IMPL_API void ImGui_ImplMetal_NewFrame(MTLRenderPassDescriptor* renderPassDescriptor);
-IMGUI_IMPL_API void ImGui_ImplMetal_RenderDrawData(ImDrawData* draw_data,
+IMGUI_IMPL_API void ImGui_ImplMetal_RenderDrawData(ImDrawData* drawData,
                                                    id<MTLCommandBuffer> commandBuffer,
                                                    id<MTLRenderCommandEncoder> commandEncoder);
 
@@ -45,9 +45,7 @@ IMGUI_IMPL_API void ImGui_ImplMetal_DestroyDeviceObjects();
 // More info about using Metal from C++: https://developer.apple.com/metal/cpp/
 
 #ifdef IMGUI_IMPL_METAL_CPP
-
 #include <Metal/Metal.hpp>
-
 #ifndef __OBJC__
 
 IMGUI_IMPL_API bool ImGui_ImplMetal_Init(MTL::Device* device);
@@ -64,5 +62,4 @@ IMGUI_IMPL_API bool ImGui_ImplMetal_CreateDeviceObjects(MTL::Device* device);
 IMGUI_IMPL_API void ImGui_ImplMetal_DestroyDeviceObjects();
 
 #endif
-
 #endif
