@@ -36,12 +36,12 @@ void RasterPass::CreateRootSignature()
 	staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	// Shadow map sampler (bilinear)
-	staticSamplers[1].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+	staticSamplers[1].Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
 	staticSamplers[1].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
 	staticSamplers[1].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
 	staticSamplers[1].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
 	staticSamplers[1].MaxAnisotropy = 1;
-	staticSamplers[1].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+	staticSamplers[1].ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 	staticSamplers[1].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
 	staticSamplers[1].MinLOD = 0.0f;
 	staticSamplers[1].MaxLOD = D3D12_FLOAT32_MAX;

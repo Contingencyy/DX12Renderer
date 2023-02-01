@@ -1,4 +1,5 @@
 #include "DataStructs.hlsl"
+#include "BRDF.hlsl"
 
 struct PixelShaderInput
 {
@@ -18,7 +19,7 @@ ConstantBuffer<LightCBData> LightCB : register(b2);
 Texture2D Texture2DTable[] : register(t0, space0);
 TextureCube TextureCubeTable[] : register(t0, space1);
 SamplerState Sampler_Antisotropic_Wrap : register(s0, space0);
-SamplerState Sampler_Linear_Border : register(s0, space1);
+SamplerComparisonState Sampler_PCF : register(s0, space1);
 
 float3 EvaluateDirectionalLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, DirectionalLight dirLight);
 float3 EvaluateSpotLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, SpotLight spotLight);
@@ -58,80 +59,6 @@ float4 main(PixelShaderInput IN) : SV_TARGET
 	return float4(finalColor, albedo.w);
 }
 
-// D - GGX normal distribution function
-float NormalDist_GGX(float NoH, float a)
-{
-	float a2 = a * a;
-	float f = (NoH * a2 - NoH) * NoH + 1.0f;
-	return a2 / (PI * f * f);
-}
-
-// G - Smith-GGX height correlated visibility function
-float SmithHeightCorrelated_GGX(float NoV, float NoL, float a)
-{
-	float a2 = a * a;
-	float GGXL = NoV * sqrt((-NoL * a2 + NoL) * NoL + a2);
-	float GGXV = NoL * sqrt((-NoV * a2 + NoV) * NoV + a2);
-	return 0.5f / (GGXV + GGXL);
-}
-
-// F - Schlick fresnel function (optimized)
-float3 SchlickFresnel(float u, float3 f0)
-{
-	return f0 + (1.0f - f0) * pow(1.0f - u, 5.0f);
-}
-
-// kD - Lambertian diffuse function
-float DiffuseLambert()
-{
-	return 1.0f * INV_PI;
-}
-
-//// F - Schlick fresnel function
-//float SchlickFresnel(float u, float f0, float f90)
-//{
-//	return f0 + (f90 - f0) * pow(1.0f - u, 5.0f);
-//}
-//
-//// kD - Disney's Burley diffuse BRDF
-//float DiffuseBurley(float NoV, float NoL, float LoH, float roughness)
-//{
-//	float f90 = 0.5f + 2.0f * roughness * LoH * LoH;
-//	float lightScatter = SchlickFresnel(NoL, 1.0f, f90);
-//	float viewScatter = SchlickFresnel(NoV, 1.0f, f90);
-//	return lightScatter * viewScatter * (1.0f * INV_PI);
-//}
-
-struct BRDFResult
-{
-	float3 Diffuse;
-	float3 Specular;
-};
-
-BRDFResult CalculateBRDF(float3 viewDir, float3 lightDir, float NoL, float3 albedo, float3 normal, float metalness, float roughness)
-{
-	float3 f0 = float3(0.04f, 0.04f, 0.04f);
-	f0 = lerp(f0, albedo, metalness);
-
-	float3 halfVec = normalize(viewDir + lightDir);
-
-	float NoV = abs(dot(normal, viewDir)) + 1e-5;
-	float NoH = clamp(dot(normal, halfVec), 0.0f, 1.0f);
-	float LoH = clamp(dot(lightDir, halfVec), 0.0f, 1.0f);
-
-	float a = roughness * roughness;
-
-	float D = NormalDist_GGX(NoH, a);
-	float3 F = SchlickFresnel(LoH, f0);
-	float V = SmithHeightCorrelated_GGX(NoV, NoL, a);
-
-	BRDFResult result;
-	result.Specular = (D * V) * F;
-	result.Diffuse = ((1.0f - metalness) * albedo) * DiffuseLambert();
-
-	return result;
-}
-
 float DistanceAttenuation(float3 lightAttenuation, float distance)
 {
 	// After calculating the distance attenuation, we need to rescale the value to account for the LIGHT_RANGE_EPSILON at which the light is cutoff/ignored
@@ -151,56 +78,119 @@ float DirectionToDepthValue(float3 direction, float near, float far)
 	return (normZComp + 1.0f) * 0.5f;
 }
 
-float BoxBlur4x4(float4x4 gather, float currentDepth)
+float SamplePCF(float2 baseUV, float uOff, float vOff, float compDepth, float invShadowMapRes, uint shadowMapIndex)
 {
-	const uint blurSize = 4;
-	float accumulator = 0.0f;
-
-	for (uint x = 0; x < blurSize; ++x)
-	{
-		for (uint y = 0; y < blurSize; ++y)
-		{
-			if (gather[x][y] > currentDepth)
-				accumulator += 1.0f;
-		}
-	}
-	
-	accumulator /= pow(blurSize, 2);
-	return accumulator;
+	float2 uv = baseUV + float2(uOff, vOff) * invShadowMapRes;
+	return Texture2DTable[shadowMapIndex].SampleCmpLevelZero(Sampler_PCF, uv, compDepth);
 }
 
-float SampleShadowGather4BoxBlur(float2 uv, float currentDepth, uint shadowMapIndex)
+float SampleShadowPCF(float2 uv, float compDepth, uint shadowMapIndex)
 {
-	Texture2D<float4> shadowMap = Texture2DTable[shadowMapIndex];
+	float2 shadowMapRes;
+	Texture2DTable[shadowMapIndex].GetDimensions(shadowMapRes.x, shadowMapRes.y);
+	float2 invShadowMapRes = 1.0f / shadowMapRes;
 
-	float4 gather0 = shadowMap.Gather(Sampler_Linear_Border, uv, int2(-1, -1));
-	float4 gather1 = shadowMap.Gather(Sampler_Linear_Border, uv, int2(1, -1));
-	float4 gather2 = shadowMap.Gather(Sampler_Linear_Border, uv, int2(-1, 1));
-	float4 gather3 = shadowMap.Gather(Sampler_Linear_Border, uv, int2(1, 1));
+	uv *= shadowMapRes;
 
-	return BoxBlur4x4(float4x4(gather0, gather1, gather2, gather3), currentDepth);
+	float2 baseUV;
+	baseUV.x = floor(uv.x + 0.5f);
+	baseUV.y = floor(uv.y + 0.5f);
+
+	float s = (uv.x + 0.5f - baseUV.x);
+	float t = (uv.y + 0.5f - baseUV.y);
+
+	baseUV -= float2(0.5f, 0.5f);
+	baseUV *= invShadowMapRes;
+
+	float uw0 = (4 - 3 * s);
+	float uw1 = 7;
+	float uw2 = (1 + 3 * s);
+
+	float u0 = (3 - 2 * s) / uw0 - 2;
+	float u1 = (3 + s) / uw1;
+	float u2 = s / uw2 + 2;
+
+	float vw0 = (4 - 3 * t);
+	float vw1 = 7;
+	float vw2 = (1 + 3 * t);
+
+	float v0 = (3 - 2 * t) / vw0 - 2;
+	float v1 = (3 + t) / vw1;
+	float v2 = t / vw2 + 2;
+
+	float acc = 0.0f;
+
+	acc += uw0 * vw0 * SamplePCF(baseUV, u0, v0, compDepth, invShadowMapRes, shadowMapIndex);
+	acc += uw1 * vw0 * SamplePCF(baseUV, u1, v0, compDepth, invShadowMapRes, shadowMapIndex);
+	acc += uw2 * vw0 * SamplePCF(baseUV, u2, v0, compDepth, invShadowMapRes, shadowMapIndex);
+
+	acc += uw0 * vw1 * SamplePCF(baseUV, u0, v1, compDepth, invShadowMapRes, shadowMapIndex);
+	acc += uw1 * vw1 * SamplePCF(baseUV, u1, v1, compDepth, invShadowMapRes, shadowMapIndex);
+	acc += uw2 * vw1 * SamplePCF(baseUV, u2, v1, compDepth, invShadowMapRes, shadowMapIndex);
+
+	acc += uw0 * vw2 * SamplePCF(baseUV, u0, v2, compDepth, invShadowMapRes, shadowMapIndex);
+	acc += uw1 * vw2 * SamplePCF(baseUV, u1, v2, compDepth, invShadowMapRes, shadowMapIndex);
+	acc += uw2 * vw2 * SamplePCF(baseUV, u2, v2, compDepth, invShadowMapRes, shadowMapIndex);
+
+	return acc *= 1.0f / 144;
 }
 
-float SampleShadowGather4BoxBlur(float3 lightToFrag, float currentDepth, uint shadowMapIndex)
+float SamplePCFCube(float3 lightToFrag, float3 baseDir, float3 dirOffset, float compDepth, float invShadowMapRes, uint shadowMapIndex)
 {
-	TextureCube<float4> shadowMap = TextureCubeTable[shadowMapIndex];
-	float2 textureSize;
-	shadowMap.GetDimensions(textureSize.x, textureSize.y);
+	float3 offset = baseDir + dirOffset * invShadowMapRes;
+	float3 normDir = normalize(lightToFrag);
+	return TextureCubeTable[shadowMapIndex].SampleCmpLevelZero(Sampler_PCF, float3(normDir.x + offset.x, normDir.y + offset.y, normDir.z + offset.z), compDepth);
+}
 
-	float texelSize = 1.0f / textureSize.x;
-	float lightDistance = length(lightToFrag);
+float SampleShadowPCF(float3 lightToFrag, float compDepth, uint shadowMapIndex)
+{
+	float2 shadowMapRes;
+	Texture2DTable[shadowMapIndex].GetDimensions(shadowMapRes.x, shadowMapRes.y);
+	float2 invShadowMapRes = 1.0f / shadowMapRes;
 
-	float3 uvwOffset0 = float3(-1.0f, -1.0f, 0.0f) * lightDistance * texelSize;
-	float3 uvwOffset1 = float3(1.0f, -1.0f, 0.0f) * lightDistance * texelSize;
-	float3 uvwOffset2 = float3(-1.0f, 1.0f, 0.0f) * lightDistance * texelSize;
-	float3 uvwOffset3 = float3(1.0f, 1.0f, 0.0f) * lightDistance * texelSize;
+	float3 nDir = normalize(lightToFrag) * float3(shadowMapRes, 1.0f);
+	float3 baseDir;
+	baseDir.x = (nDir.x + 0.5f);
+	baseDir.y = (nDir.y + 0.5f);
+	baseDir.z = nDir.z;
 
-	float4 gather0 = shadowMap.Gather(Sampler_Linear_Border, (lightToFrag.xyz + uvwOffset0));
-	float4 gather1 = shadowMap.Gather(Sampler_Linear_Border, (lightToFrag.xyz + uvwOffset1));
-	float4 gather2 = shadowMap.Gather(Sampler_Linear_Border, (lightToFrag.xyz + uvwOffset2));
-	float4 gather3 = shadowMap.Gather(Sampler_Linear_Border, (lightToFrag.xyz + uvwOffset3));
+	float s = (nDir.x + 0.5f - baseDir.x);
+	float t = (nDir.y + 0.5f - baseDir.y);
 
-	return BoxBlur4x4(float4x4(gather0, gather1, gather2, gather3), currentDepth);
+	baseDir.xy -= float2(0.5f, 0.5f);
+	baseDir.xy *= invShadowMapRes.xy;
+
+	float uw0 = (4 - 3 * s);
+	float uw1 = 7;
+	float uw2 = (1 + 3 * s);
+
+	float u0 = (3 - 2 * s) / uw0 - 2;
+	float u1 = (3 + s) / uw1;
+	float u2 = s / uw2 + 2;
+
+	float vw0 = (4 - 3 * t);
+	float vw1 = 7;
+	float vw2 = (1 + 3 * t);
+
+	float v0 = (3 - 2 * t) / vw0 - 2;
+	float v1 = (3 + t) / vw1;
+	float v2 = t / vw2 + 2;
+
+	float acc = 0.0f;
+
+	acc += uw0 * vw0 * SamplePCFCube(lightToFrag, baseDir, float3(u0, v0, baseDir.z), compDepth, invShadowMapRes, shadowMapIndex);
+	acc += uw1 * vw0 * SamplePCFCube(lightToFrag, baseDir, float3(u1, v0, baseDir.z), compDepth, invShadowMapRes, shadowMapIndex);
+	acc += uw2 * vw0 * SamplePCFCube(lightToFrag, baseDir, float3(u2, v0, baseDir.z), compDepth, invShadowMapRes, shadowMapIndex);
+
+	acc += uw0 * vw1 * SamplePCFCube(lightToFrag, baseDir, float3(u0, v1, baseDir.z), compDepth, invShadowMapRes, shadowMapIndex);
+	acc += uw1 * vw1 * SamplePCFCube(lightToFrag, baseDir, float3(u1, v1, baseDir.z), compDepth, invShadowMapRes, shadowMapIndex);
+	acc += uw2 * vw1 * SamplePCFCube(lightToFrag, baseDir, float3(u2, v1, baseDir.z), compDepth, invShadowMapRes, shadowMapIndex);
+
+	acc += uw0 * vw2 * SamplePCFCube(lightToFrag, baseDir, float3(u0, v2, baseDir.z), compDepth, invShadowMapRes, shadowMapIndex);
+	acc += uw1 * vw2 * SamplePCFCube(lightToFrag, baseDir, float3(u1, v2, baseDir.z), compDepth, invShadowMapRes, shadowMapIndex);
+	acc += uw2 * vw2 * SamplePCFCube(lightToFrag, baseDir, float3(u2, v2, baseDir.z), compDepth, invShadowMapRes, shadowMapIndex);
+
+	return acc *= 1.0f / 144;
 }
 
 float EvaluateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapIndex)
@@ -217,7 +207,7 @@ float EvaluateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapInd
 	if (projectedCoords.z > 1.0f || projectedCoords.z < 0.0f)
 		shadow = 1.0f;
 	else
-		shadow = SampleShadowGather4BoxBlur(projectedCoords.xy, currentDepth, shadowMapIndex);
+		shadow = SampleShadowPCF(projectedCoords.xy, currentDepth, shadowMapIndex);//shadow = SampleShadowGather4BoxBlur(projectedCoords.xy, currentDepth, shadowMapIndex);
 
 	return shadow;
 }
@@ -230,7 +220,7 @@ float EvaluateOmnidirectionalShadow(float3 lightToFrag, float angle, float farPl
 	if (currentDepth > 1.0f || currentDepth < 0.0f)
 		shadow = 1.0f;
 	else
-		shadow = SampleShadowGather4BoxBlur(lightToFrag, currentDepth, shadowMapIndex);
+		shadow = SampleShadowPCF(lightToFrag, currentDepth, shadowMapIndex);//shadow = SampleShadowGather4BoxBlur(lightToFrag, currentDepth, shadowMapIndex);
 
 	return shadow;
 }
