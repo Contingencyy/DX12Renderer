@@ -135,9 +135,19 @@ void DebugRenderer::Render()
 
 void DebugRenderer::OnImGuiRender()
 {
-    ImGui::Text("Debug renderer");
-    ImGui::Text("Line count: %u", s_Data.DebugLineAt);
-    ImGui::Checkbox("Draw lines", &s_Data.DebugRenderSettings.DrawLines);
+    if (ImGui::CollapsingHeader("Settings"))
+    {
+        ImGui::Indent(10.0f);
+        ImGui::Checkbox("Draw lines", &s_Data.DebugRenderSettings.DrawLines);
+        ImGui::Unindent(10.0f);
+    }
+
+    if (ImGui::CollapsingHeader("Stats"))
+    {
+        ImGui::Indent(10.0f);
+        ImGui::Text("Line count: %u", s_Data.DebugLineAt);
+        ImGui::Unindent(10.0f);
+    }
 }
 
 void DebugRenderer::EndScene()

@@ -53,6 +53,9 @@
 #define KILOBYTE(x) x * 1024
 #define MEGABYTE(x) KILOBYTE(x) * 1024
 #define GIGABYTE(x) METABYTE(x) * 1024
+#define TO_KILOBYTE(x) x / 1024
+#define TO_MEGABYTE(x) TO_KILOBYTE(x) / 1024
+#define TO_GIGABYTE(x) TO_MEGABYTE(x) / 1024
 
 constexpr bool GPU_VALIDATION_ENABLED = false;
 

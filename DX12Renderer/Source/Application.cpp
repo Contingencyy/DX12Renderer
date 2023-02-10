@@ -148,12 +148,30 @@ void Application::Render()
 		GUIRenderer::BeginFrame();
 		m_Scene->OnImGuiRender();
 
-		ImGui::Begin("Rendering");
-		Renderer::OnImGuiRender();
-		ImGui::Separator();
-		RenderBackend::OnImGuiRender();
-		ImGui::Separator();
-		DebugRenderer::OnImGuiRender();
+		ImGui::Begin("Renderer settings & stats");
+
+		ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+		if (ImGui::CollapsingHeader("Renderer"))
+		{
+			ImGui::Indent(10.0f);
+			Renderer::OnImGuiRender();
+			ImGui::Unindent(10.0f);
+		}
+
+		if (ImGui::CollapsingHeader("Debug Renderer"))
+		{
+			ImGui::Indent(10.0f);
+			DebugRenderer::OnImGuiRender();
+			ImGui::Unindent(10.0f);
+		}
+
+		if (ImGui::CollapsingHeader("Render Backend"))
+		{
+			ImGui::Indent(10.0f);
+			RenderBackend::OnImGuiRender();
+			ImGui::Unindent(10.0f);
+		}
+
 		ImGui::End();
 
 		Profiler::OnImGuiRender();

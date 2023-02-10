@@ -750,7 +750,8 @@ void Renderer::OnImGuiRender()
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     if (ImGui::CollapsingHeader("Settings"))
     {
-        ImGui::Text("Renderer");
+        ImGui::Indent(10.0f);
+
         ImGui::Text("Render resolution: %ux%u", renderSettings.RenderResolution.x, renderSettings.RenderResolution.y);
         ImGui::Text("Shadow map resolution: %ux%u", renderSettings.ShadowMapResolution, renderSettings.ShadowMapResolution);
         ImGui::Text("VSync: %s", renderSettings.EnableVSync ? "On" : "Off");
@@ -779,16 +780,22 @@ void Renderer::OnImGuiRender()
 
             ImGui::EndCombo();
         }
+
+        ImGui::Unindent(10.0f);
     }
 
     if (ImGui::CollapsingHeader("Stats"))
     {
+        ImGui::Indent(10.0f);
+
         ImGui::Text("Draw calls: %u", renderStats.DrawCallCount);
         ImGui::Text("Triangle count: %u", renderStats.TriangleCount);
         ImGui::Text("Mesh count: %u", renderStats.MeshCount);
         ImGui::Text("Directional light count: %u", s_Data.SceneData.DirLightCount);
         ImGui::Text("Point light count: %u", s_Data.SceneData.PointLightCount);
         ImGui::Text("Spot light count: %u", s_Data.SceneData.SpotLightCount);
+
+        ImGui::Unindent(10.0f);
     }
 }
 
