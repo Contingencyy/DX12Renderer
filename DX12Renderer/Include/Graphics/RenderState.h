@@ -7,7 +7,9 @@ struct RenderSettings
 {
 	Resolution RenderResolution = { 1280, 720 };
 	Resolution ShadowMapResolution = { 2048, 2048 };
-	bool VSync = true;
+
+	bool EnableTAA = true;
+	bool EnableVSync = true;
 };
 
 struct RendererStatistics
@@ -47,9 +49,68 @@ struct Material
 	TransparencyMode Transparency;
 };
 
+struct SceneData
+{
+	void Reset()
+	{
+		DirLightCount = 0;
+		PointLightCount = 0;
+		SpotLightCount = 0;
+	}
+
+	glm::mat4 ViewProjection = glm::identity<glm::mat4>();
+	glm::vec3 CameraPosition = glm::vec3(0.0f);
+
+	uint32_t DirLightCount = 0;
+	uint32_t PointLightCount = 0;
+	uint32_t SpotLightCount = 0;
+};
+
+enum class TonemapType : uint32_t
+{
+	LINEAR, REINHARD, UNCHARTED2, FILMIC, ACES_FILMIC,
+	NUM_TYPES
+};
+
+static std::string TonemapTypeToString(TonemapType type)
+{
+	switch (type)
+	{
+	case TonemapType::LINEAR:
+		return std::string("Linear");
+	case TonemapType::REINHARD:
+		return std::string("Reinhard");
+	case TonemapType::UNCHARTED2:
+		return std::string("Uncharted2");
+	case TonemapType::FILMIC:
+		return std::string("Filmic");
+	case TonemapType::ACES_FILMIC:
+		return std::string("ACES Filmic");
+	default:
+		return std::string("Unknown");
+	}
+}
+
+struct GlobalConstantBufferData
+{
+	// General render settings
+	glm::mat4 PrevViewProjection = glm::identity<glm::mat4>();
+	Resolution Resolution = { 1280, 720 };
+
+	// TAA settings
+	glm::vec2 TAA_HaltonJitter = glm::vec2(0.500000f, 0.333333f);
+	float TAA_SourceWeight = 0.05f;
+
+	// Tonemapping settings
+	float TM_Exposure = 1.5f;
+	float TM_Gamma = 2.2f;
+	TonemapType TM_Type = TonemapType::UNCHARTED2;
+};
+
 struct RenderState
 {
 	
+	GlobalConstantBufferData GlobalCBData;
 	RenderSettings Settings;
 	RendererStatistics Stats;
 
@@ -73,13 +134,17 @@ struct RenderState
 	std::unique_ptr<Texture> HDRColorTarget;
 	std::unique_ptr<Texture> SDRColorTarget;
 
+	// TAA History and TAA result
+	std::unique_ptr<Texture> TAAResolveTarget;
+	std::unique_ptr<Texture> TAAHistory;
+
 	// Buffers
+	std::unique_ptr<Buffer> GlobalConstantBuffer;
 	std::unique_ptr<Buffer> MeshInstanceBufferOpaque;
 	std::unique_ptr<Buffer> MeshInstanceBufferTransparent;
 	std::unique_ptr<Buffer> SceneDataConstantBuffer;
 	std::unique_ptr<Buffer> MaterialConstantBuffer;
 	std::unique_ptr<Buffer> LightConstantBuffer;
-	std::unique_ptr<Buffer> TonemapConstantBuffer;
 	std::unique_ptr<Buffer> DebugLineBuffer;
 
 	// Default textures

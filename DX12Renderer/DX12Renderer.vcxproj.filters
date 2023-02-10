@@ -330,5 +330,6 @@
     <FxCompile Include="Resources\Shaders\DepthPrepass_PS.hlsl" />
     <FxCompile Include="Resources\Shaders\MipMapGen_CS.hlsl" />
     <FxCompile Include="Resources\Shaders\Tonemapping_CS.hlsl" />
+    <FxCompile Include="Resources\Shaders\TemporalAA_CS.hlsl" />
   </ItemGroup>
 </Project>

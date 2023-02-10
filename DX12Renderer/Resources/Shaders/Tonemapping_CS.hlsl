@@ -54,9 +54,9 @@ float3 ACESFilmicToneMapping(float3 color)
 	return saturate((color * (a * color + b)) / (color * (c * color + d) + e));
 }
 
-ConstantBuffer<TonemapSettings> TonemapCB : register(b0);
-Texture2D Texture2DTable[] : register(t0, space0);
-RWTexture2D<float4> RWTexture2DTable[] : register(u0, space0);
+ConstantBuffer<GlobalConstantBufferData> GlobalCB : register(b0);
+Texture2D HDRColorTarget : register(t0, space0);
+RWTexture2D<float4> SDRColorTarget : register(u0, space0);
 
 #define LINEAR_TONEMAP 0
 #define REINHARD_TONEMAP 1
@@ -67,31 +67,28 @@ RWTexture2D<float4> RWTexture2DTable[] : register(u0, space0);
 [numthreads(8, 8, 1)]
 void main(uint3 threadID : SV_DispatchThreadID)
 {
-	Texture2D hdrTarget = Texture2DTable[TonemapCB.HDRRenderTargetIndex];
-	RWTexture2D<float4> sdrTarget = RWTexture2DTable[TonemapCB.SDRRenderTargetIndex];
+	float exposure = GlobalCB.TM_Exposure;
+	float gamma = GlobalCB.TM_Gamma;
+	float4 hdrColor = HDRColorTarget[threadID.xy];
 
-	float exposure = TonemapCB.Exposure;
-	float gamma = TonemapCB.Gamma;
-	float4 hdrColor = hdrTarget[threadID.xy];
+	SDRColorTarget[threadID.xy].a = hdrColor.a;
 
-	sdrTarget[threadID.xy].a = hdrColor.a;
-
-	switch (TonemapCB.Type)
+	switch (GlobalCB.TM_Type)
 	{
 	case LINEAR_TONEMAP:
-		sdrTarget[threadID.xy].rgb = LinearToneMapping(hdrColor.rgb, exposure, gamma);
+		SDRColorTarget[threadID.xy].rgb = LinearToneMapping(hdrColor.rgb, exposure, gamma);
 		break;
 	case REINHARD_TONEMAP:
-		sdrTarget[threadID.xy].rgb = ReinhardToneMapping(hdrColor.rgb, exposure, gamma);
+		SDRColorTarget[threadID.xy].rgb = ReinhardToneMapping(hdrColor.rgb, exposure, gamma);
 		break;
 	case UNCHARTED2_TONEMAP:
-		sdrTarget[threadID.xy].rgb = Uncharted2ToneMapping(hdrColor.rgb, exposure, gamma);
+		SDRColorTarget[threadID.xy].rgb = Uncharted2ToneMapping(hdrColor.rgb, exposure, gamma);
 		break;
 	case FILMIC_TONEMAP:
-		sdrTarget[threadID.xy].rgb = FilmicToneMapping(hdrColor.rgb);
+		SDRColorTarget[threadID.xy].rgb = FilmicToneMapping(hdrColor.rgb);
 		break;
 	case ACES_FILMIC_TONEMAP:
-		sdrTarget[threadID.xy].rgb = ACESFilmicToneMapping(hdrColor.rgb);
+		SDRColorTarget[threadID.xy].rgb = ACESFilmicToneMapping(hdrColor.rgb);
 		break;
 	}
 }

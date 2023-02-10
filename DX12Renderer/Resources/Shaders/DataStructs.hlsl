@@ -1,10 +1,29 @@
 #define PI 3.14159265
 #define INV_PI 1.0 / PI
 
+static const float4x4 IDENTITY_MATRIX = float4x4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+
+struct GlobalConstantBufferData
+{
+	// General render settings
+	float4x4 PrevViewProjection;
+	uint2 RenderResolution;
+
+	// TAA settings
+	float2 TAA_HaltonJitter;
+	float TAA_SourceWeight;
+
+	// Tonemapping settings
+	float TM_Exposure;
+	float TM_Gamma;
+	uint TM_Type;
+};
+
 struct SceneData
 {
-	matrix ViewProjection;
+	float4x4 ViewProjection;
 	float3 ViewPosition;
+
 	uint NumDirectionalLights;
 	uint NumPointLights;
 	uint NumSpotLights;
@@ -16,7 +35,7 @@ struct DirectionalLight
 	float3 Ambient;
 	float3 Color;
 
-	matrix ViewProjection;
+	float4x4 ViewProjection;
 	uint ShadowMapIndex;
 };
 
@@ -40,7 +59,7 @@ struct SpotLight
 	float OuterConeAngle;
 	float3 Color;
 
-	matrix ViewProjection;
+	float4x4 ViewProjection;
 	uint ShadowMapIndex;
 };
 
@@ -49,15 +68,6 @@ struct LightCBData
 	DirectionalLight DirLight;
 	SpotLight SpotLights[50];
 	PointLight PointLights[50];
-};
-
-struct TonemapSettings
-{
-	uint HDRRenderTargetIndex;
-	uint SDRRenderTargetIndex;
-	float Exposure;
-	float Gamma;
-	uint Type;
 };
 
 struct Material

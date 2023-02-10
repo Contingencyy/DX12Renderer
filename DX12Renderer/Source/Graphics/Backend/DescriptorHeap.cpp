@@ -32,6 +32,7 @@ DescriptorAllocation DescriptorHeap::Allocate(uint32_t numDescriptors)
     ASSERT(m_DescriptorOffset + numDescriptors < m_NumDescriptors, "Failed to satisfy descriptor allocation request, descriptor heap is too small");
 
     DescriptorAllocation allocation(CD3DX12_CPU_DESCRIPTOR_HANDLE(m_CPUBaseDescriptor, m_DescriptorOffset, m_DescriptorHandleIncrementSize),
+        CD3DX12_GPU_DESCRIPTOR_HANDLE(m_GPUBaseDescriptor, m_DescriptorOffset, m_DescriptorHandleIncrementSize),
         m_DescriptorOffset, numDescriptors, m_DescriptorHandleIncrementSize);
     m_DescriptorOffset += numDescriptors;
 

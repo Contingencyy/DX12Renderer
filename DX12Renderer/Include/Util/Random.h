@@ -21,6 +21,18 @@ public:
 		return min + (float)s_Distribution(s_RandomEngine) / ((float)std::numeric_limits<uint32_t>::max() / (max - min));
 	}
 
+	/* Returns a random uint32_t between 0 and 1 */
+	static inline uint32_t Uint()
+	{
+		return (uint32_t)s_Distribution(s_RandomEngine) / std::numeric_limits<uint32_t>::max();
+	}
+
+	/* Returns a random uint32_t between min and max */
+	static inline uint32_t UintRange(uint32_t min, uint32_t max)
+	{
+		return min + (uint32_t)s_Distribution(s_RandomEngine) / (std::numeric_limits<uint32_t>::max() / (max - min));
+	}
+
 private:
 	static std::mt19937 s_RandomEngine;
 	static std::uniform_int_distribution<std::mt19937::result_type> s_Distribution;

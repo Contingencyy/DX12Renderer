@@ -12,9 +12,10 @@ struct PixelShaderInput
 	uint MaterialID : MATERIAL_ID;
 };
 
-ConstantBuffer<SceneData> SceneDataCB : register(b0);
-ConstantBuffer<MaterialCBData> MaterialCB : register(b1);
-ConstantBuffer<LightCBData> LightCB : register(b2);
+ConstantBuffer<GlobalConstantBufferData> GlobalCB : register(b0);
+ConstantBuffer<SceneData> SceneDataCB : register(b1);
+ConstantBuffer<MaterialCBData> MaterialCB : register(b2);
+ConstantBuffer<LightCBData> LightCB : register(b3);
 
 Texture2D Texture2DTable[] : register(t0, space0);
 TextureCube TextureCubeTable[] : register(t0, space1);
@@ -207,7 +208,7 @@ float EvaluateDirectionalShadow(float4 fragPosLS, float angle, uint shadowMapInd
 	if (projectedCoords.z > 1.0f || projectedCoords.z < 0.0f)
 		shadow = 1.0f;
 	else
-		shadow = SampleShadowPCF(projectedCoords.xy, currentDepth, shadowMapIndex);//shadow = SampleShadowGather4BoxBlur(projectedCoords.xy, currentDepth, shadowMapIndex);
+		shadow = SampleShadowPCF(projectedCoords.xy, currentDepth, shadowMapIndex);
 
 	return shadow;
 }
@@ -220,7 +221,7 @@ float EvaluateOmnidirectionalShadow(float3 lightToFrag, float angle, float farPl
 	if (currentDepth > 1.0f || currentDepth < 0.0f)
 		shadow = 1.0f;
 	else
-		shadow = SampleShadowPCF(lightToFrag, currentDepth, shadowMapIndex);//shadow = SampleShadowGather4BoxBlur(lightToFrag, currentDepth, shadowMapIndex);
+		shadow = SampleShadowPCF(lightToFrag, currentDepth, shadowMapIndex);
 
 	return shadow;
 }

@@ -11,7 +11,8 @@ struct VertexShaderInput
 	uint MaterialID : MATERIAL_ID;
 };
 
-ConstantBuffer<SceneData> SceneDataCB : register(b0);
+ConstantBuffer<GlobalConstantBufferData> GlobalCB : register(b0);
+ConstantBuffer<SceneData> SceneDataCB : register(b1);
 
 struct VertexShaderOutput
 {
@@ -31,7 +32,12 @@ VertexShaderOutput main(VertexShaderInput IN)
 	OUT.Position = mul(IN.Model, float4(IN.Position, 1.0f));
 	OUT.WorldPosition = OUT.Position;
 
-	OUT.Position = mul(SceneDataCB.ViewProjection, OUT.Position);
+	float4x4 jitterMatrix = SceneDataCB.ViewProjection;
+	jitterMatrix[0][2] += GlobalCB.TAA_HaltonJitter.x;
+	jitterMatrix[1][2] += GlobalCB.TAA_HaltonJitter.y;
+
+	OUT.Position = mul(jitterMatrix, OUT.Position);
+
 	OUT.TexCoord = IN.TexCoord;
 
 	OUT.Normal = IN.Normal;

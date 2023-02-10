@@ -3,12 +3,12 @@
 #include "Graphics/Backend/DescriptorHeap.h"
 
 DescriptorAllocation::DescriptorAllocation()
-	: m_CPUDescriptorHandle(CD3DX12_CPU_DESCRIPTOR_HANDLE(D3D12_DEFAULT)), m_OffsetInDescriptorHeap(0), m_NumDescriptors(0), m_DescriptorHandleIncrementSize(0)
+	: m_CPUDescriptorHandle(CD3DX12_CPU_DESCRIPTOR_HANDLE(D3D12_DEFAULT)), m_GPUDescriptorHandle(CD3DX12_GPU_DESCRIPTOR_HANDLE(D3D12_DEFAULT)), m_OffsetInDescriptorHeap(0), m_NumDescriptors(0), m_DescriptorHandleIncrementSize(0)
 {
 }
 
-DescriptorAllocation::DescriptorAllocation(D3D12_CPU_DESCRIPTOR_HANDLE descriptor, uint32_t offset, uint32_t numDescriptors, uint32_t descriptorSize)
-	: m_CPUDescriptorHandle(descriptor), m_OffsetInDescriptorHeap(offset), m_NumDescriptors(numDescriptors), m_DescriptorHandleIncrementSize(descriptorSize)
+DescriptorAllocation::DescriptorAllocation(D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu, uint32_t offset, uint32_t numDescriptors, uint32_t descriptorSize)
+	: m_CPUDescriptorHandle(cpu), m_GPUDescriptorHandle(gpu), m_OffsetInDescriptorHeap(offset), m_NumDescriptors(numDescriptors), m_DescriptorHandleIncrementSize(descriptorSize)
 {
 }
 
@@ -21,6 +21,12 @@ D3D12_CPU_DESCRIPTOR_HANDLE DescriptorAllocation::GetCPUDescriptorHandle(uint32_
 {
 	ASSERT(offset < m_NumDescriptors, "Offset is bigger than the total number of descriptors in descriptor allocation");
 	return { m_CPUDescriptorHandle.ptr + (m_DescriptorHandleIncrementSize * offset) };
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE DescriptorAllocation::GetGPUDescriptorHandle(uint32_t offset) const
+{
+	ASSERT(offset < m_NumDescriptors, "Offset is bigger than the total number of descriptors in descriptor allocation");
+	return { m_GPUDescriptorHandle.ptr + (m_DescriptorHandleIncrementSize * offset) };
 }
 
 bool DescriptorAllocation::IsNull()

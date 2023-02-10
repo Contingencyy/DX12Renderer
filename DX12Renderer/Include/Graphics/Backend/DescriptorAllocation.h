@@ -11,10 +11,11 @@ class DescriptorAllocation
 {
 public:
 	DescriptorAllocation();
-	DescriptorAllocation(D3D12_CPU_DESCRIPTOR_HANDLE descriptor, uint32_t offset, uint32_t numDescriptors, uint32_t descriptorSize);
+	DescriptorAllocation(D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu, uint32_t offset, uint32_t numDescriptors, uint32_t descriptorSize);
 	~DescriptorAllocation();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(uint32_t offset = 0) const;
+	D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(uint32_t offset = 0) const;
 	uint32_t GetOffsetInDescriptorHeap() const { return m_OffsetInDescriptorHeap; }
 
 	bool IsNull();
@@ -24,6 +25,7 @@ private:
 
 private:
 	D3D12_CPU_DESCRIPTOR_HANDLE m_CPUDescriptorHandle;
+	D3D12_GPU_DESCRIPTOR_HANDLE m_GPUDescriptorHandle;
 
 	uint32_t m_OffsetInDescriptorHeap;
 	uint32_t m_NumDescriptors;
