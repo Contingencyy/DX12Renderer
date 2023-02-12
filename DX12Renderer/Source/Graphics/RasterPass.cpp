@@ -74,22 +74,11 @@ void RasterPass::CreatePipelineState()
 	m_VertexShader = std::make_unique<Shader>(StringHelper::StringToWString(m_Desc.VertexShaderPath), "main", "vs_6_0");
 	m_PixelShader = std::make_unique<Shader>(StringHelper::StringToWString(m_Desc.PixelShaderPath), "main", "ps_6_0");
 
-	D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
-	rtBlendDesc.BlendEnable = TRUE;
-	rtBlendDesc.LogicOpEnable = FALSE;
-	rtBlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
-	rtBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-	rtBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
-	rtBlendDesc.SrcBlendAlpha = D3D12_BLEND_SRC_ALPHA;
-	rtBlendDesc.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
-	rtBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-	rtBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
-	rtBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
 	D3D12_BLEND_DESC blendDesc = {};
 	blendDesc.AlphaToCoverageEnable = FALSE;
-	blendDesc.IndependentBlendEnable = FALSE;
-	blendDesc.RenderTarget[0] = rtBlendDesc;
+	blendDesc.IndependentBlendEnable = TRUE;
+	for (std::size_t i = 0; i < m_Desc.NumColorAttachments; ++i)
+		blendDesc.RenderTarget[i] = m_Desc.ColorBlendDesc[i];
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.InputLayout = { &m_Desc.ShaderInputLayout[0], static_cast<uint32_t>(m_Desc.ShaderInputLayout.size()) };
@@ -113,15 +102,9 @@ void RasterPass::CreatePipelineState()
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.PrimitiveTopologyType = m_Desc.TopologyType;
 
-	if (m_Desc.ColorAttachmentDesc.Usage == TextureUsage::TEXTURE_USAGE_NONE && m_Desc.ColorAttachmentDesc.Format == TextureFormat::TEXTURE_FORMAT_UNSPECIFIED)
-	{
-		psoDesc.NumRenderTargets = 0;
-	}
-	else
-	{
-		psoDesc.NumRenderTargets = 1;
-		psoDesc.RTVFormats[0] = TextureFormatToDXGIFormat(m_Desc.ColorAttachmentDesc.Format);
-	}
+	psoDesc.NumRenderTargets = m_Desc.NumColorAttachments;
+	for (std::size_t i = 0; i < m_Desc.NumColorAttachments; ++i)
+		psoDesc.RTVFormats[i] = TextureFormatToDXGIFormat(m_Desc.ColorAttachmentDesc[i].Format);
 
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.pRootSignature = m_d3d12RootSignature.Get();

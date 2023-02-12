@@ -39,16 +39,29 @@ namespace DebugRenderer
 
     void CreateRenderPasses()
     {
+        D3D12_RENDER_TARGET_BLEND_DESC defaultBlendDesc = {};
+        defaultBlendDesc.BlendEnable = TRUE;
+        defaultBlendDesc.LogicOpEnable = FALSE;
+        defaultBlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        defaultBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+        defaultBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+        defaultBlendDesc.SrcBlendAlpha = D3D12_BLEND_SRC_ALPHA;
+        defaultBlendDesc.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+        defaultBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+        defaultBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+        defaultBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
         {
             // Debug line render pass
             RasterPassDesc desc;
             desc.VertexShaderPath = "Resources/Shaders/DebugLine_VS.hlsl";
             desc.PixelShaderPath = "Resources/Shaders/DebugLine_PS.hlsl";
 
-            desc.ColorAttachmentDesc.Usage = TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ;
-            desc.ColorAttachmentDesc.Format = TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM;
-            desc.ColorAttachmentDesc.Width = g_RenderState.Settings.RenderResolution.x;
-            desc.ColorAttachmentDesc.Height = g_RenderState.Settings.RenderResolution.y;
+            desc.ColorBlendDesc[0] = defaultBlendDesc;
+            desc.ColorAttachmentDesc[0].Usage = TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ;
+            desc.ColorAttachmentDesc[0].Format = TextureFormat::TEXTURE_FORMAT_RGBA8_UNORM;
+            desc.ColorAttachmentDesc[0].Width = g_RenderState.Settings.RenderResolution.x;
+            desc.ColorAttachmentDesc[0].Height = g_RenderState.Settings.RenderResolution.y;
             desc.DepthAttachmentDesc.Usage = TextureUsage::TEXTURE_USAGE_DEPTH;
             desc.DepthAttachmentDesc.Format = TextureFormat::TEXTURE_FORMAT_DEPTH32;
             desc.DepthAttachmentDesc.Width = g_RenderState.Settings.RenderResolution.x;

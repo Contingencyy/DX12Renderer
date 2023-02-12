@@ -71,7 +71,7 @@ Scene::Scene()
 	// Mesh objects
 	SpawnModelObject("SponzaOld", glm::vec3(), glm::vec3(), glm::vec3(125.0f));
 	//SpawnModelObject("DamagedHelmet", glm::vec3(), glm::vec3(), glm::vec3(100.0f));
-	SpawnModelObject("Chess", glm::vec3(0.0f, 0.0f, -35.0f), glm::vec3(), glm::vec3(500.0f));
+	//SpawnModelObject("Chess", glm::vec3(0.0f, 0.0f, -35.0f), glm::vec3(), glm::vec3(500.0f));
 	//SpawnModelObject("Spheres", glm::vec3(0.0f, 0.0f, -35.0f), glm::vec3(), glm::vec3(50.0f));
 }
 

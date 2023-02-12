@@ -22,6 +22,8 @@ public:
 	const ViewFrustum& GetViewFrustum() const { return m_ViewFrustum; }
 	float GetExposure() const { return m_Exposure; }
 	float GetGamma() const { return m_Gamma; }
+	glm::mat4 GetViewMatrix() const { return m_ViewMatrix; }
+	glm::mat4 GetProjectionMatrix() const { return m_ProjectionMatrix; }
 	glm::mat4 GetViewProjection() const { return m_ViewProjectionMatrix; };
 	bool IsFrustumCullingEnabled() const { return m_EnableFrustumCulling; }
 	const Transform& GetTransform() const { return m_Transform; }

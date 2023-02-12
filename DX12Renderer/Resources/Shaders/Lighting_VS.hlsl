@@ -17,6 +17,8 @@ ConstantBuffer<SceneData> SceneDataCB : register(b1);
 struct VertexShaderOutput
 {
 	float4 Position : SV_POSITION;
+	float4 CurrentPosNoJitter : CURRENT_POS_NO_JITTER;
+	float4 PreviousPosNoJitter : PREVIOUS_POS_NO_JITTER;
 	float2 TexCoord : TEXCOORD;
 	float3 Normal : NORMAL;
 	float3 Tangent : TANGENT;
@@ -38,12 +40,14 @@ VertexShaderOutput main(VertexShaderInput IN)
 
 	OUT.Position = mul(jitterMatrix, OUT.Position);
 
-	OUT.TexCoord = IN.TexCoord;
+	// Calculate velocity
+	OUT.CurrentPosNoJitter = mul(SceneDataCB.ViewProjection, OUT.WorldPosition);
+	OUT.PreviousPosNoJitter = mul(GlobalCB.PrevViewProj, OUT.WorldPosition);
 
+	OUT.TexCoord = IN.TexCoord;
 	OUT.Normal = IN.Normal;
 	OUT.Tangent = IN.Tangent;
 	OUT.Bitangent = IN.Bitangent;
-
 	OUT.MaterialID = IN.MaterialID;
 
 	return OUT;

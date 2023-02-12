@@ -9,7 +9,9 @@ struct RasterPassDesc
 	std::string VertexShaderPath;
 	std::string PixelShaderPath;
 
-	TextureDesc ColorAttachmentDesc;
+	std::size_t NumColorAttachments = 1;
+	TextureDesc ColorAttachmentDesc[8];
+	D3D12_RENDER_TARGET_BLEND_DESC ColorBlendDesc[8];
 	TextureDesc DepthAttachmentDesc;
 	
 	bool DepthEnabled = true;

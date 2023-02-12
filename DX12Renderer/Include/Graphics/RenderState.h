@@ -94,12 +94,18 @@ static std::string TonemapTypeToString(TonemapType type)
 struct GlobalConstantBufferData
 {
 	// General render settings
-	glm::mat4 PrevViewProjection = glm::identity<glm::mat4>();
+	glm::mat4 ViewProj = glm::identity<glm::mat4>();
+	glm::mat4 InvViewProj = glm::identity<glm::mat4>();
+
+	glm::mat4 PrevViewProj = glm::identity<glm::mat4>();
+	glm::mat4 PrevInvViewProj = glm::identity<glm::mat4>();
+
 	Resolution Resolution = { 1280, 720 };
 
 	// TAA settings
 	glm::vec2 TAA_HaltonJitter = glm::vec2(0.500000f, 0.333333f);
 	float TAA_SourceWeight = 0.05f;
+	uint32_t TAA_NeighborhoodClamping = true;
 
 	// Tonemapping settings
 	float TM_Exposure = 1.5f;
@@ -137,6 +143,7 @@ struct RenderState
 	// TAA History and TAA result
 	std::unique_ptr<Texture> TAAResolveTarget;
 	std::unique_ptr<Texture> TAAHistory;
+	std::unique_ptr<Texture> VelocityTarget;
 
 	// Buffers
 	std::unique_ptr<Buffer> GlobalConstantBuffer;

@@ -6,12 +6,18 @@ static const float4x4 IDENTITY_MATRIX = float4x4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1
 struct GlobalConstantBufferData
 {
 	// General render settings
-	float4x4 PrevViewProjection;
+	float4x4 ViewProj;
+	float4x4 InvViewProj;
+
+	float4x4 PrevViewProj;
+	float4x4 PrevInvViewProj;
+
 	uint2 RenderResolution;
 
 	// TAA settings
 	float2 TAA_HaltonJitter;
 	float TAA_SourceWeight;
+	uint TAA_NeighborhoodClamping;
 
 	// Tonemapping settings
 	float TM_Exposure;

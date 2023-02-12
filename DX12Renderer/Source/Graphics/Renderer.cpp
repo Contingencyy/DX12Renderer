@@ -116,12 +116,25 @@ namespace Renderer
 
     void CreateRenderPasses()
     {
+        D3D12_RENDER_TARGET_BLEND_DESC defaultBlendDesc = {};
+        defaultBlendDesc.BlendEnable = TRUE;
+        defaultBlendDesc.LogicOpEnable = FALSE;
+        defaultBlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        defaultBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+        defaultBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+        defaultBlendDesc.SrcBlendAlpha = D3D12_BLEND_SRC_ALPHA;
+        defaultBlendDesc.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+        defaultBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+        defaultBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+        defaultBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
         {
             // Shadow mapping render pass
             RasterPassDesc desc;
             desc.VertexShaderPath = "Resources/Shaders/ShadowMapping_VS.hlsl";
             desc.PixelShaderPath = "Resources/Shaders/ShadowMapping_PS.hlsl";
 
+            desc.NumColorAttachments = 0;
             desc.DepthAttachmentDesc.Usage = TextureUsage::TEXTURE_USAGE_DEPTH | TextureUsage::TEXTURE_USAGE_READ;
             desc.DepthAttachmentDesc.Format = TextureFormat::TEXTURE_FORMAT_DEPTH32;
             desc.DepthAttachmentDesc.Width = g_RenderState.Settings.ShadowMapResolution.x;
@@ -149,6 +162,7 @@ namespace Renderer
             desc.VertexShaderPath = "Resources/Shaders/DepthPrepass_VS.hlsl";
             desc.PixelShaderPath = "Resources/Shaders/DepthPrepass_PS.hlsl";
 
+            desc.NumColorAttachments = 0;
             desc.DepthAttachmentDesc.Usage = TextureUsage::TEXTURE_USAGE_DEPTH;
             desc.DepthAttachmentDesc.Format = TextureFormat::TEXTURE_FORMAT_DEPTH32;
             desc.DepthAttachmentDesc.Width = g_RenderState.Settings.RenderResolution.x;
@@ -175,10 +189,20 @@ namespace Renderer
             desc.VertexShaderPath = "Resources/Shaders/Lighting_VS.hlsl";
             desc.PixelShaderPath = "Resources/Shaders/Lighting_PS.hlsl";
 
-            desc.ColorAttachmentDesc.Usage = TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ;
-            desc.ColorAttachmentDesc.Format = TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT;
-            desc.ColorAttachmentDesc.Width = g_RenderState.Settings.RenderResolution.x;
-            desc.ColorAttachmentDesc.Height = g_RenderState.Settings.RenderResolution.y;
+            desc.NumColorAttachments = 2;
+            desc.ColorBlendDesc[0] = defaultBlendDesc;
+            desc.ColorAttachmentDesc[0].Usage = TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ;
+            desc.ColorAttachmentDesc[0].Format = TextureFormat::TEXTURE_FORMAT_RGBA16_FLOAT;
+            desc.ColorAttachmentDesc[0].Width = g_RenderState.Settings.RenderResolution.x;
+            desc.ColorAttachmentDesc[0].Height = g_RenderState.Settings.RenderResolution.y;
+
+            desc.ColorBlendDesc[1] = defaultBlendDesc;
+            desc.ColorBlendDesc[1].BlendEnable = FALSE;
+            desc.ColorAttachmentDesc[1].Usage = TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ;
+            desc.ColorAttachmentDesc[1].Format = TextureFormat::TEXTURE_FORMAT_RG16_FLOAT;
+            desc.ColorAttachmentDesc[1].Width = g_RenderState.Settings.RenderResolution.x;
+            desc.ColorAttachmentDesc[1].Height = g_RenderState.Settings.RenderResolution.y;
+
             desc.DepthAttachmentDesc.Usage = TextureUsage::TEXTURE_USAGE_DEPTH;
             desc.DepthAttachmentDesc.Format = TextureFormat::TEXTURE_FORMAT_DEPTH32;
             desc.DepthAttachmentDesc.Width = g_RenderState.Settings.RenderResolution.x;
@@ -220,18 +244,20 @@ namespace Renderer
             desc.NumThreadsY = 64;
             desc.NumThreadsZ = 1;
 
-            CD3DX12_DESCRIPTOR_RANGE1 ranges[4] = {};
+            CD3DX12_DESCRIPTOR_RANGE1 ranges[5] = {};
             ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
             ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
             ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 2, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
-            ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+            ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 3, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+            ranges[4].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
 
-            desc.RootParameters.resize(5);
-            desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE); // TAA settings
+            desc.RootParameters.resize(6);
+            desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE); // Global constant buffer
             desc.RootParameters[1].InitAsDescriptorTable(1, &ranges[0]); // HDR color target (current frame)
             desc.RootParameters[2].InitAsDescriptorTable(1, &ranges[1]); // Depth target (current frame)
-            desc.RootParameters[3].InitAsDescriptorTable(1, &ranges[2]); // TAA history (accumulated last frames)
-            desc.RootParameters[4].InitAsDescriptorTable(1, &ranges[3]); // TAA resolve target (dest)
+            desc.RootParameters[3].InitAsDescriptorTable(1, &ranges[2]); // Velocity target (current frame)
+            desc.RootParameters[4].InitAsDescriptorTable(1, &ranges[3]); // TAA history (accumulated last frames)
+            desc.RootParameters[5].InitAsDescriptorTable(1, &ranges[4]); // TAA resolve target (dest)
 
             s_Data.ComputePasses[ComputePassType::TEMPORAL_ANTI_ALIASING] = std::make_unique<ComputePass>("Temporal anti-aliasing", desc);
         }
@@ -249,7 +275,7 @@ namespace Renderer
             ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
 
             desc.RootParameters.resize(3);
-            desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE); // Tonemapping settings
+            desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE); // Global constant buffer
             desc.RootParameters[1].InitAsDescriptorTable(1, &ranges[0]); // TAA resolve target (source)
             desc.RootParameters[2].InitAsDescriptorTable(1, &ranges[1]); // SDR color target (dest)
 
@@ -368,6 +394,18 @@ namespace Renderer
 
             g_RenderState.SDRColorTarget = std::make_unique<Texture>(desc);
         }
+
+        {
+            // Velocity target
+            TextureDesc desc = {};
+            desc.Usage = TextureUsage::TEXTURE_USAGE_RENDER_TARGET | TextureUsage::TEXTURE_USAGE_READ;
+            desc.Format = TextureFormat::TEXTURE_FORMAT_RG16_FLOAT;
+            desc.Width = g_RenderState.Settings.RenderResolution.x;
+            desc.Height = g_RenderState.Settings.RenderResolution.y;
+            desc.DebugName = "Velocity target";
+
+            g_RenderState.VelocityTarget = std::make_unique<Texture>(desc);
+        }
     }
 
     void CreateDefaultTextures()
@@ -398,10 +436,12 @@ namespace Renderer
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
         commandList->Transition(*g_RenderState.DepthPrepassDepthTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+        commandList->Transition(*g_RenderState.VelocityTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
         commandList->Transition(*g_RenderState.HDRColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
         commandList->Transition(*g_RenderState.SDRColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         commandList->ClearDepthStencilView(g_RenderState.DepthPrepassDepthTarget->GetDescriptor(DescriptorType::DSV), g_RenderState.DepthPrepassDepthTarget->GetTextureDesc().ClearColor.x);
+        commandList->ClearRenderTargetView(g_RenderState.VelocityTarget->GetDescriptor(DescriptorType::RTV), glm::value_ptr<float>(g_RenderState.VelocityTarget->GetTextureDesc().ClearColor));
         commandList->ClearRenderTargetView(g_RenderState.HDRColorTarget->GetDescriptor(DescriptorType::RTV), glm::value_ptr<float>(g_RenderState.HDRColorTarget->GetTextureDesc().ClearColor));
         commandList->ClearRenderTargetView(g_RenderState.SDRColorTarget->GetDescriptor(DescriptorType::RTV), glm::value_ptr<float>(g_RenderState.SDRColorTarget->GetTextureDesc().ClearColor));
 
@@ -416,6 +456,7 @@ namespace Renderer
 
         g_RenderState.TAAResolveTarget->Resize(width, height);
         g_RenderState.TAAHistory->Resize(width, height);
+        g_RenderState.VelocityTarget->Resize(width, height);
     }
 
     bool CullViewFrustum(const ViewFrustum& frustum, const Mesh* mesh, const MeshInstanceData& meshInstance)
@@ -535,7 +576,11 @@ void Renderer::BeginFrame()
 
 void Renderer::BeginScene(const Camera& sceneCamera)
 {
-    g_RenderState.GlobalCBData.PrevViewProjection = s_Data.SceneData.ViewProjection;
+    g_RenderState.GlobalCBData.PrevViewProj = g_RenderState.GlobalCBData.ViewProj;
+    g_RenderState.GlobalCBData.PrevInvViewProj = g_RenderState.GlobalCBData.InvViewProj;
+
+    g_RenderState.GlobalCBData.ViewProj = sceneCamera.GetViewProjection();
+    g_RenderState.GlobalCBData.InvViewProj = glm::inverse(g_RenderState.GlobalCBData.ViewProj);
 
     s_Data.SceneCamera = sceneCamera;
     s_Data.SceneData.ViewProjection = sceneCamera.GetViewProjection();
@@ -639,6 +684,10 @@ void Renderer::Render()
                 commandList->Transition(*s_Data.LightSubmissions[i].ShadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
             }
 
+            commandList->Transition(*g_RenderState.HDRColorTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
+            commandList->Transition(*g_RenderState.VelocityTarget, D3D12_RESOURCE_STATE_RENDER_TARGET);
+            commandList->Transition(*g_RenderState.DepthPrepassDepthTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
             // Set bindless descriptor heap
             commandList->SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, bindlessDescriptorHeap);
 
@@ -652,9 +701,12 @@ void Renderer::Render()
             commandList->SetViewports(1, &viewport);
             commandList->SetScissorRects(1, &scissorRect);
 
-            D3D12_CPU_DESCRIPTOR_HANDLE rtv = g_RenderState.HDRColorTarget->GetDescriptor(DescriptorType::RTV);
+            D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = {
+                g_RenderState.HDRColorTarget->GetDescriptor(DescriptorType::RTV),
+                g_RenderState.VelocityTarget->GetDescriptor(DescriptorType::RTV)
+            };
             D3D12_CPU_DESCRIPTOR_HANDLE dsv = g_RenderState.DepthPrepassDepthTarget->GetDescriptor(DescriptorType::DSV);
-            commandList->SetRenderTargets(1, &rtv, &dsv);
+            commandList->SetRenderTargets(2, rtvs, &dsv);
 
             // Set root CBV for constant buffers
             commandList->SetRootConstantBufferView(0, *g_RenderState.GlobalConstantBuffer, D3D12_RESOURCE_STATE_COMMON);
@@ -683,6 +735,7 @@ void Renderer::Render()
             // Transition sdr history and sdr target into correct states
             commandList->Transition(*g_RenderState.HDRColorTarget, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
             commandList->Transition(*g_RenderState.DepthPrepassDepthTarget, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+            commandList->Transition(*g_RenderState.VelocityTarget, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
             commandList->Transition(*g_RenderState.TAAHistory, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
             commandList->Transition(*g_RenderState.TAAResolveTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
@@ -695,8 +748,9 @@ void Renderer::Render()
             commandList->GetGraphicsCommandList()->SetComputeRootConstantBufferView(0, g_RenderState.GlobalConstantBuffer->GetD3D12Resource()->GetGPUVirtualAddress());
             commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(1, g_RenderState.HDRColorTarget->GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
             commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(2, g_RenderState.DepthPrepassDepthTarget->GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
-            commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(3, g_RenderState.TAAHistory->GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
-            commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(4, g_RenderState.TAAResolveTarget->GetDescriptorAllocation(DescriptorType::UAV).GetGPUDescriptorHandle());
+            commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(3, g_RenderState.VelocityTarget->GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
+            commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(4, g_RenderState.TAAHistory->GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
+            commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(5, g_RenderState.TAAResolveTarget->GetDescriptorAllocation(DescriptorType::UAV).GetGPUDescriptorHandle());
 
             uint32_t threadX = MathHelper::AlignUp(g_RenderState.Settings.RenderResolution.x, 8) / 8;
             uint32_t threadY = MathHelper::AlignUp(g_RenderState.Settings.RenderResolution.y, 8) / 8;
@@ -760,6 +814,10 @@ void Renderer::OnImGuiRender()
 
         ImGui::Checkbox("Temporal AA", &renderSettings.EnableTAA);
         ImGui::DragFloat("TAA source weight", &g_RenderState.GlobalCBData.TAA_SourceWeight, 0.0005f, 0.0f, 1.0f);
+
+        bool taaNeighboorhoodClamping = g_RenderState.GlobalCBData.TAA_NeighborhoodClamping;
+        if (ImGui::Checkbox("TAA neighborhood clamping", &taaNeighboorhoodClamping))
+            g_RenderState.GlobalCBData.TAA_NeighborhoodClamping = taaNeighboorhoodClamping;
 
         ImGui::Separator();
 

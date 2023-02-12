@@ -4,6 +4,8 @@
 struct PixelShaderInput
 {
 	float4 Position : SV_POSITION;
+	float4 CurrentPosNoJitter : CURRENT_POS_NO_JITTER;
+	float4 PreviousPosNoJitter : PREVIOUS_POS_NO_JITTER;
 	float2 TexCoord : TEXCOORD;
 	float3 Normal : NORMAL;
 	float3 Tangent : TANGENT;
@@ -26,24 +28,34 @@ float3 EvaluateDirectionalLight(float4 fragPosWS, float3 fragNormal, float3 albe
 float3 EvaluateSpotLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, SpotLight spotLight);
 float3 EvaluatePointLight(float4 fragPosWS, float3 fragNormal, float3 albedo, float metalness, float roughness, float3 viewDir, PointLight pointLight);
 
-float4 main(PixelShaderInput IN) : SV_TARGET
+struct PixelShaderOutput
+{
+	float4 HDR : SV_TARGET0;
+	float2 Velocity : SV_TARGET1;
+};
+
+PixelShaderOutput main(PixelShaderInput IN)
 {
 	Material mat = MaterialCB.materials[IN.MaterialID];
 
+	// Sample albedo color and normals from normal map
 	float4 albedo = Texture2DTable[mat.AlbedoTextureIndex].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
 	float3 normalTS = Texture2DTable[mat.NormalTextureIndex].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord).xyz;
 	normalTS = (normalTS * 2.0f) - 1.0f;
 
+	// Sample metallic roughness and scale them by the factor in the material
 	float4 metallicRoughness = Texture2DTable[mat.MetallicRoughnessTextureIndex].Sample(Sampler_Antisotropic_Wrap, IN.TexCoord);
 	float metalness = metallicRoughness.b * mat.Metalness;
 	float roughness = metallicRoughness.g * mat.Roughness;
 
+	// Get the fragments world position, the fragments world space normal and the view direction
 	float4 fragPosWS = IN.WorldPosition;
 	float3 fragNormalWS = normalize(normalTS.x * IN.Tangent + normalTS.y * IN.Bitangent + normalTS.z * IN.Normal);
 	float3 viewDir = normalize(SceneDataCB.ViewPosition - fragPosWS);
 
 	float3 finalColor = float3(0.0f, 0.0f, 0.0f);
 
+	// Evalulate color from all light sources
 	if (SceneDataCB.NumDirectionalLights == 1)
 		finalColor += EvaluateDirectionalLight(fragPosWS, fragNormalWS, albedo, metalness, roughness, viewDir, LightCB.DirLight);
 
@@ -57,7 +69,16 @@ float4 main(PixelShaderInput IN) : SV_TARGET
 		finalColor += EvaluatePointLight(fragPosWS, fragNormalWS, albedo, metalness, roughness, viewDir, LightCB.PointLights[p]);
 	}
 
-	return float4(finalColor, albedo.w);
+	// Render HDR color to SV_Target0
+	PixelShaderOutput OUT;
+	OUT.HDR = float4(finalColor, albedo.w);
+
+	// Calculate velocity and render to SV_Target1
+	float3 currentNDC = IN.CurrentPosNoJitter.xyz / IN.CurrentPosNoJitter.w;
+	float3 previousNDC = IN.PreviousPosNoJitter.xyz / IN.PreviousPosNoJitter.w;
+	OUT.Velocity = (currentNDC.xy - previousNDC.xy) * 1000.0f;
+
+	return OUT;
 }
 
 float DistanceAttenuation(float3 lightAttenuation, float distance)
