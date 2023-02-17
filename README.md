@@ -6,22 +6,20 @@ The project builds and runs on both Windows 10 and Windows 11.
 
 ## Features
 - GLTF model loading
-- Bindless/bindful rendering
+- Bindless and bindful resources support
 - Forward rendering
 - Geometric view frustum culling with points, spheres, and AABBs
 - Tone mapping (Uncharted2, Linear, Reinhard, Filmic, ACES filmic)
-- GPU validation
 - Directional light/spotlights/pointlights
-- Shadow mapping (Multisampled PCF, slope-scaled bias)
+- Shadow mapping (3x3 PCF)
 - Mipmap generation
 - Normal mapping
-- Physically-based rendering
-- Materials
+- Physically-based rendering (PBR)
+- Temporal anti-aliasing
 
 ## Planned features
 - Multithreaded rendering/command list recording
 - G-Buffering/Deferred rendering
-- Temporal anti-aliasing
 - Reflections & Ambient occlusion
 - Particle system
 - PostFX (e.g. Bloom, Vignette, Chromatic abberation)
