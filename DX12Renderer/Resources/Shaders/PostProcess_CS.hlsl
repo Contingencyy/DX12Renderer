@@ -1,4 +1,4 @@
-#include "DataStructs.hlsl"
+#include "Common.hlsl"
 
 float3 LinearToneMapping(float3 color, float exposure, float gamma)
 {

@@ -326,7 +326,7 @@ copy "$(SolutionDir)dxil.dll" "$(SolutionDir)bin\$(Configuration)$(Platform)\"
     <ClInclude Include="Include\WinIncludes.h" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Resources\Shaders\DataStructs.hlsl">
+    <FxCompile Include="Resources\Shaders\Common.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>

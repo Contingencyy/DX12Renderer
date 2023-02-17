@@ -1,4 +1,4 @@
-#include "DataStructs.hlsl"
+#include "Common.hlsl"
 
 ConstantBuffer<GlobalConstantBufferData> GlobalCB : register(b0);
 Texture2D<float4> HDRColorTarget : register(t0, space0);
