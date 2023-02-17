@@ -14,9 +14,25 @@ void ComputePass::CreateRootSignature()
 {
 	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
+	// Default sampler (point)
+	CD3DX12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
+	staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+	staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	staticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	staticSamplers[0].MaxAnisotropy = 1;
+	staticSamplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+	staticSamplers[0].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+	staticSamplers[0].MinLOD = 0.0f;
+	staticSamplers[0].MaxLOD = D3D12_FLOAT32_MAX;
+	staticSamplers[0].MipLODBias = 0;
+	staticSamplers[0].ShaderRegister = 0;
+	staticSamplers[0].RegisterSpace = 0;
+	staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC versionedRootSignatureDesc = {};
 	versionedRootSignatureDesc.Init_1_1(static_cast<uint32_t>(m_Desc.RootParameters.size()),
-		&m_Desc.RootParameters[0], 0, nullptr, rootSignatureFlags);
+		&m_Desc.RootParameters[0], 1, staticSamplers, rootSignatureFlags);
 
 	ComPtr<ID3DBlob> serializedRootSig;
 	ComPtr<ID3DBlob> errorBlob;

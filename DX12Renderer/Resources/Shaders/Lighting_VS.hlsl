@@ -40,7 +40,7 @@ VertexShaderOutput main(VertexShaderInput IN)
 
 	OUT.Position = mul(jitterMatrix, OUT.Position);
 
-	// Calculate velocity
+	// Calculate current and previous non-jittered position for velocity
 	OUT.CurrentPosNoJitter = mul(SceneDataCB.ViewProjection, OUT.WorldPosition);
 	OUT.PreviousPosNoJitter = mul(GlobalCB.PrevViewProj, OUT.WorldPosition);
 

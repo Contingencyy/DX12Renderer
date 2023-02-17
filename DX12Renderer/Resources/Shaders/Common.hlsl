@@ -3,8 +3,10 @@
 
 static const float4x4 IDENTITY_MATRIX = float4x4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 
-#define DebugShowTextureMode_Default  0
-#define DebugShowTextureMode_Velocity 1
+#define DebugShowTextureMode_Default    0
+#define DebugShowTextureMode_TAAResolve 1
+#define DebugShowTextureMode_TAAHistory 2
+#define DebugShowTextureMode_Velocity   3
 
 struct GlobalConstantBufferData
 {
@@ -20,7 +22,10 @@ struct GlobalConstantBufferData
 	// TAA settings
 	float2 TAA_HaltonJitter;
 	float TAA_SourceWeight;
-	uint TAA_NeighborhoodClamping;
+	uint TAA_UseNeighborhoodClamp;
+	uint TAA_UseVelocityRejection;
+	float TAA_VelocityRejectionStrength;
+	uint TAA_ShowVelocityDisocclusion;
 
 	// Post-process settings
 	uint PP_DebugShowTextureMode;

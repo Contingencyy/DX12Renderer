@@ -244,20 +244,22 @@ namespace Renderer
             desc.NumThreadsY = 64;
             desc.NumThreadsZ = 1;
 
-            CD3DX12_DESCRIPTOR_RANGE1 ranges[5] = {};
+            CD3DX12_DESCRIPTOR_RANGE1 ranges[6] = {};
             ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
             ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
             ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 2, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
             ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 3, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
-            ranges[4].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+            ranges[4].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 4, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
+            ranges[5].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE, 0);
 
-            desc.RootParameters.resize(6);
+            desc.RootParameters.resize(7);
             desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE); // Global constant buffer
             desc.RootParameters[1].InitAsDescriptorTable(1, &ranges[0]); // HDR color target (current frame)
             desc.RootParameters[2].InitAsDescriptorTable(1, &ranges[1]); // Depth target (current frame)
             desc.RootParameters[3].InitAsDescriptorTable(1, &ranges[2]); // Velocity target (current frame)
-            desc.RootParameters[4].InitAsDescriptorTable(1, &ranges[3]); // TAA history (accumulated last frames)
-            desc.RootParameters[5].InitAsDescriptorTable(1, &ranges[4]); // TAA resolve target (dest)
+            desc.RootParameters[4].InitAsDescriptorTable(1, &ranges[3]); // Velocity target previous (last frame)
+            desc.RootParameters[5].InitAsDescriptorTable(1, &ranges[4]); // TAA history (accumulated last frames)
+            desc.RootParameters[6].InitAsDescriptorTable(1, &ranges[5]); // TAA resolve target (dest)
 
             s_Data.ComputePasses[ComputePassType::TEMPORAL_ANTI_ALIASING] = std::make_unique<ComputePass>("Temporal anti-aliasing", desc);
         }
@@ -405,6 +407,11 @@ namespace Renderer
             desc.DebugName = "Velocity target";
 
             g_RenderState.VelocityTarget = std::make_unique<Texture>(desc);
+
+            desc.Usage = TextureUsage::TEXTURE_USAGE_READ;
+            desc.DebugName = "Velocity target previous";
+
+            g_RenderState.VelocityTargetPrevious = std::make_unique<Texture>(desc);
         }
     }
 
@@ -429,6 +436,16 @@ namespace Renderer
         defaultTextureDesc.DebugName = "Default normal texture";
 
         g_RenderState.DefaultNormalTexture = std::make_unique<Texture>(defaultTextureDesc);
+    }
+
+    void CopyPreviousFrameRenderTargets()
+    {
+        auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+
+        // Copy current velocity into previous velocity
+        commandList->CopyResource(*g_RenderState.VelocityTargetPrevious, *g_RenderState.VelocityTarget);
+
+        RenderBackend::ExecuteCommandList(commandList);
     }
 
     void ClearRenderTargets()
@@ -457,6 +474,7 @@ namespace Renderer
         g_RenderState.TAAResolveTarget->Resize(width, height);
         g_RenderState.TAAHistory->Resize(width, height);
         g_RenderState.VelocityTarget->Resize(width, height);
+        g_RenderState.VelocityTargetPrevious->Resize(width, height);
     }
 
     bool CullViewFrustum(const ViewFrustum& frustum, const Mesh* mesh, const MeshInstanceData& meshInstance)
@@ -571,6 +589,8 @@ void Renderer::BeginFrame()
     SCOPED_TIMER("Renderer::BeginFrame");
 
     RenderBackend::BeginFrame();
+
+    CopyPreviousFrameRenderTargets();
     ClearRenderTargets();
 }
 
@@ -736,6 +756,7 @@ void Renderer::Render()
             commandList->Transition(*g_RenderState.HDRColorTarget, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
             commandList->Transition(*g_RenderState.DepthPrepassDepthTarget, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
             commandList->Transition(*g_RenderState.VelocityTarget, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+            commandList->Transition(*g_RenderState.VelocityTargetPrevious, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
             commandList->Transition(*g_RenderState.TAAHistory, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
             commandList->Transition(*g_RenderState.TAAResolveTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
@@ -749,8 +770,9 @@ void Renderer::Render()
             commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(1, g_RenderState.HDRColorTarget->GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
             commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(2, g_RenderState.DepthPrepassDepthTarget->GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
             commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(3, g_RenderState.VelocityTarget->GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
-            commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(4, g_RenderState.TAAHistory->GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
-            commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(5, g_RenderState.TAAResolveTarget->GetDescriptorAllocation(DescriptorType::UAV).GetGPUDescriptorHandle());
+            commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(4, g_RenderState.VelocityTargetPrevious->GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
+            commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(5, g_RenderState.TAAHistory->GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
+            commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(6, g_RenderState.TAAResolveTarget->GetDescriptorAllocation(DescriptorType::UAV).GetGPUDescriptorHandle());
 
             uint32_t threadX = MathHelper::AlignUp(g_RenderState.Settings.RenderResolution.x, 8) / 8;
             uint32_t threadY = MathHelper::AlignUp(g_RenderState.Settings.RenderResolution.y, 8) / 8;
@@ -763,7 +785,7 @@ void Renderer::Render()
             commandList->CopyResource(*g_RenderState.TAAResolveTarget, *g_RenderState.HDRColorTarget);
         }
 
-        // Copy the TAA resolve target into the HDR color history
+        // Update TAA history with the current TAA resolve
         commandList->CopyResource(*g_RenderState.TAAHistory, *g_RenderState.TAAResolveTarget);
         RenderBackend::ExecuteCommandList(commandList);
     }
@@ -831,11 +853,22 @@ void Renderer::OnImGuiRender()
         ImGui::Separator();
 
         ImGui::Checkbox("Temporal AA", &renderSettings.EnableTAA);
-        ImGui::DragFloat("TAA source weight", &g_RenderState.GlobalCBData.TAA_SourceWeight, 0.0005f, 0.0f, 1.0f);
+        ImGui::DragFloat("TAA source weight", &g_RenderState.GlobalCBData.TAA_SourceWeight, 0.01f, 0.0f, 1.0f);
 
-        bool taaNeighboorhoodClamping = g_RenderState.GlobalCBData.TAA_NeighborhoodClamping;
-        if (ImGui::Checkbox("TAA neighborhood clamping", &taaNeighboorhoodClamping))
-            g_RenderState.GlobalCBData.TAA_NeighborhoodClamping = taaNeighboorhoodClamping;
+        bool neighborhoodClamping = g_RenderState.GlobalCBData.TAA_UseNeighborhoodClamp;
+        if (ImGui::Checkbox("Use neighborhood clamping", &neighborhoodClamping))
+            g_RenderState.GlobalCBData.TAA_UseNeighborhoodClamp = neighborhoodClamping;
+
+        bool useVelocityRejection = g_RenderState.GlobalCBData.TAA_UseVelocityRejection;
+        if (ImGui::Checkbox("Use velocity rejection", &useVelocityRejection))
+            g_RenderState.GlobalCBData.TAA_UseVelocityRejection = useVelocityRejection;
+
+        bool showVelocityDisocclusion = g_RenderState.GlobalCBData.TAA_ShowVelocityDisocclusion;
+        if (ImGui::Checkbox("Show velocity disocclusion", &showVelocityDisocclusion))
+            g_RenderState.GlobalCBData.TAA_ShowVelocityDisocclusion = showVelocityDisocclusion;
+        
+        if (useVelocityRejection)
+            ImGui::DragFloat("Velocity rejection strength", &g_RenderState.GlobalCBData.TAA_VelocityRejectionStrength, 0.1f, 0.0f, 1000.0f);
 
         ImGui::Separator();
 

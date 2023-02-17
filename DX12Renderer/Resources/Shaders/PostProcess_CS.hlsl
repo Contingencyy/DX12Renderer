@@ -76,13 +76,15 @@ void main(uint3 threadID : SV_DispatchThreadID)
 	switch (GlobalCB.PP_DebugShowTextureMode)
 	{
 	case DebugShowTextureMode_Default:
+	case DebugShowTextureMode_TAAResolve:
+	case DebugShowTextureMode_TAAHistory:
 	{
 		finalColor = SourceTexture[threadID.xy].rgba;
 	} break;
 	case DebugShowTextureMode_Velocity:
 	{
 		float2 velocity = SourceTexture[threadID.xy].rg;
-		finalColor = float3(abs(velocity), 0.0f);
+		finalColor = float3(abs(velocity), 0.0f) * 10.0f;
 	} break;
 	}
 

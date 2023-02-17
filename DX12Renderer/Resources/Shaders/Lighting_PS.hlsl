@@ -74,9 +74,11 @@ PixelShaderOutput main(PixelShaderInput IN)
 	OUT.HDR = float4(finalColor, albedo.w);
 
 	// Calculate velocity and render to SV_Target1
-	float3 currentNDC = IN.CurrentPosNoJitter.xyz / IN.CurrentPosNoJitter.w;
-	float3 previousNDC = IN.PreviousPosNoJitter.xyz / IN.PreviousPosNoJitter.w;
-	OUT.Velocity = (currentNDC.xy - previousNDC.xy);
+	float2 currentUV = (IN.CurrentPosNoJitter.xyz / IN.CurrentPosNoJitter.w) * float2(0.5f, 0.5f) + float2(0.5f, 0.5f);
+	currentUV.y *= -1.0f;
+	float2 previousUV = (IN.PreviousPosNoJitter.xyz / IN.PreviousPosNoJitter.w) * float2(0.5f, 0.5f) + float2(0.5f, 0.5f);
+	previousUV.y *= -1.0f;
+	OUT.Velocity = currentUV.xy - previousUV.xy;
 
 	return OUT;
 }

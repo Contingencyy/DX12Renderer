@@ -94,6 +94,8 @@ static std::string TonemapTypeToString(TonemapType type)
 enum class DebugShowTextureMode : uint32_t
 {
 	DEBUG_SHOW_TEXTURE_MODE_DEFAULT,
+	DEBUG_SHOW_TEXTURE_MODE_TAA_RESOLVE,
+	DEBUG_SHOW_TEXTURE_MODE_TAA_HISTORY,
 	DEBUG_SHOW_TEXTURE_MODE_VELOCITY,
 	DEBUG_SHOW_TEXTURE_MODE_NUM_MODES
 };
@@ -104,6 +106,10 @@ static std::string DebugShowTextureModeToString(DebugShowTextureMode mode)
 	{
 	case DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_DEFAULT:
 		return std::string("Final output");
+	case DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_TAA_RESOLVE:
+		return std::string("TAA resolve");
+	case DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_TAA_HISTORY:
+		return std::string("TAA history");
 	case DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_VELOCITY:
 		return std::string("Velocity");
 	default:
@@ -125,7 +131,10 @@ struct GlobalConstantBufferData
 	// TAA settings
 	glm::vec2 TAA_HaltonJitter = glm::vec2(0.500000f, 0.333333f);
 	float TAA_SourceWeight = 0.05f;
-	uint32_t TAA_NeighborhoodClamping = true;
+	uint32_t TAA_UseNeighborhoodClamp = true;
+	uint32_t TAA_UseVelocityRejection = true;
+	float TAA_VelocityRejectionStrength = 10.0f;
+	uint32_t TAA_ShowVelocityDisocclusion = false;
 
 	// Tonemapping settings
 	DebugShowTextureMode PP_DebugShowTextureMode = DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_DEFAULT;
@@ -153,18 +162,21 @@ struct RenderState
 	// Resource slotmaps
 	ResourceSlotmap<Buffer> BufferSlotmap;
 	ResourceSlotmap<Texture> TextureSlotmap;
-	ResourceSlotmap<Mesh>MeshSlotmap;
+	ResourceSlotmap<Mesh> MeshSlotmap;
 	ResourceSlotmap<Material> MaterialSlotmap;
 
+	// For textures which names contain "history", this will mean that it accumulates values over time
+	// For textures which names contain "previous", this will mean that it is the last frame's texture of that particular type
 	// Render targets
 	std::unique_ptr<Texture> DepthPrepassDepthTarget;
 	std::unique_ptr<Texture> HDRColorTarget;
 	std::unique_ptr<Texture> SDRColorTarget;
 
-	// TAA History and TAA result
+	// TAA render targets
 	std::unique_ptr<Texture> TAAResolveTarget;
 	std::unique_ptr<Texture> TAAHistory;
 	std::unique_ptr<Texture> VelocityTarget;
+	std::unique_ptr<Texture> VelocityTargetPrevious;
 
 	// Buffers
 	std::unique_ptr<Buffer> GlobalConstantBuffer;
@@ -189,6 +201,10 @@ static const Texture& GetDebugShowDebugModeTexture(DebugShowTextureMode mode)
 	{
 	case DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_DEFAULT:
 		return *g_RenderState.TAAResolveTarget;
+	case DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_TAA_RESOLVE:
+		return *g_RenderState.TAAResolveTarget;
+	case DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_TAA_HISTORY:
+		return *g_RenderState.TAAHistory;
 	case DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_VELOCITY:
 		return *g_RenderState.VelocityTarget;
 	default:
