@@ -132,7 +132,7 @@ void main(uint3 threadID : SV_DispatchThreadID)
 	}
 
 	// Get the velocity and apply it to the current UV to get the history UV
-	float2 velocity_UV = (VelocityTarget[closestDepthPos_SS].rg / 1000.0f) * float2(0.5f, -0.5f);
+	float2 velocity_UV = (VelocityTarget[closestDepthPos_SS].rg) * float2(0.5f, -0.5f);
 	float2 history_UV = current_UV - velocity_UV;
 
 	// Get the source and history color

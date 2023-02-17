@@ -76,7 +76,7 @@ PixelShaderOutput main(PixelShaderInput IN)
 	// Calculate velocity and render to SV_Target1
 	float3 currentNDC = IN.CurrentPosNoJitter.xyz / IN.CurrentPosNoJitter.w;
 	float3 previousNDC = IN.PreviousPosNoJitter.xyz / IN.PreviousPosNoJitter.w;
-	OUT.Velocity = (currentNDC.xy - previousNDC.xy) * 1000.0f;
+	OUT.Velocity = (currentNDC.xy - previousNDC.xy);
 
 	return OUT;
 }

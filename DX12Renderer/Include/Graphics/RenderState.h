@@ -91,6 +91,26 @@ static std::string TonemapTypeToString(TonemapType type)
 	}
 }
 
+enum class DebugShowTextureMode : uint32_t
+{
+	DEBUG_SHOW_TEXTURE_MODE_DEFAULT,
+	DEBUG_SHOW_TEXTURE_MODE_VELOCITY,
+	DEBUG_SHOW_TEXTURE_MODE_NUM_MODES
+};
+
+static std::string DebugShowTextureModeToString(DebugShowTextureMode mode)
+{
+	switch (mode)
+	{
+	case DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_DEFAULT:
+		return std::string("Final output");
+	case DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_VELOCITY:
+		return std::string("Velocity");
+	default:
+		return std::string("Unknown");
+	}
+}
+
 struct GlobalConstantBufferData
 {
 	// General render settings
@@ -108,6 +128,7 @@ struct GlobalConstantBufferData
 	uint32_t TAA_NeighborhoodClamping = true;
 
 	// Tonemapping settings
+	DebugShowTextureMode PP_DebugShowTextureMode = DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_DEFAULT;
 	float TM_Exposure = 1.5f;
 	float TM_Gamma = 2.2f;
 	TonemapType TM_Type = TonemapType::UNCHARTED2;
@@ -161,3 +182,16 @@ struct RenderState
 };
 
 extern RenderState g_RenderState;
+
+static const Texture& GetDebugShowDebugModeTexture(DebugShowTextureMode mode)
+{
+	switch (mode)
+	{
+	case DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_DEFAULT:
+		return *g_RenderState.TAAResolveTarget;
+	case DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_VELOCITY:
+		return *g_RenderState.VelocityTarget;
+	default:
+		return *g_RenderState.TAAResolveTarget;
+	}
+}

@@ -54,8 +54,8 @@ enum RenderPassType : uint32_t
 
 enum ComputePassType : uint32_t
 {
-    TONE_MAPPING,
     TEMPORAL_ANTI_ALIASING,
+    POST_PROCESS,
     NUM_COMPUTE_PASSES
 };
 
@@ -265,7 +265,7 @@ namespace Renderer
         {
             // Tonemapping render pass
             ComputePassDesc desc;
-            desc.ComputeShaderPath = "Resources/Shaders/Tonemapping_CS.hlsl";
+            desc.ComputeShaderPath = "Resources/Shaders/PostProcess_CS.hlsl";
             desc.NumThreadsX = 64;
             desc.NumThreadsY = 64;
             desc.NumThreadsZ = 1;
@@ -276,10 +276,10 @@ namespace Renderer
 
             desc.RootParameters.resize(3);
             desc.RootParameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE); // Global constant buffer
-            desc.RootParameters[1].InitAsDescriptorTable(1, &ranges[0]); // TAA resolve target (source)
+            desc.RootParameters[1].InitAsDescriptorTable(1, &ranges[0]); // Source texture
             desc.RootParameters[2].InitAsDescriptorTable(1, &ranges[1]); // SDR color target (dest)
 
-            s_Data.ComputePasses[ComputePassType::TONE_MAPPING] = std::make_unique<ComputePass>("Tonemapping", desc);
+            s_Data.ComputePasses[ComputePassType::POST_PROCESS] = std::make_unique<ComputePass>("Post-process", desc);
         }
     }
 
@@ -769,29 +769,29 @@ void Renderer::Render()
     }
 
     {
-        /* Tone mapping render pass */
+        /* Post-process pass */
         auto commandList = RenderBackend::GetCommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
-        commandList->BeginTimestampQuery("Tonemapping");
+        commandList->BeginTimestampQuery("Post-process");
 
         // Transition the HDR render target to pixel shader resource state
         commandList->Transition(*g_RenderState.TAAResolveTarget, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
         commandList->Transition(*g_RenderState.SDRColorTarget, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        commandList->GetGraphicsCommandList()->SetComputeRootSignature(s_Data.ComputePasses[ComputePassType::TONE_MAPPING]->GetD3D12RootSignature().Get());
-        commandList->GetGraphicsCommandList()->SetPipelineState(s_Data.ComputePasses[ComputePassType::TONE_MAPPING]->GetD3D12PipelineState().Get());
+        commandList->GetGraphicsCommandList()->SetComputeRootSignature(s_Data.ComputePasses[ComputePassType::POST_PROCESS]->GetD3D12RootSignature().Get());
+        commandList->GetGraphicsCommandList()->SetPipelineState(s_Data.ComputePasses[ComputePassType::POST_PROCESS]->GetD3D12PipelineState().Get());
 
         ID3D12DescriptorHeap* const heaps = { RenderBackend::GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).GetD3D12DescriptorHeap().Get() };
         commandList->GetGraphicsCommandList()->SetDescriptorHeaps(1, &heaps);
 
         commandList->GetGraphicsCommandList()->SetComputeRootConstantBufferView(0, g_RenderState.GlobalConstantBuffer->GetD3D12Resource()->GetGPUVirtualAddress());
-        commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(1, g_RenderState.TAAResolveTarget->GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
+        commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(1, GetDebugShowDebugModeTexture(g_RenderState.GlobalCBData.PP_DebugShowTextureMode).GetDescriptorAllocation(DescriptorType::SRV).GetGPUDescriptorHandle());
         commandList->GetGraphicsCommandList()->SetComputeRootDescriptorTable(2, g_RenderState.SDRColorTarget->GetDescriptorAllocation(DescriptorType::UAV).GetGPUDescriptorHandle());
 
         uint32_t threadX = MathHelper::AlignUp(g_RenderState.Settings.RenderResolution.x, 8) / 8;
         uint32_t threadY = MathHelper::AlignUp(g_RenderState.Settings.RenderResolution.y, 8) / 8;
         commandList->GetGraphicsCommandList()->Dispatch(threadX, threadY, 1);
 
-        commandList->EndTimestampQuery("Tonemapping");
+        commandList->EndTimestampQuery("Post-process");
         RenderBackend::ExecuteCommandList(commandList);
     }
 }
@@ -810,6 +810,24 @@ void Renderer::OnImGuiRender()
         ImGui::Text("Shadow map resolution: %ux%u", renderSettings.ShadowMapResolution, renderSettings.ShadowMapResolution);
         ImGui::Text("VSync: %s", renderSettings.EnableVSync ? "On" : "Off");
 
+        ImGui::Text("Debug show texture");
+        std::string previewMode = DebugShowTextureModeToString(g_RenderState.GlobalCBData.PP_DebugShowTextureMode);
+        if (ImGui::BeginCombo("##DebugShowTexture", previewMode.c_str()))
+        {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(DebugShowTextureMode::DEBUG_SHOW_TEXTURE_MODE_NUM_MODES); ++i)
+            {
+                std::string mode = DebugShowTextureModeToString(static_cast<DebugShowTextureMode>(i));
+                bool isSelected = previewMode == mode;
+
+                if (ImGui::Selectable(mode.c_str(), isSelected))
+                    g_RenderState.GlobalCBData.PP_DebugShowTextureMode = static_cast<DebugShowTextureMode>(i);
+                if (isSelected)
+                    ImGui::SetItemDefaultFocus();
+            }
+
+            ImGui::EndCombo();
+        }
+
         ImGui::Separator();
 
         ImGui::Checkbox("Temporal AA", &renderSettings.EnableTAA);
@@ -827,7 +845,7 @@ void Renderer::OnImGuiRender()
         {
             for (uint32_t i = 0; i < static_cast<uint32_t>(TonemapType::NUM_TYPES); ++i)
             {
-                std::string tonemapName = TonemapTypeToString(static_cast<TonemapType>(i)).c_str();
+                std::string tonemapName = TonemapTypeToString(static_cast<TonemapType>(i));
                 bool isSelected = previewValue == tonemapName;
 
                 if (ImGui::Selectable(tonemapName.c_str(), isSelected))

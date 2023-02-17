@@ -3,6 +3,9 @@
 
 static const float4x4 IDENTITY_MATRIX = float4x4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 
+#define DebugShowTextureMode_Default  0
+#define DebugShowTextureMode_Velocity 1
+
 struct GlobalConstantBufferData
 {
 	// General render settings
@@ -19,7 +22,8 @@ struct GlobalConstantBufferData
 	float TAA_SourceWeight;
 	uint TAA_NeighborhoodClamping;
 
-	// Tonemapping settings
+	// Post-process settings
+	uint PP_DebugShowTextureMode;
 	float TM_Exposure;
 	float TM_Gamma;
 	uint TM_Type;

@@ -153,23 +153,35 @@ void Application::Render()
 		ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 		if (ImGui::CollapsingHeader("Renderer"))
 		{
+			ImGui::PushID("Renderer");
 			ImGui::Indent(10.0f);
+
 			Renderer::OnImGuiRender();
+
 			ImGui::Unindent(10.0f);
+			ImGui::PopID();
 		}
 
 		if (ImGui::CollapsingHeader("Debug Renderer"))
 		{
+			ImGui::PushID("Debug Renderer");
 			ImGui::Indent(10.0f);
+
 			DebugRenderer::OnImGuiRender();
+
 			ImGui::Unindent(10.0f);
+			ImGui::PopID();
 		}
 
 		if (ImGui::CollapsingHeader("Render Backend"))
 		{
+			ImGui::PushID("Render Backend");
 			ImGui::Indent(10.0f);
+
 			RenderBackend::OnImGuiRender();
+
 			ImGui::Unindent(10.0f);
+			ImGui::PopID();
 		}
 
 		ImGui::End();
