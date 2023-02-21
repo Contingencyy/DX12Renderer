@@ -17,6 +17,12 @@ The project builds and runs on both Windows 10 and Windows 11.
 - Physically-based rendering (PBR)
 - Temporal anti-aliasing
 
+## WIP
+- TAA improvements
+- PBR improvements
+- Cascaded shadow maps
+- Allocators (linear, arena)
+
 ## Planned features
 - Multithreaded rendering/command list recording
 - G-Buffering/Deferred rendering
