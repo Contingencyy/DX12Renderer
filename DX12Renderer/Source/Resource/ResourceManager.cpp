@@ -113,7 +113,7 @@ private:
 		vertex.Tangent.y = tangentu[1];
 		vertex.Tangent.z = tangentu[2];
 
-		vertex.Bitangent = glm::cross(vertex.Normal, vertex.Tangent) * fSign;
+		vertex.Bitangent = glm::cross(vertex.Normal, vertex.Tangent) * -(fSign);
 	}
 
 private:

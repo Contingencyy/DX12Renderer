@@ -80,6 +80,9 @@ PixelShaderOutput main(PixelShaderInput IN)
 	previousUV.y *= -1.0f;
 	OUT.Velocity = currentUV.xy - previousUV.xy;
 
+	fragNormalWS = 0.5 * fragNormalWS + 0.5;
+	OUT.HDR = float4(fragNormalWS, 1.0);
+
 	return OUT;
 }
 
