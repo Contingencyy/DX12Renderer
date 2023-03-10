@@ -84,7 +84,7 @@ void main(uint3 threadID : SV_DispatchThreadID)
 	case DebugShowTextureMode_Velocity:
 	{
 		float2 velocity = SourceTexture[threadID.xy].rg;
-		finalColor = float3(abs(velocity), 0.0f) * 10.0f;
+		finalColor = float3(abs(velocity), 0.0f) * 50.0f;
 	} break;
 	}
 
