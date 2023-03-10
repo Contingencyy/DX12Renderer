@@ -21,7 +21,7 @@ Scene::Scene()
 	m_ActiveCamera = Camera(glm::vec3(0.0f, 250.0f, 0.0f), 60.0f, static_cast<float>(renderRes.x), static_cast<float>(renderRes.y), 0.1f, 10000.0f);
 
 	// Directional light
-	DirectionalLightData dirLightData(glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f)), glm::vec3(0.02f, 0.019f, 0.014f), glm::vec3(2.0f, 1.9f, 1.4f));
+	DirectionalLightData dirLightData(glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f)), glm::vec3(0.12f, 0.11f, 0.08f), glm::vec3(6.0f, 5.5f, 4.0f));
 	std::size_t dirLight1 = AddSceneObject("DirectionalLight1");
 	GetSceneObject(dirLight1).AddComponent<DirLightComponent>(dirLightData); 
 
@@ -71,7 +71,8 @@ Scene::Scene()
 	// Mesh objects
 	SpawnModelObject("SponzaOld", glm::vec3(), glm::vec3(), glm::vec3(125.0f));
 	SpawnModelObject("Chess", glm::vec3(0.0f, 0.0f, -35.0f), glm::vec3(), glm::vec3(500.0f));
-	//SpawnModelObject("DamagedHelmet", glm::vec3(), glm::vec3(), glm::vec3(100.0f));
+	//SpawnModelObject("DamagedHelmet", glm::vec3(0.0f, 300.0f, 0.0f), glm::vec3(), glm::vec3(100.0f));
+	SpawnModelObject("Duck", glm::vec3(0.0f, 250.0f, 0.0f), glm::vec3(), glm::vec3());
 	//SpawnModelObject("Spheres", glm::vec3(0.0f, 0.0f, -35.0f), glm::vec3(), glm::vec3(50.0f));
 }
 
@@ -81,6 +82,11 @@ void Scene::Update(float deltaTime)
 
 	for (auto& sceneObject : m_SceneObjects)
 	{
+		if (sceneObject->GetName() == "Node20")
+		{
+			sceneObject->GetComponent<TransformComponent>().GetTransform().Rotate(glm::vec3(0.0f, glm::radians(45.0f) * deltaTime, 0.0f));
+		}
+
 		sceneObject->Update(deltaTime);
 	}
 }

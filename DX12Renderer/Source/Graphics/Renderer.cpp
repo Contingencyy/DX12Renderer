@@ -431,7 +431,7 @@ namespace Renderer
         g_RenderState.DefaultWhiteTexture = std::make_unique<Texture>(defaultTextureDesc);
 
         // Texture data is in ABGR layout, the default normal will point forward in tangent space (blue)
-        uint32_t defaultNormalTextureData = (255 << 24) + (255 << 16) + (0 << 8) + 0;
+        uint32_t defaultNormalTextureData = (255 << 24) | (255 << 16) | (127 << 8) | (127 << 0);
         defaultTextureDesc.DataPtr = &defaultNormalTextureData;
         defaultTextureDesc.DebugName = "Default normal texture";
 
