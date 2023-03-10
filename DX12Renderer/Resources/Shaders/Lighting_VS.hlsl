@@ -7,7 +7,8 @@ struct VertexShaderInput
 	float3 Normal : NORMAL;
 	float3 Tangent : TANGENT;
 	float3 Bitangent : BITANGENT;
-	matrix Model : MODEL;
+	matrix Transform : TRANSFORM;
+	matrix PrevFrameTransform : PREV_FRAME_TRANSFORM;
 	uint MaterialID : MATERIAL_ID;
 };
 
@@ -31,9 +32,11 @@ VertexShaderOutput main(VertexShaderInput IN)
 {
 	VertexShaderOutput OUT;
 
-	OUT.Position = mul(IN.Model, float4(IN.Position, 1.0f));
+	// Calculate world position of vertex and store it in the vertex shader output
+	OUT.Position = mul(IN.Transform, float4(IN.Position, 1.0f));
 	OUT.WorldPosition = OUT.Position;
 
+	// Apply jitter to the current vertex position
 	float4x4 jitterMatrix = SceneDataCB.ViewProjection;
 	jitterMatrix[0][2] += GlobalCB.TAA_HaltonJitter.x;
 	jitterMatrix[1][2] += GlobalCB.TAA_HaltonJitter.y;
@@ -42,7 +45,8 @@ VertexShaderOutput main(VertexShaderInput IN)
 
 	// Calculate current and previous non-jittered position for velocity
 	OUT.CurrentPosNoJitter = mul(SceneDataCB.ViewProjection, OUT.WorldPosition);
-	OUT.PreviousPosNoJitter = mul(GlobalCB.PrevViewProj, OUT.WorldPosition);
+	OUT.PreviousPosNoJitter = mul(IN.PrevFrameTransform, float4(IN.Position, 1.0f));
+	OUT.PreviousPosNoJitter = mul(GlobalCB.PrevViewProj, OUT.PreviousPosNoJitter);
 
 	OUT.TexCoord = IN.TexCoord;
 	OUT.Normal = IN.Normal;

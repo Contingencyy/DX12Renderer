@@ -15,5 +15,6 @@ public:
 
 private:
 	RenderResourceHandle m_Mesh;
+	glm::mat4 m_PrevFrameTransform = glm::identity<glm::mat4>();
 
 };

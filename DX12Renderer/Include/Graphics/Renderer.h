@@ -27,7 +27,7 @@ namespace Renderer
 	void EndScene();
 	void EndFrame();
 
-	void Submit(RenderResourceHandle meshPrimitiveHandle, const glm::mat4& transform);
+	void Submit(RenderResourceHandle meshPrimitiveHandle, const glm::mat4& transform, const glm::mat4& prevFrameTransform);
 	void Submit(DirectionalLightData& dirLightData, const Camera& lightCamera, RenderResourceHandle shadowMapHandle);
 	void Submit(SpotLightData& spotLightData, const Camera& lightCamera, RenderResourceHandle shadowMapHandle);
 	void Submit(PointLightData& pointLightData, const std::array<Camera, 6>& lightCameras, RenderResourceHandle shadowMapHandle);

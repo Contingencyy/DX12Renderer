@@ -25,7 +25,9 @@ void MeshComponent::Update(float deltaTime)
 void MeshComponent::Render()
 {
 	const Transform& objectTransform = Scene::GetSceneObject(m_ObjectID).GetComponent<TransformComponent>().GetTransform();
-	Renderer::Submit(m_Mesh, objectTransform.GetTransformMatrix());
+	Renderer::Submit(m_Mesh, objectTransform.GetTransformMatrix(), m_PrevFrameTransform);
+
+	m_PrevFrameTransform = objectTransform.GetTransformMatrix();
 }
 
 void MeshComponent::OnImGuiRender()

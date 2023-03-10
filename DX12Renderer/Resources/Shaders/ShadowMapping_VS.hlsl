@@ -1,7 +1,7 @@
 struct VertexShaderInput
 {
 	float3 Position : POSITION;
-	matrix Model : MODEL;
+	matrix Transform : TRANSFORM;
 };
 
 struct LightMatrix
@@ -16,7 +16,7 @@ float4 main(VertexShaderInput IN) : SV_POSITION
 	float4 lightViewSpacePos = float4(IN.Position, 1.0f);
 
 	// Transform vertex into light view space
-	lightViewSpacePos = mul(IN.Model, lightViewSpacePos);
+	lightViewSpacePos = mul(IN.Transform, lightViewSpacePos);
 	lightViewSpacePos = mul(LightMatrixCB.LightViewProjection, lightViewSpacePos);
 
 	return lightViewSpacePos;

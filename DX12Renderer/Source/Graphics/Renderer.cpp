@@ -72,6 +72,7 @@ struct MaterialData
 struct MeshInstanceData
 {
     glm::mat4 Transform = glm::identity<glm::mat4>();
+    glm::mat4 PrevFrameTransform = glm::identity<glm::mat4>();
     uint32_t MaterialID = 0;
 };
 
@@ -148,10 +149,10 @@ namespace Renderer
             desc.RootParameters[0].InitAsConstants(16, 0); // Light VP
 
             desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-            desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-            desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-            desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-            desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "TRANSFORM", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "TRANSFORM", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "TRANSFORM", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "TRANSFORM", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
             s_Data.RenderPasses[RenderPassType::SHADOW_MAPPING] = std::make_unique<RasterPass>("Shadow mapping", desc);
         }
@@ -175,10 +176,10 @@ namespace Renderer
             desc.RootParameters[1].InitAsConstantBufferView(1); // Scene data constant buffer
 
             desc.ShaderInputLayout.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-            desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-            desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-            desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-            desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "TRANSFORM", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "TRANSFORM", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "TRANSFORM", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "TRANSFORM", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
             s_Data.RenderPasses[RenderPassType::DEPTH_PREPASS] = std::make_unique<RasterPass>("Depth pre-pass", desc);
         }
@@ -227,11 +228,15 @@ namespace Renderer
             desc.ShaderInputLayout.push_back({ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
             desc.ShaderInputLayout.push_back({ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
             desc.ShaderInputLayout.push_back({ "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
-            desc.ShaderInputLayout.push_back({ "MODEL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-            desc.ShaderInputLayout.push_back({ "MODEL", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-            desc.ShaderInputLayout.push_back({ "MODEL", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-            desc.ShaderInputLayout.push_back({ "MODEL", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
-            desc.ShaderInputLayout.push_back({ "MATERIAL_ID", 0, DXGI_FORMAT_R32_UINT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "TRANSFORM", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "TRANSFORM", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "TRANSFORM", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "TRANSFORM", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "PREV_FRAME_TRANSFORM", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "PREV_FRAME_TRANSFORM", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 80, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "PREV_FRAME_TRANSFORM", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 96, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "PREV_FRAME_TRANSFORM", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 112, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
+            desc.ShaderInputLayout.push_back({ "MATERIAL_ID", 0, DXGI_FORMAT_R32_UINT, 1, 128, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 });
 
             s_Data.RenderPasses[RenderPassType::LIGHTING] = std::make_unique<RasterPass>("Lighting", desc);
         }
@@ -303,7 +308,7 @@ namespace Renderer
         {
             // Mesh instance buffers (opaque and transparent meshes)
             BufferDesc desc = {};
-            desc.Usage = BufferUsage::BUFFER_USAGE_CONSTANT;
+            desc.Usage = BufferUsage::BUFFER_USAGE_UPLOAD;
             //meshBufferDesc.NumElements = g_RenderState.MAX_MESH_INSTANCES * g_RenderState.BACK_BUFFER_COUNT;
             desc.NumElements = g_RenderState.MAX_MESH_INSTANCES;
             desc.ElementSize = sizeof(MeshInstanceData);
@@ -928,7 +933,7 @@ void Renderer::EndFrame()
     g_RenderState.Stats.Reset();
 }
 
-void Renderer::Submit(RenderResourceHandle meshPrimitiveHandle, const glm::mat4& transform)
+void Renderer::Submit(RenderResourceHandle meshPrimitiveHandle, const glm::mat4& transform, const glm::mat4& prevFrameTransform)
 {
     ASSERT(s_Data.MaterialCount <= g_RenderState.MAX_MATERIALS, "Total number of materials has exceeded the maximum amount of 1000");
 
@@ -964,6 +969,7 @@ void Renderer::Submit(RenderResourceHandle meshPrimitiveHandle, const glm::mat4&
 
     MeshInstanceData meshInstance = {};
     meshInstance.Transform = transform;
+    meshInstance.PrevFrameTransform = prevFrameTransform;
     meshInstance.MaterialID = s_Data.MaterialCount;
 
     if (material->Transparency == TransparencyMode::OPAQUE)
